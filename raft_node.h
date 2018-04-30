@@ -1,20 +1,18 @@
 #ifndef INCLUDED_RAFT_NODE_H
 #define INCLUDED_RAFT_NODE_H
 
-#include <boost/any.hpp>
-
 class RaftNode {
 
   int next_idx;
-  boost::any d_udata;
+  void* m_d_udata;
 
 public:
 
-  RaftNode(const boost::any& udata);
+  RaftNode(void* udata);
   int is_leader();
   int get_next_idx();
   void set_next_idx(int nextIdx);
-  boost::any& get_udata();
+  void* get_udata();
 
 };
 
