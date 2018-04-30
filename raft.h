@@ -33,7 +33,7 @@ typedef int (
     int node,
     int msg_type,
     const unsigned char *send_data,
-    const int d_len
+    int d_len
 );
 
 #ifndef HAVE_FUNC_LOG
@@ -56,7 +56,7 @@ typedef int (
     void *cb_ctx,
     void *udata,
     const unsigned char *d_data,
-    const int d_len
+    int d_len
 );
 
 typedef struct {

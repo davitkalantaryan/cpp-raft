@@ -392,7 +392,7 @@ void RaftServer::send_appendentries_all() {
 void RaftServer::set_configuration(std::vector<raft_node_configuration_t> nodes, int my_idx) {
 	this->nodes.clear();
 	for (int i=0; i<nodes.size(); i++) {
-		this->nodes.push_back(RaftNode(nodes[i].userData));
+		this->nodes.push_back(RaftNode(nodes[i].pUserData));
 		this->votes_for_me.push_back(int(0));
 	}
 	this->nodeid = my_idx;
