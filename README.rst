@@ -30,3 +30,10 @@ Todo
 - More scenario tests (ie. more varied network partition scenarios)
 - Usage example
 
+
+Reasons to fork
+----
+- Get rid of BOOST dependency
+- Compile on Windows with Microsoft compiler
+
+
