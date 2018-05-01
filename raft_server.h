@@ -16,6 +16,7 @@ typedef std::vector<RaftNode>::iterator NodeIter;
 
 class RaftServer {
 
+protected: // in order to make usable variables by inherites
 	/* Persistent state: */
 	///the server's best guess of what the current term is starts at zero
 	int current_term;
