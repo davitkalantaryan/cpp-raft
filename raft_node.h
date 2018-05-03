@@ -13,6 +13,8 @@ public:
   int get_next_idx();
   void set_next_idx(int nextIdx);
   void* get_udata();
+  // new
+  void set_udata(void* a_udata) { m_d_udata = a_udata;}
 
 };
 
