@@ -5,6 +5,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+//class RaftNode2;
+
 class msg_requestvote_t {
     /* candidate's term */
     int d_term;
@@ -163,7 +165,9 @@ typedef struct {
 
 class MsgAppendEntries {
     int d_term;
-    int d_leader_id;
+    //int d_leader_id;
+	int		m_leaderKeyLen;
+	void*	m_leaderKey;
     int d_prev_log_idx;
     int d_prev_log_term;
     std::vector<msg_entry_t> d_entries;
@@ -171,16 +175,17 @@ class MsgAppendEntries {
 
 public:
 
-    MsgAppendEntries() : d_term(0), d_leader_id(0), d_prev_log_idx(0),
+    MsgAppendEntries() : d_term(0), m_leaderKeyLen(0), m_leaderKey(NULL),d_prev_log_idx(0),
     	d_prev_log_term(0), d_entries(), d_leader_commit(0) {
 
     }
 
-    MsgAppendEntries(int term, int leader_id, int prev_log_idx,
+    MsgAppendEntries(int term, void* leaderKey, int leaderKeyLen,int prev_log_idx,
     		int prev_log_term, int n_entries, int leader_commit) :
-    		d_term(term), d_leader_id(leader_id), d_prev_log_idx(prev_log_idx),
-        	d_prev_log_term(prev_log_term), d_entries(), d_leader_commit(leader_commit) {
-
+    		d_term(term), m_leaderKeyLen(leaderKeyLen), m_leaderKey(leaderKey), d_prev_log_idx(prev_log_idx),
+        	d_prev_log_term(prev_log_term), d_entries(), d_leader_commit(leader_commit)
+	{
+		//
 	}
 
 	const msg_entry_t& getEntry(int i) const {
@@ -199,12 +204,13 @@ public:
 		d_leader_commit = leaderCommit;
 	}
 
-	int getLeaderId() const {
-		return d_leader_id;
+	void* getLeaderKey(int* a_pKeyLen) const {
+		if(a_pKeyLen){*a_pKeyLen=m_leaderKeyLen;}
+		return m_leaderKey;
 	}
 
-	void setLeaderId(int leaderId) {
-		d_leader_id = leaderId;
+	void setLeaderKey(void* a_leaderKey, int a_leaderKeyLen) {
+		m_leaderKey = a_leaderKey; m_leaderKeyLen = a_leaderKeyLen;
 	}
 
 	int getNEntries() const {

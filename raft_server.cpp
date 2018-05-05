@@ -34,10 +34,18 @@ static void __log(void *src, const char *fmt, ...) {
 	vsprintf(buf, fmt, args);
 }
 
+static int raft_votes_is_majority(int a_num_nodes, int a_nvotes);
+
 RaftServer::RaftServer() :
-		current_term(0), voted_for(-1), current_idx(1), timeout_elapsed(0), request_timeout(200), election_timeout(
-				1000), last_applied_idx(0), log(new RaftLogger()), commit_idx(0), votes_for_me(), nodeid(0), cb_ctx(NULL) {
+		current_term(0),current_idx(1), timeout_elapsed(0), request_timeout(200), election_timeout(
+				1000), last_applied_idx(0), log(new RaftLogger()), commit_idx(0), m_thisNode(NULL), cb_ctx(NULL) 
+{
 	d_state.set(RAFT_STATE_FOLLOWER);
+	//RaftNode2	*m_first, *m_last;
+	//size_t		m_unNodesCount;
+	m_lastNode=m_firstNode=NULL;
+	m_nNodesCount = 0;
+	m_voted_for = NULL;
 }
 
 void RaftServer::set_callbacks(raft_cbs_t *funcs, void *cb_ctx) {
@@ -45,16 +53,83 @@ void RaftServer::set_callbacks(raft_cbs_t *funcs, void *cb_ctx) {
 	this->cb_ctx = cb_ctx;
 }
 
-RaftServer::~RaftServer() {
+RaftServer::~RaftServer() 
+{
+	ClearAllNodes();
+	//delete this->log;
 }
 
-void RaftServer::forAllNodesExceptSelf(std::function<void(int)> callback) {
-	for (int i = 0; i < this->nodes.size(); i++) {
-		if (this->nodeid == i) {
-			continue;
-		} else {
-			callback(i);
-		}
+
+void RaftServer::ClearAllNodes()
+{
+	RaftNode2 *pNextNode, *pToDelete=m_firstNode;
+
+	while(pToDelete){
+		pNextNode = RemoveNode(pToDelete);
+		pToDelete = pNextNode;
+	}
+
+	m_nNodesCount = 0;
+}
+
+
+void RaftServer::AddNode(RaftNode2* a_node, const void* a_key, int a_keyLen)
+{
+	RaftNode2* pNodeTmp;
+	void* keyOnHash;
+
+	if(m_hashNodes.FindEntry(a_key,a_keyLen,&pNodeTmp)){return;}
+
+	if(m_lastNode){m_lastNode->next=a_node;}
+	else{m_firstNode=a_node;}
+
+	a_node->prev = m_lastNode;
+	m_lastNode = a_node;
+	keyOnHash=m_hashNodes.AddEntry2(a_key, a_keyLen, a_node);
+	a_node->setKeyAndKeylen(keyOnHash, a_keyLen);
+	++m_nNodesCount;
+}
+
+
+RaftNode2* RaftServer::FindNode(const void* a_key, int a_keyLen)
+{
+	RaftNode2* pNodeTmp;
+	if(m_hashNodes.FindEntry(a_key,a_keyLen,&pNodeTmp)){return pNodeTmp;}
+	return NULL;
+}
+
+
+RaftNode2* RaftServer::RemoveNode(RaftNode2* a_node)
+{
+	RaftNode2* pNext;
+	if(!m_hashNodes.RemoveEntry(a_node->key2(),a_node->keyLen2())){return NULL;}
+	pNext = a_node->next;
+	if(a_node->prev){ a_node->prev->next=a_node->next; }
+	if(a_node->next){ a_node->next->prev=a_node->prev; }
+	if(a_node==m_firstNode){m_firstNode=a_node->next;}
+	if(a_node==m_lastNode){ m_lastNode =a_node->prev;}
+	delete a_node;
+	--m_nNodesCount;
+	return pNext;
+}
+
+
+void RaftServer::RemoveNode(const void* a_key, int a_keyLen)
+{
+	RaftNode2* pNode;
+	if(!m_hashNodes.FindEntry(a_key,a_keyLen,&pNode)){return;}
+	RemoveNode(pNode);
+}
+
+
+void RaftServer::forAllNodesExceptSelf(std::function<void(RaftNode2*)> a_callback) {
+
+	RaftNode2* pNode = m_firstNode;
+
+	while(pNode){
+		if (pNode == m_thisNode) {pNode = pNode->next;continue;}
+		a_callback(pNode);
+		pNode = pNode->next;
 	}
 }
 
@@ -72,10 +147,11 @@ void RaftServer::become_leader() {
 	__log(NULL, "becoming leader");
 
 	d_state.set(RAFT_STATE_LEADER);
-	this->voted_for = -1;
-	forAllNodesExceptSelf([this](int i) {
-		get_node(i)->set_next_idx(get_current_idx() + 1);
-		send_appendentries(i);
+	//this->voted_for = -1;
+	this->m_voted_for = NULL;
+	forAllNodesExceptSelf([this](RaftNode2* a_node) {
+		a_node->set_next_idx(get_current_idx() + 1);
+		send_appendentries(a_node);
 	});
 }
 
@@ -84,9 +160,10 @@ void RaftServer::become_candidate() {
 
 	__log(NULL, "becoming candidate");
 
-	this->votes_for_me.clear();
+	//this->votes_for_me.clear(); // automatic every vote is false
 	this->current_term += 1;
-	vote(this->nodeid);
+	//vote(this->nodeid);
+	vote(this->m_thisNode);
 	d_state.set(RAFT_STATE_CANDIDATE);
 
 	/* we need a random factor here to prevent simultaneous candidates */
@@ -101,7 +178,7 @@ void RaftServer::become_follower() {
 	__log(NULL, "becoming follower");
 
 	d_state.set(RAFT_STATE_FOLLOWER);
-	this->voted_for = -1;
+	this->m_voted_for = NULL;
 }
 
 int RaftServer::periodic(int msec_since_last_period) {
@@ -139,25 +216,24 @@ raft_entry_t& RaftServer::get_entry_from_idx(int etyidx) {
 	return this->log->log_get_from_idx(etyidx);
 }
 
-int RaftServer::recv_appendentries_response(int node, msg_appendentries_response_t *r) {
-	NodeIter p;
+int RaftServer::recv_appendentries_response(RaftNode2* a_node, msg_appendentries_response_t *r) {
 
-	__log(NULL, "received appendentries response from: %d", node);
+	__log(NULL, "received appendentries response from: %p", a_node);
 
-	p = get_node(node);
-	assert(p != this->nodes.end());
+	//p = get_node(node);
+	//assert(p != this->nodes.end());
 
 	if (1 == r->success) {
 		int i;
 		std::cout << "INcrease Success" << std::endl;
-		p->set_next_idx(r->current_idx);
+		a_node->set_next_idx(r->current_idx);
 		for (i = r->first_idx; i <= r->current_idx; i++)
 			this->log->log_mark_node_has_committed(i);
 
 		while (this->get_commit_idx() < r->current_idx) {
 			raft_entry_t& e = this->log->log_get_from_idx(this->last_applied_idx + 1);
 			/* majority has this */
-			if (this->nodes.size() / 2 <= e.d_num_nodes) {
+			if (m_nNodesCount / 2 <= e.d_num_nodes) {
 				if (1 != apply_entry())
 					throw std::runtime_error("Could Not Apply!");
 				if (e.getId() == r->current_idx) {
@@ -170,22 +246,22 @@ int RaftServer::recv_appendentries_response(int node, msg_appendentries_response
 	} else {
 		/* If AppendEntries fails because of log inconsistency:
 		 decrement nextIndex and retry (�5.3) */
-		assert(0 <= p->get_next_idx());
+		assert(0 <= a_node->get_next_idx());
 		// TODO does this have test coverage?
 		// TODO can jump back to where node is different instead of iterating
-		p->set_next_idx(p->get_next_idx() - 1);
-		send_appendentries(node);
+		a_node->set_next_idx(a_node->get_next_idx() - 1);
+		send_appendentries(a_node);
 	}
 
 	return 1;
 }
 
-int RaftServer::recv_appendentries(const int node, MsgAppendEntries *ae) {
+int RaftServer::recv_appendentries(RaftNode2* a_node, MsgAppendEntries *ae) {
 	msg_appendentries_response_t r;
 
 	this->timeout_elapsed = 0;
 
-	__log(NULL, "received appendentries from: %d", node);
+	__log(NULL, "received appendentries from: %p", a_node);
 
 	r.term = this->current_term;
 
@@ -265,81 +341,83 @@ int RaftServer::recv_appendentries(const int node, MsgAppendEntries *ae) {
 	r.first_idx = ae->getPrevLogIdx() + 1;
 
 	done: if (this->cb.send)
-		this->cb.send(this->cb_ctx, this, node, RAFT_MSG_APPENDENTRIES_RESPONSE, (const unsigned char*) &r,
+		this->cb.send(this->cb_ctx, this, a_node, RAFT_MSG_APPENDENTRIES_RESPONSE, (const unsigned char*) &r,
 				sizeof(msg_appendentries_response_t));
 	return 1;
 }
 
-int RaftServer::recv_requestvote(int node, msg_requestvote_t *vr) {
+int RaftServer::recv_requestvote(RaftNode2* a_node, msg_requestvote_t *vr) {
 	msg_requestvote_response_t r;
 
 	if (get_current_term() < vr->term()) {
-		this->voted_for = -1;
+		this->m_voted_for = NULL;
 	}
 
 	if (vr->term() < get_current_term() || /* we've already voted */
-	-1 != this->voted_for || /* we have a more up-to-date log */
+	NULL != this->m_voted_for || /* we have a more up-to-date log */
 	vr->last_log_idx() < this->current_idx) {
 		r.vote_granted = 0;
 	} else {
-		vote(node);
+		vote(a_node);
 		r.vote_granted = 1;
 	}
 
-	__log(NULL, "node requested vote: %d replying: %s", node, r.vote_granted == 1 ? "granted" : "not granted");
+	__log(NULL, "node requested vote: %p replying: %s", a_node, r.vote_granted == 1 ? "granted" : "not granted");
 
 	r.term = get_current_term();
 	if (this->cb.send)
-		this->cb.send(this->cb_ctx, this, node, RAFT_MSG_REQUESTVOTE_RESPONSE, (const unsigned char *) &r,
+		this->cb.send(this->cb_ctx, this, a_node, RAFT_MSG_REQUESTVOTE_RESPONSE, (const unsigned char *) &r,
 				sizeof(msg_requestvote_response_t));
 
 	return 0;
 }
 
-void RaftServer::recv_requestvote_response(int node, msg_requestvote_response_t *r) {
+void RaftServer::recv_requestvote_response(RaftNode2* a_node, msg_requestvote_response_t *r) {
 
-	__log(NULL, "node responded to requestvote: %d status: %s", node, r->vote_granted == 1 ? "granted" : "not granted");
+	__log(NULL, "node responded to requestvote: %p status: %s", a_node, r->vote_granted == 1 ? "granted" : "not granted");
 
 	if (d_state.is_leader())
 		return;
 
-	assert(node < this->nodes.size());
-
 	if (1 == r->vote_granted) {
-		this->votes_for_me[node] = 1;
-		if (raft_votes_is_majority(this->nodes.size(), get_nvotes_for_me()))
+		a_node->SetVotesForMe(1);
+		if (raft_votes_is_majority(m_nNodesCount, get_nvotes_for_me()))
 			become_leader();
+	}
+	else{
+		a_node->SetVotesForMe(0);
 	}
 }
 
-int RaftServer::send_entry_response(int node, int etyid, int was_committed) {
+
+int RaftServer::send_entry_response(RaftNode2* a_node, int etyid, int was_committed) {
 	msg_entry_response_t res;
 
-	__log(NULL, "send entry response to: %d", node);
+	__log(NULL, "send entry response to: %p", a_node);
 
 	res.id = etyid;
 	res.was_committed = was_committed;
 	if (this->cb.send)
-		this->cb.send(this->cb_ctx, this, node, RAFT_MSG_ENTRY_RESPONSE, (const unsigned char*) &res,
+		this->cb.send(this->cb_ctx, this, a_node, RAFT_MSG_ENTRY_RESPONSE, (const unsigned char*) &res,
 				sizeof(msg_entry_response_t));
 	return 0;
 }
 
-int RaftServer::recv_entry(int node, msg_entry_t *e) {
+int RaftServer::recv_entry(RaftNode2* a_node, msg_entry_t *e) {
 	raft_entry_t ety(this->current_term, e->id(), reinterpret_cast<char*>(e->data()), e->len());
-	__log(NULL, "received entry from: %d", node);
-	send_entry_response(node, e->id(), append_entry(ety));
+	__log(NULL, "received entry from: %p", a_node);
+	send_entry_response(a_node, e->id(), append_entry(ety));
 	forAllNodesExceptSelf(std::bind(&RaftServer::send_appendentries, this, std::placeholders::_1));
 	return 0;
 }
 
-void RaftServer::send_requestvote(int node) {
+void RaftServer::send_requestvote(RaftNode2* a_node) {
 	msg_requestvote_t rv(current_term, 0, get_current_idx(), 0);
 
-	__log(NULL, "sending requestvote to: %d", node);
+	__log(NULL, "sending requestvote to: %p", a_node);
 
 	if (this->cb.send)
-		this->cb.send(this->cb_ctx, this, node, RAFT_MSG_REQUESTVOTE, (const unsigned char*) &rv,
+		this->cb.send(this->cb_ctx, this, a_node, RAFT_MSG_REQUESTVOTE, (const unsigned char*) &rv,
 				sizeof(msg_requestvote_t));
 }
 
@@ -371,17 +449,16 @@ int RaftServer::apply_entry() {
 	return 1;
 }
 
-void RaftServer::send_appendentries(int node) {
+void RaftServer::send_appendentries(RaftNode2* a_node) 
+{
 
-	__log(NULL, "sending appendentries to: %d", node);
+	__log(NULL, "sending appendentries to: %p", a_node);
 
 	if (!(this->cb.send))
 		return;
 
-	NodeIter p = get_node(node);
-
-	MsgAppendEntries ae(current_term, nodeid, 0, p->get_next_idx(), 0, 0);
-	this->cb.send(this->cb_ctx, this, node, RAFT_MSG_APPENDENTRIES, (const unsigned char*) &ae,
+	MsgAppendEntries ae(current_term, m_thisNode->key2(),m_thisNode->keyLen2(), 0, a_node->get_next_idx(), 0, 0);
+	this->cb.send(this->cb_ctx, this, a_node, RAFT_MSG_APPENDENTRIES, (const unsigned char*) &ae,
 			sizeof(MsgAppendEntries));
 }
 
@@ -389,45 +466,44 @@ void RaftServer::send_appendentries_all() {
 	forAllNodesExceptSelf(&RaftServer::send_appendentries);
 }
 
-void RaftServer::set_configuration(std::vector<raft_node_configuration_t> nodes, int my_idx) {
-	this->nodes.clear();
-	for (int i=0; i<nodes.size(); i++) {
-		this->nodes.push_back(RaftNode(nodes[i].pUserData));
-		this->votes_for_me.push_back(int(0));
+#if 0
+void RaftServer::set_configuration(const std::vector<raft_node_configuration_t>& a_nodes, raft_node_configuration_t a_myNode)
+{
+	RaftNode2* pNode;
+	const size_t cunSize(a_nodes.size());
+
+	this->ClearAllNodes();
+	for (size_t i(0); i<cunSize; ++i) {
+		pNode = new RaftNode2(a_nodes[i].pUserData); // let us assume that memory is enough
+		AddNode(pNode, a_nodes[i].key, a_nodes[i].keyLen);
+		if(memcmp(&a_nodes[i],&a_myNode,sizeof(a_myNode))==0){this->m_thisNode=pNode;}
 	}
-	this->nodeid = my_idx;
 }
+#endif
 
-int RaftServer::get_nvotes_for_me() {
+int RaftServer::get_nvotes_for_me() 
+{
+	RaftNode2*	pNode = m_firstNode;
 	int votes = 0;
-	const std::vector<int>& votes_for_me = this->votes_for_me;
-	for (int i = 0; i < this->nodes.size(); i++) {
-		if (this->nodeid == i) {
-			continue;
-		} else {
-			if (1 == this->votes_for_me[i]) {
+
+	while(pNode){
+		if(pNode==m_thisNode){ pNode= pNode->next; continue;}
+		if (1 == pNode->GetVotesForMe()) {
 				votes += 1;
-			}
 		}
+		pNode = pNode->next;
 	}
 
-	if (this->voted_for == this->nodeid)
+	if (this->m_voted_for == this->m_thisNode)
 		votes += 1;
 
 	return votes;
 }
 
-void RaftServer::vote(int node) {
-	this->voted_for = node;
+void RaftServer::vote(RaftNode2* a_node) {
+	m_voted_for = a_node;
 }
 
-NodeIter RaftServer::get_node(size_t nodeid) {
-	if (nodeid < 0 || this->nodes.size() <= nodeid) {
-		return this->nodes.end();
-	} else {
-		return this->nodes.begin() + nodeid;
-	}
-}
 
 void RaftServer::set_election_timeout(int millisec) {
 	this->election_timeout = millisec;
@@ -437,9 +513,9 @@ void RaftServer::set_request_timeout(int millisec) {
 	this->request_timeout = millisec;
 }
 
-int RaftServer::get_nodeid() {
-	return this->nodeid;
-}
+//int RaftServer::get_nodeid() {
+//	return this->nodeid;
+//}
 
 int RaftServer::get_election_timeout() {
 	return this->election_timeout;
@@ -450,7 +526,7 @@ int RaftServer::get_request_timeout() {
 }
 
 size_t RaftServer::get_num_nodes() {
-	return this->nodes.size();
+	return m_nNodesCount;
 }
 
 int RaftServer::get_timeout_elapsed() {
@@ -461,8 +537,8 @@ int RaftServer::get_log_count() {
 	return this->log->log_count();
 }
 
-int RaftServer::get_voted_for() {
-	return this->voted_for;
+RaftNode2* RaftServer::get_voted_for() {
+	return this->m_voted_for;
 }
 
 void RaftServer::set_current_term(int term) {
@@ -481,8 +557,8 @@ int RaftServer::get_current_idx() {
 	return this->current_idx;
 }
 
-int RaftServer::get_my_id() {
-	return this->nodeid;
+RaftNode2* RaftServer::get_myNode() {
+	return this->m_thisNode;
 }
 
 void RaftServer::set_commit_idx(int idx) {
@@ -500,5 +576,35 @@ int RaftServer::get_last_applied_idx() {
 int RaftServer::get_commit_idx() {
 	return this->commit_idx;
 }
+
+
+bool RaftServer::is_follower()
+{
+	return this->d_state.is_follower();
+}
+
+bool RaftServer::is_leader()
+{
+	return this->d_state.is_leader();
+}
+
+
+bool RaftServer::is_candidate()
+{
+	return this->d_state.is_candidate();
+}
+
+
+/*////////////////////////////////////////////////////////////////*/
+static int raft_votes_is_majority(int a_num_nodes, int a_nvotes) 
+{
+	int half;
+
+	if (a_num_nodes < a_nvotes)
+		return 0;
+	half = a_num_nodes / 2;
+	return half + 1 <= a_nvotes;
+}
+
 
 /*--------------------------------------------------------------79-characters-*/

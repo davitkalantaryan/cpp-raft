@@ -11,17 +11,24 @@
  * @version 0.1
  */
 
+class RaftNode2;
+
 typedef struct {
     /** The ID that this node used to have.
      * So that we can tell which nodes were removed/added when the
      * configuration changes */
-    int old_id;
+    //int old_id;
 
     /** User data for addressing.
      * Examples of what this could be:
      * - void* pointing to implementor's networking data
      * - a (IP,Port) tuple */
     void* pUserData;
+
+	void*	key;
+	int		keyLen;
+	int		reserved;
+
 } raft_node_configuration_t;
 
 
@@ -30,7 +37,7 @@ typedef int (
 )   (
     void *cb_ctx,
     void *udata,
-    int node,
+	RaftNode2* node2,
     int msg_type,
     const unsigned char *send_data,
     int d_len

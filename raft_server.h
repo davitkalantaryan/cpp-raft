@@ -9,10 +9,11 @@
 #include <functional>
 #include <vector>
 #include <memory>
+#include <common_hashtbl.hpp>
 
 class RaftLogger;
-class RaftNode;
-typedef std::vector<RaftNode>::iterator NodeIter;
+class RaftNode2;
+
 
 class RaftServer {
 
@@ -22,7 +23,7 @@ protected: // in order to make usable variables by inherites
 	int current_term;
 
 	/// The candidate the server voted for in its current term, or Nil if it hasn't voted for any.
-	int voted_for;
+	RaftNode2* m_voted_for;
 
 	/// the log which is replicated
 	std::shared_ptr<RaftLogger> log;
@@ -44,9 +45,11 @@ protected: // in order to make usable variables by inherites
 	int timeout_elapsed;
 
 	/// who has voted for me. This is an array with N = 'num_nodes' elements
-	std::vector<int> votes_for_me;
-
-	std::vector<RaftNode> nodes;
+	//std::vector<int> votes_for_me;
+	//std::vector<RaftNode2> nodes;
+	RaftNode2					*m_firstNode, *m_lastNode;
+	int							m_nNodesCount;
+	common::HashTbl<RaftNode2*>	m_hashNodes;
 
 	int election_timeout;
 	int request_timeout;
@@ -56,10 +59,11 @@ protected: // in order to make usable variables by inherites
 	void* cb_ctx;
 
 	/// my node ID
-	size_t nodeid;
+	//size_t nodeid;
+	RaftNode2* m_thisNode;
 
-	typedef void (RaftServer::*PerNodeCallback)(int);
-	void forAllNodesExceptSelf(std::function<void(int)> callback);
+	typedef void (RaftServer::*PerNodeCallback)(RaftNode2*);
+	void forAllNodesExceptSelf(std::function<void(RaftNode2*)> callback);
 	void inline forAllNodesExceptSelf(PerNodeCallback callback) {
 		forAllNodesExceptSelf(std::bind(callback, this, std::placeholders::_1));
 	}
@@ -104,28 +108,28 @@ public:
 	 * @param node Who sent us the response
 	 * @param r The appendentries response
 	 * @return 0 on error */
-	int recv_appendentries_response(int node, msg_appendentries_response_t* r);
+	int recv_appendentries_response(RaftNode2* node, msg_appendentries_response_t* r);
 	/**
 	 * Receive an appendentries message
 	 * @param node Who sent us the response
 	 * @param ae The appendentries message
 	 * @return 0 on error */
-	int recv_appendentries(const int node, MsgAppendEntries* ae);
+	int recv_appendentries(RaftNode2* node, MsgAppendEntries* ae);
 	/**
 	 * Receive a requestvote message
 	 * @param node Who sent us the message
 	 * @param vr The requestvote message
 	 * @return 0 on error */
-	int recv_requestvote(int node, msg_requestvote_t* vr);
+	int recv_requestvote(RaftNode2* node, msg_requestvote_t* vr);
 
 	/**
 	 * Receive a response from a requestvote message we sent
 	 * @param node Who sent us the response
 	 * @param r The requestvote response
 	 */
-	void recv_requestvote_response(int node, msg_requestvote_response_t* r);
+	void recv_requestvote_response(RaftNode2* node, msg_requestvote_response_t* r);
 
-	int send_entry_response(int node, int etyid, int was_committed);
+	int send_entry_response(RaftNode2* node, int etyid, int was_committed);
 
 	/**
 	 * Receive an entry message from client.
@@ -133,46 +137,46 @@ public:
 	 * Send appendentries to followers
 	 * @param node The node this response was sent by
 	 * @param e The entry message */
-	int recv_entry(int node, msg_entry_t* e);
+	int recv_entry(RaftNode2* node, msg_entry_t* e);
 
-	void send_requestvote(int node);
+	void send_requestvote(RaftNode2* node);
 
 	int append_entry(const raft_entry_t& c);
 
 	int apply_entry();
 
-	void send_appendentries(int node);
+	void send_appendentries(RaftNode2* node);
 
 	void send_appendentries_all();
 	/**
 	 * Set configuration
 	 * @param nodes Array of nodes, end of array is marked by NULL entry
 	 * @param my_idx Which node is myself */
-	void set_configuration(std::vector<raft_node_configuration_t> nodes, int my_idx);
+	//void set_configuration(const std::vector<raft_node_configuration_t>& nodes, raft_node_configuration_t myNode);
 
 	/**
 	 * @return number of votes this server has received this election */
 	int get_nvotes_for_me();
 
-	void vote(int node);
+	void vote(RaftNode2* node);
 
 	/**
 	 * @param node The node's index
 	 * @return node pointed to by node index
 	 */
-	NodeIter get_node(size_t nodeid);
+	//NodeIter get_node(size_t nodeid);
 
 	/**
 	 * @return 1 if follower; 0 otherwise */
-	int is_follower();
+	bool is_follower();
 
 	/**
 	 * @return 1 if node is leader; 0 otherwise */
-	int is_leader();
+	bool is_leader();
 
 	/**
 	 * @return 1 if candidate; 0 otherwise */
-	int is_candidate();
+	bool is_candidate();
 
 	/**
 	 * Set election timeout
@@ -186,7 +190,7 @@ public:
 
 	/**
 	 * @return the server's node ID */
-	int get_nodeid();
+	//int get_nodeid();
 
 	/**
 	 * @return currently configured election timeout in milliseconds */
@@ -208,7 +212,7 @@ public:
 
 	/**
 	 * @return node ID of who I voted for */
-	int get_voted_for();
+	RaftNode2* get_voted_for();
 
 	void set_current_term(int term);
 
@@ -222,7 +226,7 @@ public:
 	 * @return current log index */
 	int get_current_idx();
 
-	int get_my_id();
+	RaftNode2* get_myNode();
 
 	void set_commit_idx(int idx);
 
@@ -239,19 +243,18 @@ public:
 	}
 	;
 
-	inline NodeIter get_last_node() {
-		return nodes.end();
-	}
+	//inline NodeIter get_last_node() {
+	//	return nodes.end();
+	//}
+
+
+protected:
+	void AddNode(RaftNode2* node,const void* key, int keyLen);
+	RaftNode2* FindNode(const void* key, int keyLen);
+	virtual RaftNode2* RemoveNode(RaftNode2* node);
+	void RemoveNode(const void* key, int keyLen);
+	void ClearAllNodes();
 
 };
-
-inline int raft_votes_is_majority(const int num_nodes, const int nvotes) {
-	int half;
-
-	if (num_nodes < nvotes)
-		return 0;
-	half = num_nodes / 2;
-	return half + 1 <= nvotes;
-}
 
 #endif //RAFT_SERVER_H
