@@ -22,10 +22,23 @@ RaftNode2::RaftNode2(void* a_udata) :
 	m_d_udata(a_udata),
 	m_key(NULL),
 	next_idx(0),
-	m_isLeader(0),
 	m_votes_for_me(0),
 	m_keyLen(0)
 {
+	m_isLeader = 1;
+	m_isProblematic = 0;
+}
+
+
+int RaftNode2::isProblematic()const
+{
+	return m_isProblematic;
+}
+
+
+void RaftNode2::setProblematic(int a_problematic)
+{
+	m_isProblematic = a_problematic;
 }
 
 
