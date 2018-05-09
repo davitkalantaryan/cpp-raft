@@ -256,7 +256,7 @@ int RaftServer::recv_appendentries_response(RaftNode2* a_node, msg_appendentries
 	return 1;
 }
 
-int RaftServer::recv_appendentries(RaftNode2* a_node, MsgAppendEntries *ae) {
+int RaftServer::recv_appendentries(RaftNode2* a_node, MsgAppendEntries2 *ae) {
 	msg_appendentries_response_t r;
 
 	this->timeout_elapsed = 0;
@@ -457,9 +457,13 @@ void RaftServer::send_appendentries(RaftNode2* a_node)
 	if (!(this->cb.send))
 		return;
 
-	MsgAppendEntries ae(current_term, m_thisNode->key2(),m_thisNode->keyLen2(), 0, a_node->get_next_idx(), 0, 0);
+	MsgAppendEntries2 ae(current_term, 0, a_node->get_next_idx(), 0, 0);
 	this->cb.send(this->cb_ctx, this, a_node, RAFT_MSG_APPENDENTRIES, (const unsigned char*) &ae,
-			sizeof(MsgAppendEntries));
+			SIZE_OF_INITIAL_RCV_OF_MSG_APP);
+	if (ae.getNEntries()) {
+		this->cb.send(this->cb_ctx, this,a_node,RAFT_MSG_APPENDENTRIES, 
+			(const unsigned char*)ae.entries(),ae.getNEntries()*sizeof(msg_entry_t));
+	}
 }
 
 void RaftServer::send_appendentries_all() {

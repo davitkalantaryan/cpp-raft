@@ -163,37 +163,60 @@ typedef struct {
     int vote_granted;
 } msg_requestvote_response_t;
 
-class MsgAppendEntries {
+#if 0
+/* the entry's unique ID */
+unsigned int d_id;
+
+/* entry data */
+unsigned char* d_data;
+
+/* length of entry data */
+unsigned int d_len;
+#endif
+
+#define MAX_NUM_OF_APPEND_ENTRIES_LOG	64
+#define	SIZE_OF_INITIAL_RCV_OF_MSG_APP	24
+
+class MsgAppendEntries2 {
     int d_term;
     //int d_leader_id;
-	int		m_leaderKeyLen;
-	void*	m_leaderKey;
     int d_prev_log_idx;
     int d_prev_log_term;
-    std::vector<msg_entry_t> d_entries;
+    //std::vector<msg_entry_t> d_entries;
     int d_leader_commit;
+	int m_nSize;
+	int numberOfEntriesToReceive;
+	msg_entry_t d_entries2[MAX_NUM_OF_APPEND_ENTRIES_LOG];
 
 public:
 
-    MsgAppendEntries() : d_term(0), m_leaderKeyLen(0), m_leaderKey(NULL),d_prev_log_idx(0),
-    	d_prev_log_term(0), d_entries(), d_leader_commit(0) {
+    MsgAppendEntries2() : d_term(0),d_prev_log_idx(0),
+    	d_prev_log_term(0),d_leader_commit(0), m_nSize(0)
+	{
 
     }
 
-    MsgAppendEntries(int term, void* leaderKey, int leaderKeyLen,int prev_log_idx,
-    		int prev_log_term, int n_entries, int leader_commit) :
-    		d_term(term), m_leaderKeyLen(leaderKeyLen), m_leaderKey(leaderKey), d_prev_log_idx(prev_log_idx),
-        	d_prev_log_term(prev_log_term), d_entries(), d_leader_commit(leader_commit)
+    MsgAppendEntries2(int term,int prev_log_idx,int prev_log_term, int n_entries, int leader_commit) :
+    		d_term(term), d_prev_log_idx(prev_log_idx),
+        	d_prev_log_term(prev_log_term), d_leader_commit(leader_commit), m_nSize(0)
 	{
 		//
 	}
 
-	const msg_entry_t& getEntry(int i) const {
-		return d_entries[i];
+	msg_entry_t* entries(int a_nIndex=0) {
+		if(a_nIndex>=m_nSize){return NULL;}
+		return d_entries2 + a_nIndex;
 	}
 
-	void addEntry(const msg_entry_t& entry) {
-		d_entries.push_back(entry);
+	const msg_entry_t& getEntry(int i) const {
+		if (i >= m_nSize) {throw "wrong index";}
+		return d_entries2[i];
+	}
+
+	bool addEntry2(const msg_entry_t& a_entry) {
+		if(m_nSize>= MAX_NUM_OF_APPEND_ENTRIES_LOG){return false;}
+		d_entries2[m_nSize++]=a_entry;
+		return true;
 	}
 
 	int getLeaderCommit() const {
@@ -204,6 +227,7 @@ public:
 		d_leader_commit = leaderCommit;
 	}
 
+#if 0
 	void* getLeaderKey(int* a_pKeyLen) const {
 		if(a_pKeyLen){*a_pKeyLen=m_leaderKeyLen;}
 		return m_leaderKey;
@@ -212,9 +236,10 @@ public:
 	void setLeaderKey(void* a_leaderKey, int a_leaderKeyLen) {
 		m_leaderKey = a_leaderKey; m_leaderKeyLen = a_leaderKeyLen;
 	}
+#endif
 
 	int getNEntries() const {
-		return d_entries.size();
+		return m_nSize;
 	}
 
 	int getPrevLogIdx() const {
