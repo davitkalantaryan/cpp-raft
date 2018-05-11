@@ -43,7 +43,7 @@ protected:
 	void ThreadFunctionRcvData();
 	void ThreadFunctionWorker();
 
-	void FunctionForMultiRcv(int* a_pnSocketForInfo, void (RaftServerTcp::*a_fpRcvFnc)(RaftNode2*), bool a_bAsLeader);
+	void FunctionForMultiRcv(int* a_pnSocketForInfo, void (RaftServer::*a_fpRcvFnc)(RaftNode2*), bool a_bAsLeader);
 
 	void AddClient(common::SocketTCP& clientSock, const sockaddr_in*remoteAddr);
 
