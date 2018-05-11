@@ -13,16 +13,15 @@
 #include <raft_node.h>
 #include <common_hashtbl.hpp>
 #include <stdint.h>
-#include "common_macroses_and_functions.h"
+#include "raft_macroses_and_functions.h"
 #include "common_unnamedsemaphorelite.hpp"
 #include "common_fifofast.hpp"
 #include <vector>
 
-
-
 namespace raft { namespace tcp{
 
-
+namespace workRequest{enum Type{none,handleConnection};}
+struct SWorkerData { workRequest::Type reqType;int sockDescriptor;sockaddr_in remAddress; };
 
 class Server : protected RaftServer
 {
@@ -30,8 +29,7 @@ public:
 	Server();
 	virtual ~Server();
 
-	int RunServerOnOtherThreads(int raftPort, const std::vector<NodeIdentifierKey>& vectPossibleNodes);
-	void WaitServer();
+	int RunServerOnOtherThreads(int raftPort, const std::vector<NodeIdentifierKey>& vectPossibleNodes, int workersCount);
 	void StopServer();
 
 protected:
@@ -43,21 +41,18 @@ protected:
 	void ThreadFunctionRcvData();
 	void ThreadFunctionWorker();
 
-	void FunctionForMultiRcv(int* a_pnSocketForInfo, void (RaftServer::*a_fpRcvFnc)(RaftNode2*), bool a_bAsLeader);
+	void FunctionForMultiRcv(int* a_pnSocketForInfo, void (Server::*a_fpRcvFnc)(RaftNode2*), bool isRaft);
 
 	void AddClient(common::SocketTCP& clientSock, const sockaddr_in*remoteAddr);
-
-	static int SendClbkFunction(void *cb_ctx, void *udata, RaftNode2* node, int msg_type, const unsigned char *send_data, int d_len);
-	static void LogClbkFunction(void *cb_ctx, void *src, const char *buf, ...);
-	static int ApplyLogClbkFunction(void *cb_ctx, void *udata, const unsigned char *d_data, int d_len);
 
 	bool TryFindLeader(const NodeIdentifierKey& nodeInfo);
 	void AddOwnNode();
 
 	// utils
 	void connect_allNodes_newNode(common::SocketTCP& sock);
-	bool connect_leader_newNode2(common::SocketTCP& sock, const sockaddr_in*remoteAddr,int isEndianDiffer);
-	bool connect_allNodes_bridgeToNewNode2(common::SocketTCP& sock);
+	bool connect_leader_newNode(common::SocketTCP& sock, const sockaddr_in*remoteAddr,int isEndianDiffer);
+	bool connect_anyNode_bridgeToNodeRaft(common::SocketTCP& sock);
+	bool connect_anyNode_bridgeToNodeData(common::SocketTCP& sock);
 
 	virtual RaftNode2* RemoveNode(RaftNode2* node) OVERRIDE;
 
@@ -65,6 +60,10 @@ protected:
 
 	void HandleSeedClbk(int msg_type,RaftNode2* anyNode);
 	void ReceiveFromRaftSocket(RaftNode2* followerNode);
+
+	static int	SendClbkFunction(void *cb_ctx, void *udata, RaftNode2* node, int msg_type, const unsigned char *send_data, int d_len);
+	static void LogClbkFunction(void *cb_ctx, void *src, const char *buf, ...);
+	static int	ApplyLogClbkFunction(void *cb_ctx, void *udata, const unsigned char *d_data, int d_len);
 
 protected:
 	common::ServerTCP								m_serverTcp;
@@ -75,15 +74,13 @@ protected:
 	std::vector<std::thread*>						m_vectThreadsWorkers;
 	std::shared_mutex								m_mutexShrd;
 	common::UnnamedSemaphoreLite					m_semaWorker;
-	common::FifoFast<sockaddr_in>					m_fifoWorker;
+	common::FifoFast<SWorkerData>					m_fifoWorker;
 	volatile int									m_nWork;
-	volatile int									m_nServerRuns;
 	int												m_nPeriodForPeriodic;
 	int												m_nPortOwn;
 	RaftNode2*										m_pLeaderNode;
-	//SocketTCP										m_raftSocket;
-	int												m_infoSocketForRcvThread;
-	int												m_infoSocketForLeaderRcvThread;
+	int												m_infoSocketForRcvRaft;
+	int												m_infoSocketForRcvData;
 };
 
 }} // namespace raft { namespace tcp{
