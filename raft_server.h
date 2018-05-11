@@ -88,10 +88,9 @@ public:
 
 	void election_start();
 
-	void become_leader();
-
-	void become_candidate();
-	void become_follower();
+	virtual void become_leader();
+	virtual void become_candidate();
+	virtual void become_follower();
 
 	/**
 	 * Run actions that are dependent on time passing
