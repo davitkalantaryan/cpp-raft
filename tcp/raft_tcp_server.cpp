@@ -785,11 +785,11 @@ int raft::tcp::Server::SendClbkFunction(void *a_cb_ctx, void *udata, RaftNode2* 
 	char cRequest=raft::receive::anyNode::clbkCmd;
 	bool bProblematic(true);
 
-	nSndRcv=pTools->socket.writeC(&cRequest,1);
+	nSndRcv=pTools->raftSocket.writeC(&cRequest,1);
 	if(nSndRcv!=1){goto returnPoint;}
-	pTools->socket.writeC(&a_msg_type,4);
+	pTools->raftSocket.writeC(&a_msg_type,4);
 	if(nSndRcv!=4){goto returnPoint;}
-	pTools->socket.writeC(send_data, d_len);
+	pTools->raftSocket.writeC(send_data, d_len);
 	if(nSndRcv!= d_len){goto returnPoint;}
 	
 	bProblematic = false;
