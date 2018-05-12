@@ -73,6 +73,7 @@ namespace follower {enum Type {
 
 namespace leader {enum Type { 
 	newNode = (int)follower::last,
+	removeNode,
 	last
 };}
 

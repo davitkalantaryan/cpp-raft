@@ -17,7 +17,11 @@
 #define closesocket	close
 #endif
 
-#define MAX_UNANSWERED_PINGS			10
+#define DEBUG_APPLICATION(...)	\
+	do{ printf("ln:%d   ",__LINE__);printf(__VA_ARGS__);printf("\n");}while(0)
+
+#define MAX_NUMBER_OF_PINGS				2
+#define MAX_UNANSWERED_PINGS			5
 
 typedef struct { common::SocketTCP dataSocket, raftSocket; int isEndianDiffer; }NodeTools;
 
@@ -341,6 +345,7 @@ void raft::tcp::Server::HandleSeedClbk(RaftNode2* a_anyNode)
 	case RAFT_MSG_REQUESTVOTE:
 	{
 		msg_requestvote_t reqVote(0,0,0,0);
+		DEBUG_APPLICATION("RAFT_MSG_REQUESTVOTE");
 		nSndRcv = pTools->raftSocket.readC(&reqVote, sizeof(msg_requestvote_t));
 		if (nSndRcv != sizeof(msg_requestvote_t)) { goto returnPoint; }
 		recv_requestvote(a_anyNode, &reqVote);
@@ -349,6 +354,7 @@ void raft::tcp::Server::HandleSeedClbk(RaftNode2* a_anyNode)
 	case RAFT_MSG_APPENDENTRIES:
 	{
 		MsgAppendEntries2 appEntries;
+		DEBUG_APPLICATION("RAFT_MSG_APPENDENTRIES");
 		nSndRcv = pTools->raftSocket.readC(&appEntries, SIZE_OF_INITIAL_RCV_OF_MSG_APP);
 		if (nSndRcv != SIZE_OF_INITIAL_RCV_OF_MSG_APP) { goto returnPoint; }
 		if(appEntries.getNEntries()){
@@ -362,13 +368,16 @@ void raft::tcp::Server::HandleSeedClbk(RaftNode2* a_anyNode)
 	case RAFT_MSG_APPENDENTRIES_RESPONSE:
 	{
 		msg_appendentries_response_t aApndResp;
+		DEBUG_APPLICATION("RAFT_MSG_APPENDENTRIES_RESPONSE");
 		nSndRcv = pTools->raftSocket.readC(&aApndResp, sizeof(msg_appendentries_response_t));
 		if (nSndRcv != sizeof(msg_appendentries_response_t)) { goto returnPoint; }
-		this->recv_appendentries_response(a_anyNode, &aApndResp);
 		a_anyNode->pingReceived();
+		this->recv_appendentries_response(a_anyNode, &aApndResp);
+		// a_anyNode->pingReceived(); // this does not work because of exception
 	}
 	break;
 	default:
+		DEBUG_APPLICATION("raft-receive: default:");
 		goto returnPoint;
 	}
 
@@ -382,7 +391,7 @@ returnPoint:
 void raft::tcp::Server::ReceiveFromRaftSocket(RaftNode2* a_pNode)
 {
 	NodeTools *pNewNodeTools,*pTools = (NodeTools*)a_pNode->get_udata();
-	SAddRemData			addNodeData;
+	SAddRemData			nodeData;
 	int nSndRcv;
 	bool bProblematic(true);
 	char cRequest;
@@ -397,17 +406,35 @@ void raft::tcp::Server::ReceiveFromRaftSocket(RaftNode2* a_pNode)
 			HandleSeedClbk(a_pNode);
 			break;
 		case raft::receive::leader::newNode:
+			DEBUG_APPLICATION("raft::receive::leader::newNode");
 			if (a_pNode != m_pLeaderNode) { goto returnPoint; }
-			nSndRcv = pTools->raftSocket.readC(&addNodeData.nodeKey, sizeof(NodeIdentifierKey));
+			nSndRcv = pTools->raftSocket.readC(&nodeData.nodeKey, sizeof(NodeIdentifierKey));
 			if (nSndRcv != sizeof(NodeIdentifierKey)) { goto returnPoint; }
-			if (pTools->isEndianDiffer) { SWAP4BYTES(addNodeData.nodeKey.port); }
+			if (pTools->isEndianDiffer) { SWAP4BYTES(nodeData.nodeKey.port); }
 			pNewNodeTools = new NodeTools;
 			if (!pNewNodeTools) { HANDLE_MEM_DEF(" "); }
-			addNodeData.pNode = new RaftNode2(pNewNodeTools);
-			if (!addNodeData.pNode) { HANDLE_MEM_DEF(" "); }
+			nodeData.pNode = new RaftNode2(pNewNodeTools);
+			if (!nodeData.pNode) { HANDLE_MEM_DEF(" "); }
 
-			m_fifoAddDel.AddElement(addNodeData);
+			nodeData.bAdd = true;
+			m_fifoAddDel.AddElement(nodeData);
 			m_semaAddRemove.post();
+
+			cRequest = 'o';
+			pTools->raftSocket.writeC(&cRequest, 1);
+			break;
+		case raft::receive::leader::removeNode:
+			DEBUG_APPLICATION("raft::receive::leader::removeNode");
+			if (a_pNode != m_pLeaderNode) { goto returnPoint; }
+			nSndRcv = pTools->raftSocket.readC(&nodeData.nodeKey, sizeof(NodeIdentifierKey));
+			if (nSndRcv != sizeof(NodeIdentifierKey)) { goto returnPoint; }
+			if (pTools->isEndianDiffer) { SWAP4BYTES(nodeData.nodeKey.port); }
+
+			if(m_hashNodes.FindEntry(&nodeData.nodeKey,sizeof(NodeIdentifierKey),&nodeData.pNode)){
+				nodeData.bAdd = false;
+				m_fifoAddDel.AddElement(nodeData);
+				m_semaAddRemove.post();
+			}
 
 			cRequest = 'o';
 			pTools->raftSocket.writeC(&cRequest, 1);
@@ -589,19 +616,48 @@ handlingEndPoint:
 
 void raft::tcp::Server::ThreadFunctionAddRemoveNode()
 {
+	RaftNode2* pNextNode;
+	NodeTools* pNodeTools;
 	SAddRemData aData;
+	int nSndRcv;
+	char cRequest;
 
 	while(m_nWork){
 		m_semaAddRemove.wait();
 
 		while(m_fifoAddDel.Extract(&aData) && m_nWork){
+			if (is_leader()) {
+				if (!aData.bAdd){
+					
+					cRequest = raft::receive::leader::removeNode;
+					m_mutexShrd.lock_shared();
+
+					pNextNode = m_firstNode;
+					while(pNextNode){
+						if((pNextNode!=m_thisNode)&&(pNextNode!=aData.pNode)){
+							pNodeTools = (NodeTools*)pNextNode->get_udata();
+							nSndRcv=pNodeTools->raftSocket.writeC(&cRequest,1);
+							if(nSndRcv!=1){ pNextNode->setProblematic(1);goto gotoNextNode;}
+							nSndRcv=pNodeTools->raftSocket.writeC(pNextNode->key2(),sizeof(NodeIdentifierKey));
+							if(nSndRcv!= sizeof(NodeIdentifierKey)){ pNextNode->setProblematic(1);goto gotoNextNode;}
+						}
+						gotoNextNode:
+						pNextNode = pNextNode->next;
+					}
+
+					m_mutexShrd.lock_shared();
+
+				}  // if (!aData.bAdd){
+			} // if (is_leader()) {
 			m_mutexShrd.lock();
 			if(aData.bAdd){
 				this->AddNode(aData.pNode,&aData.nodeKey,sizeof(NodeIdentifierKey));
 			}
 			else {this->RemoveNode(aData.pNode);}
 			m_mutexShrd.unlock();
-			if (is_leader()) { if (m_infoSocketForRcvRaft>0) { closesocket(m_infoSocketForRcvRaft); } }
+			if (is_leader()) { 
+				if (m_infoSocketForRcvRaft>0) { closesocket(m_infoSocketForRcvRaft); } 
+			}
 		}
 	}
 }
@@ -810,8 +866,6 @@ void raft::tcp::Server::become_leader()
 
 /*//////////////////////////////////////////////////////////////////////////////*/
 
-#define DEBUG_SEND(...)		printf(__VA_ARGS__)
-
 int raft::tcp::Server::SendClbkFunction(void *a_cb_ctx, void *udata, RaftNode2* a_node, int a_msg_type, const unsigned char *send_data,int d_len)
 {
 	//RaftServerTcp* pServer = (RaftServerTcp*)a_cb_ctx;
@@ -820,18 +874,18 @@ int raft::tcp::Server::SendClbkFunction(void *a_cb_ctx, void *udata, RaftNode2* 
 	Server* pServer = (Server*)a_cb_ctx;
 	NodeTools* pTools = (NodeTools*)a_node->get_udata();
 	int nSndRcv;
-	uint32_t unPingCount;
+	uint32_t unPingCount=0;
 	char cRequest=raft::receive::anyNode::clbkCmd;
 	bool bProblematic(true);
 
-	DEBUG_SEND("sending data (node=%p)!   ", a_node);
+	DEBUG_APPLICATION("sending data (node=%p)!   ", a_node);
 
 	switch (a_msg_type)
 	{
 	case RAFT_MSG_APPENDENTRIES:
 		if(a_node->isProblematic()){a_node->makePing();}  // make extra ping
 		unPingCount = (int)a_node->makePing();
-		DEBUG_SEND("pingCount=%d", unPingCount);
+		DEBUG_APPLICATION("pingCount=%d", unPingCount);
 		if(unPingCount>MAX_UNANSWERED_PINGS){
 			pServer->m_fifoAddDel.AddElement(a_node);
 			pServer->m_semaAddRemove.post();
@@ -840,7 +894,8 @@ int raft::tcp::Server::SendClbkFunction(void *a_cb_ctx, void *udata, RaftNode2* 
 	default:
 		break;
 	}
-	DEBUG_SEND("\n");
+
+	if(unPingCount>MAX_NUMBER_OF_PINGS){goto returnPoint;}
 
 	stMutex.lock();
 	nSndRcv=pTools->raftSocket.writeC(&cRequest,1);
