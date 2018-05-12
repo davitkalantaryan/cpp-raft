@@ -16,6 +16,8 @@ int			m_votes_for_me;
 int			m_keyLen;
 #endif
 
+const uint32_t	g_cunRaftMaxPing = (1 << BITS_OF_PING_COUNT)-1;
+
 RaftNode2::RaftNode2(void* a_udata) :
 	prev(NULL),
 	next(NULL),
@@ -27,16 +29,37 @@ RaftNode2::RaftNode2(void* a_udata) :
 {
 	m_isLeader = 1;
 	m_isProblematic = 0;
+	m_unPingCount = 0;
 }
 
 
-int RaftNode2::isProblematic()const
+uint32_t RaftNode2::unansweredPingCount()const
+{
+	return m_unPingCount;
+}
+
+
+void RaftNode2::pingReceived()
+{
+	m_isProblematic = 0;
+	m_unPingCount = 0;
+}
+
+
+uint32_t RaftNode2::makePing()
+{
+	if(m_unPingCount<g_cunRaftMaxPing){++m_unPingCount;}
+	return m_unPingCount;
+}
+
+
+uint32_t RaftNode2::isProblematic()const
 {
 	return m_isProblematic;
 }
 
 
-void RaftNode2::setProblematic(int a_problematic)
+void RaftNode2::setProblematic(uint32_t a_problematic)
 {
 	m_isProblematic = a_problematic;
 }

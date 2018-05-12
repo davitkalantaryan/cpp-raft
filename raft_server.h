@@ -50,6 +50,7 @@ protected: // in order to make usable variables by inherites
 	RaftNode2					*m_firstNode, *m_lastNode;
 	int							m_nNodesCount;
 	common::HashTbl<RaftNode2*>	m_hashNodes;
+	int							m_nLeaderCommit;
 
 	int election_timeout;
 	int request_timeout;

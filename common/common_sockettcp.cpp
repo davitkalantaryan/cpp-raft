@@ -139,6 +139,17 @@ int common::SocketTCP::readC(void* a_pBuffer, int a_nSize)const
 #if 1
 	int nReturn = recv(m_socket, (char*)a_pBuffer, a_nSize, MSG_WAITALL);
 
+#if 0
+	if(nReturn<0){
+		int nError = WSAGetLastError();
+		switch (nError)
+		{
+		case WSAETIMEDOUT:case WSAEWOULDBLOCK: nReturn = _SOCKET_TIMEOUT_;
+		default: break;
+		}
+	}
+#endif // better to do independent function, to decide timeout
+
 	return nReturn;
 #else
 	struct timeval*	pTimeout;

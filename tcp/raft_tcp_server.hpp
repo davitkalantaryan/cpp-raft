@@ -22,6 +22,7 @@ namespace raft { namespace tcp{
 
 namespace workRequest{enum Type{none,handleConnection};}
 struct SWorkerData { workRequest::Type reqType;int sockDescriptor;sockaddr_in remAddress; };
+struct SAddRemData { RaftNode2 *pNode; NodeIdentifierKey nodeKey; bool bAdd; SAddRemData();SAddRemData(RaftNode2*);};
 
 class Server : protected RaftServer
 {
@@ -39,7 +40,7 @@ protected:
 	void ThreadFunctionPeriodic();
 	void ThreadFunctionRcvRaftInfo();
 	void ThreadFunctionRcvData();
-	void ThreadFunctionFollower();
+	void ThreadFunctionAddRemoveNode();
 	void ThreadFunctionWorker();
 
 	void FunctionForMultiRcv(int* a_pnSocketForInfo, void (Server::*a_fpRcvFnc)(RaftNode2*), bool isRaft);
@@ -59,12 +60,10 @@ protected:
 
 	void CheckAllPossibleSeeds(const std::vector<NodeIdentifierKey>& vectPossibleNodes);
 
-	void HandleSeedClbk(int msg_type,RaftNode2* anyNode);
+	void HandleSeedClbk(RaftNode2* anyNode);
 	void ReceiveFromRaftSocket(RaftNode2* followerNode);
 
 	void become_leader() OVERRIDE;
-	void become_candidate() OVERRIDE;
-	void become_follower() OVERRIDE;
 
 	static int	SendClbkFunction(void *cb_ctx, void *udata, RaftNode2* node, int msg_type, const unsigned char *send_data, int d_len);
 	static void LogClbkFunction(void *cb_ctx, void *src, const char *buf, ...);
@@ -76,13 +75,14 @@ protected:
 	std::thread										m_threadPeriodic;
 	std::thread										m_threadRcvRaftInfo;
 	std::thread										m_threadRcvData;
-	std::thread										m_threadFollower;
+	std::thread										m_threadAddRemoveNode;
 	std::vector<std::thread*>						m_vectThreadsWorkers;
 	std::shared_mutex								m_mutexShrd;
 	common::UnnamedSemaphoreLite					m_semaWorker;
+	common::UnnamedSemaphoreLite					m_semaAddRemove;
 	common::FifoFast<SWorkerData>					m_fifoWorker;
+	common::FifoFast<SAddRemData>					m_fifoAddDel;
 	volatile int									m_nWork;
-	volatile int									m_nFollowerRuns;
 	int												m_nPeriodForPeriodic;
 	int												m_nPortOwn;
 	RaftNode2*										m_pLeaderNode;

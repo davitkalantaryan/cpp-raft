@@ -191,14 +191,15 @@ class MsgAppendEntries2 {
 public:
 
     MsgAppendEntries2() : d_term(0),d_prev_log_idx(0),
-    	d_prev_log_term(0),d_leader_commit(0), m_nSize(0)
+    	d_prev_log_term(0),d_leader_commit(0), m_nSize(0),
+		numberOfEntriesToReceive(0)
 	{
 
     }
 
     MsgAppendEntries2(int term,int prev_log_idx,int prev_log_term, int n_entries, int leader_commit) :
     		d_term(term), d_prev_log_idx(prev_log_idx),
-        	d_prev_log_term(prev_log_term), d_leader_commit(leader_commit), m_nSize(0)
+        	d_prev_log_term(prev_log_term), d_leader_commit(leader_commit), m_nSize(0), numberOfEntriesToReceive(0)
 	{
 		//
 	}

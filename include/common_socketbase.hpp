@@ -66,6 +66,13 @@
 #endif
 #endif
 
+#ifdef _WIN32
+#else
+#define WSAGetLastError		errno
+#define WSAETIMEDOUT		EAGAIN 
+#define WSAEWOULDBLOCK		EWOULDBLOCK
+#endif
+
 #ifdef	_WIN32
 #define CHECK_FOR_SOCK_INVALID(_a_socket_)	((_a_socket_) == INVALID_SOCKET)
 #define	SOCKET_ERROR_NEW	SOCKET_ERROR

@@ -46,6 +46,7 @@ RaftServer::RaftServer() :
 	m_lastNode=m_firstNode=NULL;
 	m_nNodesCount = 0;
 	m_voted_for = NULL;
+	m_nLeaderCommit = 0;
 }
 
 void RaftServer::set_callbacks(raft_cbs_t *funcs, void *cb_ctx) {
@@ -457,7 +458,7 @@ void RaftServer::send_appendentries(RaftNode2* a_node)
 	if (!(this->cb.send))
 		return;
 
-	MsgAppendEntries2 ae(current_term, 0, a_node->get_next_idx(), 0, 0);
+	MsgAppendEntries2 ae(this->current_term, 0, a_node->get_next_idx(), 0, m_nLeaderCommit);
 	this->cb.send(this->cb_ctx, this, a_node, RAFT_MSG_APPENDENTRIES, (const unsigned char*) &ae,
 			SIZE_OF_INITIAL_RCV_OF_MSG_APP);
 	if (ae.getNEntries()) {
@@ -467,6 +468,7 @@ void RaftServer::send_appendentries(RaftNode2* a_node)
 }
 
 void RaftServer::send_appendentries_all() {
+	++m_nLeaderCommit;
 	forAllNodesExceptSelf(&RaftServer::send_appendentries);
 }
 
