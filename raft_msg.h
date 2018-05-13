@@ -81,15 +81,15 @@ public:
 
 struct raft_entry_t {
     /* entry's term */
-    unsigned int d_term;
+    int d_term;
     /* the entry's unique ID */
-    unsigned int d_id;
+    int d_id;
     /* entry d_data */
     char* d_data;
     /* length of entry d_data */
     unsigned int d_len;
     /* number of nodes that have this entry */
-    unsigned int d_num_nodes;
+    int d_num_nodes;
 
     raft_entry_t() : d_term(0), d_id(0), d_data(0), d_len(0), d_num_nodes(0) {
     }
@@ -106,7 +106,7 @@ struct raft_entry_t {
 		this->d_data = data;
 	}
 
-	unsigned int getId() const {
+    int getId() const {
 		return d_id;
 	}
 

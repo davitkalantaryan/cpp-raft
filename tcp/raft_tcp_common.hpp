@@ -9,9 +9,10 @@
 
 #include <common_socketbase.hpp>
 #include <stdint.h>
+#include <string>
 
 #if !defined(_WIN32) && !defined(Sleep)
-#define Sleep(_x) usleep(1000*(_x))
+#define Sleep(_x) (  ((_x)>100000) ? sleep((_x)/1000) : usleep(1000*(_x))  )
 #endif
 
 #define MAX_IP4_LEN		24

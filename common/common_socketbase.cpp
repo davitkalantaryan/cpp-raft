@@ -17,6 +17,7 @@
 #include <fcntl.h>
 #include <netinet/tcp.h>
 #include <memory.h>
+#include <ifaddrs.h>
 #endif
 
 #ifdef _WIN32
@@ -273,8 +274,14 @@ int GetPort(const sockaddr_in* a_addr)
 }
 
 
-const char* GetOwnIp4Address()
+const char* GetOwnIp4Address(char* a_pcBuffer, int a_bufferLength)
 {
+
+	// for time being
+	memset(a_pcBuffer, 0, a_bufferLength);
+
+#ifdef _WIN32
+	
 	const char* cpcOwnIp4Address;
 	struct hostent* hostent_ptr;
 	char vcHostname[MAX_HOSTNAME_LENGTH];
@@ -284,8 +291,41 @@ const char* GetOwnIp4Address()
 	hostent_ptr = gethostbyname(vcHostname);
 	if (!hostent_ptr) { return " "; }
 	cpcOwnIp4Address = inet_ntoa(*(struct in_addr *)hostent_ptr->h_addr_list[0]);
+	strncpy(a_pcBuffer, cpcOwnIp4Address, a_bufferLength);
 
-	return cpcOwnIp4Address;
+#else  // #ifdef _WIN32
+
+	// https://stackoverflow.com/questions/4130147/get-local-ip-address-in-c-linux
+    
+	struct ifaddrs * ifAddrStruct=NULL;
+    struct ifaddrs * ifa=NULL;
+    void * tmpAddrPtr=NULL;
+
+    a_pcBuffer[0]=0;
+    getifaddrs(&ifAddrStruct);
+
+    for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa ->ifa_addr->sa_family==AF_INET) { // check it is IP4
+            // is a valid IP4 Address
+            tmpAddrPtr=&((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
+            inet_ntop(AF_INET, tmpAddrPtr, a_pcBuffer, a_bufferLength);
+
+            if((ifa->ifa_name[0]=='l') && (ifa->ifa_name[1]=='o') && (ifa->ifa_name[2]==0)){continue;}
+
+            //printf("'%s': %s\n", ifa->ifa_name, addressBuffer);
+            break;
+         } else if (ifa->ifa_addr->sa_family==AF_INET6) { // check it is IP6
+            // is a valid IP6 Address
+            //tmpAddrPtr=&((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_addr;
+            //char addressBuffer[INET6_ADDRSTRLEN];
+            //inet_ntop(AF_INET6, tmpAddrPtr, addressBuffer, INET6_ADDRSTRLEN);
+            //printf("'%s': %s\n", ifa->ifa_name, addressBuffer);
+        }
+    }
+
+#endif // #ifdef _WIN32
+
+	return a_pcBuffer;
 
 }
 

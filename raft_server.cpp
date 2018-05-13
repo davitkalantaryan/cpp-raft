@@ -40,13 +40,13 @@ static void __log(void *src, const char *fmt, ...) {
 static int raft_votes_is_majority(int a_num_nodes, int a_nvotes);
 
 RaftServer::RaftServer() :
-		current_term(0),current_idx(1), timeout_elapsed(0), request_timeout(200), election_timeout(
-				1000), last_applied_idx(0), log(new RaftLogger()), commit_idx(0), m_thisNode(NULL), cb_ctx(NULL) 
+        current_term(0),log(new RaftLogger()),commit_idx(0),last_applied_idx(0),current_idx(1), timeout_elapsed(0), election_timeout(
+                1000), request_timeout(200), cb_ctx(NULL)
 {
 	d_state.set(RAFT_STATE_FOLLOWER);
 	//RaftNode2	*m_first, *m_last;
 	//size_t		m_unNodesCount;
-	m_lastNode=m_firstNode=NULL;
+    m_thisNode = m_lastNode=m_firstNode=NULL;
 	m_nNodesCount = 0;
 	m_voted_for = NULL;
 	m_nLeaderCommit = 0;
@@ -153,7 +153,6 @@ void RaftServer::election_start() {
 }
 
 void RaftServer::become_leader() {
-	size_t i;
 
 	__log(NULL, "becoming leader");
 
@@ -167,7 +166,6 @@ void RaftServer::become_leader() {
 }
 
 void RaftServer::become_candidate() {
-	size_t i;
 	int nRandFactor = (m_nNodesCount > MINIMUM_RAND_FACTOR) ? m_nNodesCount : MINIMUM_RAND_FACTOR;
 
 	__log(NULL, "becoming candidate");
@@ -304,12 +302,12 @@ int RaftServer::recv_appendentries(RaftNode2* a_node, MsgAppendEntries2 *ae) {
 			 but different terms), delete the existing entry and all that
 			 follow it (�5.3) */
 			try {
-				raft_entry_t& e2 = get_entry_from_idx(ae->getPrevLogIdx() + 1);
+                //raft_entry_t& e2 = get_entry_from_idx(ae->getPrevLogIdx() + 1);
 				this->log->log_delete(ae->getPrevLogIdx() + 1);
-			} catch (std::runtime_error& err){
+            } catch (std::runtime_error&){
 			}
 
-		} catch (std::runtime_error& err) {
+        } catch (std::runtime_error&) {
 			__log(NULL, "AE no log at prev_idx");
 			r.success = 0;
 			goto done;

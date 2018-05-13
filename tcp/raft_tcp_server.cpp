@@ -31,8 +31,6 @@ typedef struct { common::SocketTCP dataSocket, raftSocket; int isEndianDiffer; }
 
 static int CreateEmptySocket();
 
-#define GetOwnHostIdentifier2(_node)	(_node)->set_ip4Address(common::socketN::GetOwnIp4Address())
-
 #define FOLLOWER_SEES_ERR(...)	Sleep(2000)
 
 raft::tcp::Server::Server()
@@ -267,7 +265,11 @@ nextNodePoint:
 	m_semaAddRemove.post();
 
 	if(nLeadersCount>1){
+		DEBUG_APPLICATION(0,"!!!!!!!!!!!!!!!!!!!!!!! Other leaders exist. The info below");
+		pExistingNodeKey = (NodeIdentifierKey*)m_thisNode->key2();
 		for(i=0;i<nLeadersCount;++i){
+			if((*pExistingNodeKey)== pAllNodesInfo[i]){continue;}
+			DEBUG_APPLICATION_NO_ADD_INFO(0,"\t%s:%d\n",pAllNodesInfo[i].ip4Address,(int)pAllNodesInfo[i].port);
 		}
 	}
 
@@ -734,11 +736,14 @@ void raft::tcp::Server::CheckAllPossibleSeeds(const std::vector<NodeIdentifierKe
 	const char* cpcPosibleSeedIp;
 	RaftNode2* pNode;
 	NodeIdentifierKey* pNodeKey;
-	std::string aOwnIp = common::socketN::GetOwnIp4Address();
+	char vcwnHostName[MAX_HOSTNAME_LENGTH];
 	std::vector<NodeIdentifierKey>  vectLeaders;
 	const int cnSize((int)a_vectPossibleNodes.size());
 	int i;
 	bool bLeaderFound(false);
+
+    common::socketN::GetOwnIp4Address(vcwnHostName,MAX_HOSTNAME_LENGTH);
+    aOwnIp = vcwnHostName;
 
 	try {
 
@@ -803,7 +808,7 @@ void raft::tcp::Server::AddOwnNode()
 	NodeIdentifierKey aOwnHost;
 
 	if(pTools){pTools->isEndianDiffer=0;}
-	GetOwnHostIdentifier2(&aOwnHost);
+	common::socketN::GetOwnIp4Address(aOwnHost.ip4Address, MAX_IP4_LEN);
 	aOwnHost.port = m_nPortOwn;
 	pNode = new RaftNode2(pTools);
 	if (!pNode) { HANDLE_MEM_DEF(" "); }
@@ -819,7 +824,7 @@ void raft::tcp::Server::TryFindNewLeaderThrdSafe(const NodeIdentifierKey& a_node
 	NodeIdentifierKey leaderNodeKey;
 	common::SocketTCP aSocket;
 	int16_t  snEndian;
-	int i,nSndRcv, nBytesToReceive, isEndianDiffer=0, nLeadersCount((int)a_pExisting->size());
+    int i,nSndRcv, isEndianDiffer=0, nLeadersCount((int)a_pExisting->size());
 	char cRequest;
 	bool bFound(false);
 
@@ -872,7 +877,7 @@ bool raft::tcp::Server::AskInfoFromLeadersThrdSafe(const std::vector<NodeIdentif
 	char cRequest;
 	bool bFound(false);
 
-	GetOwnHostIdentifier2(&thisNodeKey);
+	common::socketN::GetOwnIp4Address(thisNodeKey.ip4Address, MAX_IP4_LEN);
 	thisNodeKey.port = m_nPortOwn;
 
 	cRequest = raft::connect::leader::newNode;
@@ -930,7 +935,7 @@ bool raft::tcp::Server::AskInfoFromLeadersThrdSafe(const std::vector<NodeIdentif
 	if (!bFound) { free(pNodeInfo2); return false; }
 	
 	vectInput.resize(numberOfNodes);
-	GetOwnHostIdentifier2(&thisNodeKey);
+	common::socketN::GetOwnIp4Address(thisNodeKey.ip4Address, MAX_IP4_LEN);
 	thisNodeKey.port = m_nPortOwn;
 
 	for(i=0;i<numberOfNodes;++i){
@@ -1054,6 +1059,7 @@ int raft::tcp::Server::SendClbkFunction(void *a_cb_ctx, void *udata, RaftNode2* 
 	bProblematic = false;
 returnPoint:
 	if(bMutexLocked){ s_mutexForRaftSend.unlock(); }
+    if(bProblematic){a_node->setProblematic(1);}
 	return 0;
 }
 

@@ -40,7 +40,7 @@ common::RWLock::~RWLock()
 }
 
 
-void common::RWLock::read_lock()
+void common::RWLock::lock_shared()
 {
 #ifdef _WIN32
 	m_mutex.lock_shared();
@@ -59,7 +59,7 @@ void common::RWLock::read_lock()
 }
 
 
-void common::RWLock::write_lock()
+void common::RWLock::lock()
 {
 
 #ifdef _WIN32
@@ -72,7 +72,7 @@ void common::RWLock::write_lock()
 }
 
 
-void common::RWLock::unlock_read()
+void common::RWLock::unlock_shared()
 {
 #ifdef _WIN32
 //#error windows part should be done (lasy to do now)
@@ -83,7 +83,7 @@ void common::RWLock::unlock_read()
 }
 
 
-void common::RWLock::unlock_write()
+void common::RWLock::unlock()
 {
 #ifdef _WIN32
 	//#error windows part should be done (lasy to do now)

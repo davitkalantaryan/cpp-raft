@@ -7,7 +7,13 @@
 #include <raft_server.h>
 #include "raft_tcp_common.hpp"
 #include <thread>
+#ifdef _WIN32
 #include <shared_mutex>
+typedef std::shared_mutex   newSharedMutex;
+#else
+#include <common_rwlock.hpp>
+typedef common::RWLock      newSharedMutex;
+#endif
 #include <string>
 //#include <unordered_map>
 #include <raft_node.h>
@@ -79,7 +85,7 @@ protected:
 	std::thread										m_threadRcvData;
 	std::thread										m_threadAddRemoveNode;
 	std::vector<std::thread*>						m_vectThreadsWorkers;
-	std::shared_mutex								m_mutexShrd;
+    newSharedMutex                                  m_mutexShrd;
 	common::UnnamedSemaphoreLite					m_semaWorker;
 	common::UnnamedSemaphoreLite					m_semaAddRemove;
 	common::FifoFast<SWorkerData>					m_fifoWorker;

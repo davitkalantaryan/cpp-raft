@@ -14,7 +14,9 @@
 #if defined(_MSC_VER)
 #define SWAP4BYTES(_x)	(_x)=_byteswap_ulong ((_x))
 #elif defined(__GNUC__)
-#define SWAP4BYTES		__builtin_bswap32
+//#define SWAP4BYTES		__builtin_bswap32
+void raft_swap_4_bytes(int32_t& a_unValue);
+#define SWAP4BYTES  raft_swap_4_bytes
 #else
 #endif
 

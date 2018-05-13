@@ -156,7 +156,7 @@ namespace socketN {
 	int  Initialize();
 	void Cleanup();
 	int SleepN(long long int nanoSec);
-	const char* GetOwnIp4Address();
+    const char* GetOwnIp4Address(char* pcBuffer, int bufferLength);
 	const char* GetIp4AddressFromHostName(const char* hostName);
 #endif  // #ifdef sockaddr_in_using_ok
 }

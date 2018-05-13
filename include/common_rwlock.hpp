@@ -27,10 +27,10 @@ public:
     RWLock();
     virtual ~RWLock();
 
-    void read_lock();
-    void write_lock();
-    void unlock_read();
-	void unlock_write();
+    void lock_shared();
+    void lock();
+    void unlock_shared();
+    void unlock();
 
 protected:
 #ifdef _WIN32
