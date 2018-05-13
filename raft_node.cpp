@@ -27,7 +27,7 @@ RaftNode2::RaftNode2(void* a_udata) :
 	m_votes_for_me(0),
 	m_keyLen(0)
 {
-	m_isLeader = 1;
+	m_isLeader = 0;
 	m_isProblematic = 0;
 	m_unPingCount = 0;
 }

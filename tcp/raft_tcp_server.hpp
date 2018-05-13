@@ -53,8 +53,8 @@ protected:
 	// utils
 	void connect_allNodes_newNode(common::SocketTCP& sock);
 	bool connect_leader_newNode(common::SocketTCP& sock, const sockaddr_in*remoteAddr,int isEndianDiffer);
-	bool connect_anyNode_bridgeToNodeRaft(common::SocketTCP& sock);
-	bool connect_anyNode_bridgeToNodeData(common::SocketTCP& sock);
+	bool connect_anyNode_bridgeToNodeRaft(common::SocketTCP& sock, int isEndianDiffer);
+	bool connect_anyNode_bridgeToNodeData(common::SocketTCP& sock, int isEndianDiffer);
 
 	virtual RaftNode2* RemoveNode(RaftNode2* node) OVERRIDE;
 
@@ -64,6 +64,7 @@ protected:
 	void ReceiveFromRaftSocket(RaftNode2* followerNode);
 
 	void become_leader() OVERRIDE;
+	void become_candidate()OVERRIDE;
 
 	static int	SendClbkFunction(void *cb_ctx, void *udata, RaftNode2* node, int msg_type, const unsigned char *send_data, int d_len);
 	static void LogClbkFunction(void *cb_ctx, void *src, const char *buf, ...);

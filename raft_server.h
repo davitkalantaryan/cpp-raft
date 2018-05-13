@@ -64,9 +64,9 @@ protected: // in order to make usable variables by inherites
 	RaftNode2* m_thisNode;
 
 	typedef void (RaftServer::*PerNodeCallback)(RaftNode2*);
-	void forAllNodesExceptSelf(std::function<void(RaftNode2*)> callback);
-	void inline forAllNodesExceptSelf(PerNodeCallback callback) {
-		forAllNodesExceptSelf(std::bind(callback, this, std::placeholders::_1));
+	void forAllNodesExceptSelf(std::function<void(RaftNode2*)> callback, bool skipLeader);
+	void inline forAllNodesExceptSelf(PerNodeCallback a_callback, bool a_skipLeader) {
+		forAllNodesExceptSelf(std::bind(a_callback, this, std::placeholders::_1), a_skipLeader);
 	}
 
 public:

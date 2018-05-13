@@ -9,6 +9,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #if defined(_MSC_VER)
 #define SWAP4BYTES(_x)	(_x)=_byteswap_ulong ((_x))
@@ -37,6 +38,10 @@ namespace dynd{
 }
 
 namespace raft{ 
+
+namespace tcp{
+extern int g_nLogLevel;
+}
 
 namespace connect{
 namespace anyNode {enum Type { 
@@ -74,6 +79,7 @@ namespace follower {enum Type {
 namespace leader {enum Type { 
 	newNode = (int)follower::last,
 	removeNode,
+	oldLeaderDied,
 	last
 };}
 
@@ -81,6 +87,25 @@ namespace leader {enum Type {
 }  // namespace receive{
 
 } // namespace raft{ 
+
+#ifdef _WIN32
+#define FILE_DELIMER	'\\'
+#else
+#define FILE_DELIMER	'/'
+#endif
+
+#define FILE_FROM_PATH(_path)	( strrchr((_path),FILE_DELIMER) ? (strrchr((_path),FILE_DELIMER)+1) : (_path)  )
+
+#define DEBUG_APPLICATION_NO_NEW_LINE(_logLevel,...)	\
+	do{ if((_logLevel)<=raft::tcp::g_nLogLevel){printf("fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);printf(__VA_ARGS__);}}while(0)
+
+#define DEBUG_APPLICATION_NO_ADD_INFO(_logLevel,...)	\
+	do{ if((_logLevel)<=raft::tcp::g_nLogLevel){printf(__VA_ARGS__);}}while(0)
+
+#define DEBUG_APPLICATION_NEW_LINE(_logLevel)	\
+	do{ if((_logLevel)<=raft::tcp::g_nLogLevel){printf("\n");}}while(0)
+
+#define DEBUG_APPLICATION(_logLevel,...) do{DEBUG_APPLICATION_NO_NEW_LINE(_logLevel,__VA_ARGS__);DEBUG_APPLICATION_NEW_LINE(_logLevel);}while(0)
 
 #endif  // #ifdef __cplusplus
 

@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdexcept>
+#include <time.h>
 
 #include <stdarg.h>
 
@@ -25,6 +26,8 @@
 #include "raft_private.h"
 
 #include <iostream>
+
+#define MINIMUM_RAND_FACTOR	6
 
 static void __log(void *src, const char *fmt, ...) {
 	char buf[1024];
@@ -123,15 +126,22 @@ void RaftServer::RemoveNode(const void* a_key, int a_keyLen)
 }
 
 
-void RaftServer::forAllNodesExceptSelf(std::function<void(RaftNode2*)> a_callback) {
+void RaftServer::forAllNodesExceptSelf(std::function<void(RaftNode2*)> a_callback, bool a_bSkipLeader) {
 
-	RaftNode2* pNode = m_firstNode;
+	RaftNode2* pNode;
+
+	// close with mutex
+	pNode = m_firstNode;
 
 	while(pNode){
-		if (pNode == m_thisNode) {pNode = pNode->next;continue;}
+		if (pNode == m_thisNode) {goto nextNodePoint;}
+		if(a_bSkipLeader && (pNode->is_leader())){goto nextNodePoint;}
 		a_callback(pNode);
+nextNodePoint:
 		pNode = pNode->next;
 	}
+
+	// open mutex
 }
 
 void RaftServer::election_start() {
@@ -153,16 +163,18 @@ void RaftServer::become_leader() {
 	forAllNodesExceptSelf([this](RaftNode2* a_node) {
 		a_node->set_next_idx(get_current_idx() + 1);
 		send_appendentries(a_node);
-	});
+	}, true);
 }
 
 void RaftServer::become_candidate() {
 	size_t i;
+	int nRandFactor = (m_nNodesCount > MINIMUM_RAND_FACTOR) ? m_nNodesCount : MINIMUM_RAND_FACTOR;
 
 	__log(NULL, "becoming candidate");
 
 	//this->votes_for_me.clear(); // automatic every vote is false
-	this->current_term += 1;
+	srand((unsigned)time(NULL));
+	this->current_term += ( 1 + (rand()%nRandFactor) );
 	//vote(this->nodeid);
 	vote(this->m_thisNode);
 	d_state.set(RAFT_STATE_CANDIDATE);
@@ -171,7 +183,7 @@ void RaftServer::become_candidate() {
 	this->timeout_elapsed = rand() % 500;
 
 	/* request votes from nodes */
-	forAllNodesExceptSelf(&RaftServer::send_requestvote);
+	forAllNodesExceptSelf(&RaftServer::send_requestvote, true);
 }
 
 void RaftServer::become_follower() {
@@ -382,7 +394,7 @@ void RaftServer::recv_requestvote_response(RaftNode2* a_node, msg_requestvote_re
 
 	if (1 == r->vote_granted) {
 		a_node->SetVotesForMe(1);
-		if (raft_votes_is_majority(m_nNodesCount, get_nvotes_for_me()))
+		if (raft_votes_is_majority(m_nNodesCount-1, get_nvotes_for_me())) // -1 because old leader is not normal, but still counted
 			become_leader();
 	}
 	else{
@@ -404,13 +416,15 @@ int RaftServer::send_entry_response(RaftNode2* a_node, int etyid, int was_commit
 	return 0;
 }
 
+
 int RaftServer::recv_entry(RaftNode2* a_node, msg_entry_t *e) {
 	raft_entry_t ety(this->current_term, e->id(), reinterpret_cast<char*>(e->data()), e->len());
 	__log(NULL, "received entry from: %p", a_node);
 	send_entry_response(a_node, e->id(), append_entry(ety));
-	forAllNodesExceptSelf(std::bind(&RaftServer::send_appendentries, this, std::placeholders::_1));
+	forAllNodesExceptSelf(std::bind(&RaftServer::send_appendentries, this, std::placeholders::_1),false);
 	return 0;
 }
+
 
 void RaftServer::send_requestvote(RaftNode2* a_node) {
 	msg_requestvote_t rv(current_term, 0, get_current_idx(), 0);
@@ -469,7 +483,7 @@ void RaftServer::send_appendentries(RaftNode2* a_node)
 
 void RaftServer::send_appendentries_all() {
 	++m_nLeaderCommit;
-	forAllNodesExceptSelf(&RaftServer::send_appendentries);
+	forAllNodesExceptSelf(&RaftServer::send_appendentries, false);
 }
 
 #if 0
