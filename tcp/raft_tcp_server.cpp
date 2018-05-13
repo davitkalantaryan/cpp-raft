@@ -736,25 +736,23 @@ void raft::tcp::Server::CheckAllPossibleSeeds(const std::vector<NodeIdentifierKe
 	const char* cpcPosibleSeedIp;
 	RaftNode2* pNode;
 	NodeIdentifierKey* pNodeKey;
-	char vcwnHostName[MAX_HOSTNAME_LENGTH];
+	char vcOwnHostName[MAX_IP4_LEN];
 	std::vector<NodeIdentifierKey>  vectLeaders;
 	const int cnSize((int)a_vectPossibleNodes.size());
 	int i;
 	bool bLeaderFound(false);
-
-    common::socketN::GetOwnIp4Address(vcwnHostName,MAX_HOSTNAME_LENGTH);
-    aOwnIp = vcwnHostName;
-
+	
+	common::socketN::GetOwnIp4Address(vcOwnHostName,MAX_IP4_LEN);
+ 
 	try {
 
 		for(i=0;i<cnSize;++i){
-			if((aOwnIp==a_vectPossibleNodes[i].ip4Address)&&(m_nPortOwn==a_vectPossibleNodes[i].port)){continue;}
+			if(  (strncmp(vcOwnHostName,a_vectPossibleNodes[i].ip4Address,MAX_IP4_LEN)==0)&&(m_nPortOwn==a_vectPossibleNodes[i].port)  ){continue;}
 			else {
 				cpcPosibleSeedIp = common::socketN::GetIp4AddressFromHostName(a_vectPossibleNodes[i].ip4Address);
-				if(cpcPosibleSeedIp && (aOwnIp==cpcPosibleSeedIp)&&(m_nPortOwn==a_vectPossibleNodes[i].port)){continue;}
+				if( cpcPosibleSeedIp && (strncmp(vcOwnHostName,cpcPosibleSeedIp, MAX_IP4_LEN)== 0) && (m_nPortOwn == a_vectPossibleNodes[i].port) ){continue;}
 			}
 			TryFindNewLeaderThrdSafe(a_vectPossibleNodes[i], &vectLeaders);
-			//if(TryFindLeader(a_vectPossibleNodes[i])){ bLeaderFound=true;break;}
 		}
 
 		bLeaderFound=AskInfoFromLeadersThrdSafe(vectLeaders);
