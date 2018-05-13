@@ -47,7 +47,8 @@ protected:
 
 	void AddClient(common::SocketTCP& clientSock, const sockaddr_in*remoteAddr);
 
-	bool TryFindLeader(const NodeIdentifierKey& nodeInfo);
+	void TryFindNewLeaderThrdSafe(const NodeIdentifierKey& nodeInfo, std::vector<NodeIdentifierKey>* pExisting);
+	bool AskInfoFromLeadersThrdSafe(const std::vector<NodeIdentifierKey>& leaders);
 	void AddOwnNode();
 
 	// utils
