@@ -3,6 +3,8 @@
 //
 #include "common_servertcp.hpp"
 
+#include <signal.h>
+
 #ifdef _WIN32
 #include <WinSock2.h>
 #include <WS2tcpip.h>
@@ -15,6 +17,7 @@
 #include <memory.h>
 #include <sys/syscall.h>
 #define gettidNew(...)	syscall(SYS_gettid)
+static void SigActionFunction (int a_nSigNum, siginfo_t * , void *);
 #endif
 
 namespace WORK_STATUSES {enum{STOPPED=0,TRYING_TO_STOP,RUN};}
@@ -42,6 +45,19 @@ int common::ServerTCP::StartServerS(
 	int& nRetCode = a_pnRetCode ? *a_pnRetCode : nError;
 
 	if(m_nWorkStatus != WORK_STATUSES::STOPPED){return -1;}
+
+#ifndef _WIN32
+    struct sigaction newAction;
+
+    m_serverThread = pthread_self();
+
+    newAction.sa_flags = SA_SIGINFO;
+    sigemptyset(&newAction.sa_mask);
+    newAction.sa_restorer = NULL;
+    newAction.sa_sigaction = SigActionFunction;
+
+    sigaction(SIGPIPE,&newAction,NULL);
+#endif
 
 #ifdef _CD_VERSION__
 	nRetCode = CreateServer( a_nPort, a_bReuse,true );
@@ -95,7 +111,10 @@ void common::ServerTCP::StopServer(void)
 	if(nCurrentThreadId!=m_nServerThreadId){
 		m_nWorkStatus = WORK_STATUSES::TRYING_TO_STOP;
 		closeC();
-		while(m_nWorkStatus== WORK_STATUSES::TRYING_TO_STOP){SWITCH_SCHEDULING(1);}
+#ifndef _WIN32
+        pthread_kill(m_serverThread,SIGPIPE);
+#endif
+        while(m_nWorkStatus== WORK_STATUSES::TRYING_TO_STOP){SWITCH_SCHEDULING(1);}
 	}
 	else {
 		m_nWorkStatus = WORK_STATUSES::STOPPED;
@@ -227,3 +246,11 @@ int common::ServerTCP::CreateServer(int a_nPort, bool a_bReuse,bool a_bLoopback)
 
 	return 0;
 }
+
+
+#ifndef _WIN32
+static void SigActionFunction (int, siginfo_t * , void *)
+{
+    //
+}
+#endif  // #ifndef _WIN32

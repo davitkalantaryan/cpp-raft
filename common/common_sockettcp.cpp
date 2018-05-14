@@ -71,8 +71,7 @@ int common::SocketTCP::connectC(const char *a_svrName, int a_port, int a_connect
 
 	memcpy((char *)&addr.sin_addr, (char *)&ha, sizeof(ha));
 
-#ifdef MAKE_SOCKET_NONBLOCK
-#ifdef	WIN32
+#ifdef	_WIN32
 	unsigned long on = 1;
 	ioctlsocket(m_socket, FIONBIO, &on);
 #else  /* #ifdef	WIN32 */
@@ -82,45 +81,55 @@ int common::SocketTCP::connectC(const char *a_svrName, int a_port, int a_connect
 		fcntl(m_socket, F_SETFL, status);
 	}
 #endif  /* #ifdef	WIN32 */
-#endif   // #ifdef MAKE_SOCKET_NONBLOCK
 
 	int addr_len = sizeof(addr);
 	rtn = ::connect(m_socket, (struct sockaddr *) &addr, addr_len);
 
 	if (rtn != 0){
+        struct timeval  aTimeout2;
+        struct timeval* pTimeout;
 		int nErrno2 = errno;///?
 		if (!SOCKET_INPROGRESS(nErrno2)){return E_NO_CONNECT;}
+
+        FD_ZERO(&rfds);
+        FD_SET((unsigned int)m_socket, &rfds);
+        maxsd = (int)(m_socket + 1);
+
+        if (a_connectionTimeoutMs >= 0){
+            aTimeout2.tv_sec = a_connectionTimeoutMs / 1000L;
+            aTimeout2.tv_usec = (a_connectionTimeoutMs % 1000L) * 1000L;
+            pTimeout = &aTimeout2;
+        }else{pTimeout = NULL;}
+
+        rtn = ::select(maxsd, (fd_set *)0, &rfds, (fd_set *)0, pTimeout);
+
+        switch (rtn)
+        {
+        case 0:	/* time out */
+            return _SOCKET_TIMEOUT_;
+        case SOCKET_ERROR:
+            if (errno == EINTR){/*interrupted by signal*/return _EINTR_ERROR_;}
+            return E_SELECT;
+        default:
+            break;
+        }
+
+        if (!FD_ISSET(m_socket, &rfds)){return E_FATAL;}
 	}
 
-	//////////////////////////////////////////////////////////////////////////
-	FD_ZERO(&rfds);
-	FD_SET((unsigned int)m_socket, &rfds);
-	maxsd = (int)(m_socket + 1);
+#ifndef MAKE_SOCKET_NONBLOCK
+#ifdef _WIN32
+    on = 0;
+    ioctlsocket(m_socket, FIONBIO, &on);
+#else
+    if ((status = fcntl(m_socket, F_GETFL, 0)) != -1){
+        status &= (~O_NONBLOCK);
+        fcntl(m_socket, F_SETFL, status);
+    }
+#endif
+#endif   // #ifndef MAKE_SOCKET_NONBLOCK
+    this->setTimeout(a_connectionTimeoutMs);
 
-	struct timeval  aTimeout2;
-	struct timeval* pTimeout;
-
-	if (a_connectionTimeoutMs >= 0){
-		aTimeout2.tv_sec = a_connectionTimeoutMs / 1000L;
-		aTimeout2.tv_usec = (a_connectionTimeoutMs % 1000L) * 1000L;
-		pTimeout = &aTimeout2;
-	}else{pTimeout = NULL;}
-
-	rtn = ::select(maxsd, (fd_set *)0, &rfds, (fd_set *)0, pTimeout);
-
-	switch (rtn)
-	{
-	case 0:	/* time out */
-		return _SOCKET_TIMEOUT_;
-	case SOCKET_ERROR:
-		if (errno == EINTR){/*interrupted by signal*/return _EINTR_ERROR_;}
-		return E_SELECT;
-	default:
-		break;
-	}
-
-	if (!FD_ISSET(m_socket, &rfds)){return E_FATAL;}
-	///////////////////////////////////////////////////////////////////////////////
 	return 0;
 }
 

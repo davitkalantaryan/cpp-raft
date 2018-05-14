@@ -23,6 +23,9 @@ typedef common::RWLock      newSharedMutex;
 #include "common_unnamedsemaphorelite.hpp"
 #include "common_fifofast.hpp"
 #include <vector>
+#if defined(HANDLE_SIG_ACTIONS) || defined(WLAC_USED)
+#include <pthread.h>
+#endif
 
 namespace raft { namespace tcp{
 
@@ -49,7 +52,7 @@ protected:
 	void ThreadFunctionAddRemoveNode();
 	void ThreadFunctionWorker();
 
-	void FunctionForMultiRcv(int* a_pnSocketForInfo, void (Server::*a_fpRcvFnc)(RaftNode2*), bool isRaft);
+    void FunctionForMultiRcv(volatile int* a_pnSocketForInfo, void (Server::*a_fpRcvFnc)(RaftNode2*), bool isRaft);
 
 	void AddClient(common::SocketTCP& clientSock, const sockaddr_in*remoteAddr);
 
@@ -73,6 +76,9 @@ protected:
 	void become_leader() OVERRIDE;
 	void become_candidate()OVERRIDE;
 
+    void InterruptRaftRcv();
+    void InterruptDataRcv();
+
 	static int	SendClbkFunction(void *cb_ctx, void *udata, RaftNode2* node, int msg_type, const unsigned char *send_data, int d_len);
 	static void LogClbkFunction(void *cb_ctx, void *src, const char *buf, ...);
 	static int	ApplyLogClbkFunction(void *cb_ctx, void *udata, const unsigned char *d_data, int d_len);
@@ -94,8 +100,19 @@ protected:
 	int												m_nPeriodForPeriodic;
 	int												m_nPortOwn;
 	RaftNode2*										m_pLeaderNode;
-	int												m_infoSocketForRcvRaft;
-	int												m_infoSocketForRcvData;
+    volatile int									m_infoSocketForRcvRaft2;
+    volatile int									m_infoSocketForRcvData2;
+
+#ifndef _WIN32
+    pthread_t                                       m_rcvRaftThread;
+    pthread_t                                       m_rcvDataThread;
+#endif
+
+public:
+    void*                                           m_pReserved1;
+#if defined(HANDLE_SIG_ACTIONS) || defined(WLAC_USED)
+    pthread_t                                       m_starterThread;
+#endif
 };
 
 }} // namespace raft { namespace tcp{

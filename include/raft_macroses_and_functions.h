@@ -11,6 +11,20 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef _WIN32
+#else
+#include <sys/types.h>
+#include <sys/syscall.h>
+#define GetCurrentThreadId()    syscall(__NR_gettid)
+#endif
+
+#ifdef _WIN32
+#else
+#ifndef HANDLE_SIG_ACTIONS
+#define HANDLE_SIG_ACTIONS
+#endif
+#endif
+
 #if defined(_MSC_VER)
 #define SWAP4BYTES(_x)	(_x)=_byteswap_ulong ((_x))
 #elif defined(__GNUC__)
@@ -108,6 +122,17 @@ namespace leader {enum Type {
 	do{ if((_logLevel)<=raft::tcp::g_nLogLevel){printf("\n");}}while(0)
 
 #define DEBUG_APPLICATION(_logLevel,...) do{DEBUG_APPLICATION_NO_NEW_LINE(_logLevel,__VA_ARGS__);DEBUG_APPLICATION_NEW_LINE(_logLevel);}while(0)
+
+
+#if 0
+#define DEBUG_HANGING(...)  \
+    do{ \
+        std::string aStr="testString"; \
+        printf("!!!!!!!!!!!!!! fl:%s;ln:%d (%s)\n",FILE_FROM_PATH(__FILE__),__LINE__,aStr.c_str()); \
+    }while(0)
+#endif
+
+#define DEBUG_HANGING(...)
 
 #endif  // #ifdef __cplusplus
 

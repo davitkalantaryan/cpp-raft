@@ -7,6 +7,9 @@
 
 #include "common_sockettcp.hpp"
 #include "common_defination.h"
+#ifndef _WIN32
+#include <pthread.h>
+#endif
 
 struct sockaddr_in;
 typedef void(__THISCALL__*TypeAccept)(void* owner,common::SocketTCP& clientSock,const sockaddr_in* remoteAddr);
@@ -67,6 +70,9 @@ private:
 protected:
 	volatile int	m_nWorkStatus;
 	int				m_nServerThreadId;
+#ifndef _WIN32
+    pthread_t       m_serverThread;
+#endif
 };
 
 }

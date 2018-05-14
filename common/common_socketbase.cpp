@@ -70,21 +70,23 @@ void common::SocketBase::closeHard(void)
 
 int common::SocketBase::setTimeout(int a_nTimeoutMs)
 {
-	char* pInput;
-	int nInputLen;
+    if(a_nTimeoutMs>=0){
+        char* pInput;
+        int nInputLen;
 #ifdef _WIN32
-	DWORD dwTimeout = a_nTimeoutMs;
-	pInput = (char*)&dwTimeout;
-	nInputLen = sizeof(DWORD);
+        DWORD dwTimeout = a_nTimeoutMs;
+        pInput = (char*)&dwTimeout;
+        nInputLen = sizeof(DWORD);
 #else
-	struct timeval tv;
-	tv.tv_sec = a_nTimeoutMs / 1000;
-	tv.tv_usec = (a_nTimeoutMs % 1000) * 1000;
-    pInput = (char*)&tv;
-	nInputLen = sizeof(struct timeval);
+        struct timeval tv;
+        tv.tv_sec = a_nTimeoutMs / 1000;
+        tv.tv_usec = (a_nTimeoutMs % 1000) * 1000;
+        pInput = (char*)&tv;
+        nInputLen = sizeof(struct timeval);
 #endif
 
-	if (setsockopt(m_socket,SOL_SOCKET,SO_RCVTIMEO,pInput,nInputLen) < 0){return -1;}
+        if (setsockopt(m_socket,SOL_SOCKET,SO_RCVTIMEO,pInput,nInputLen) < 0){return -1;}
+    }
 
 	return 0;
 }
