@@ -7,9 +7,10 @@
 //
 
 
-#include <common_socketbase.hpp>
+#include <common_sockettcp.hpp>
 #include <stdint.h>
 #include <string>
+#include "raft_macroses_and_functions.h"
 
 #if !defined(_WIN32) && !defined(Sleep)
 #define Sleep(_x) (  ((_x)>100000) ? sleep((_x)/1000) : usleep(1000*(_x))  )
@@ -20,6 +21,8 @@
 
 namespace raft {namespace tcp {
 
+extern const char g_ccResponceOk;
+
 typedef struct NodeIdentifierKey{ 
 	char ip4Address[MAX_IP4_LEN]; int32_t port;
 	/*----------------------------------------------*/
@@ -27,4 +30,14 @@ typedef struct NodeIdentifierKey{
 	bool operator==(const NodeIdentifierKey& aM)const;
 }NodeIdentifierKey;
 
-}}
+
+bool ConnectAndGetEndian(common::SocketTCP* a_pSock,const NodeIdentifierKey& nodeInfo, char cRequest, uint32_t* pIsEndianDiffer);
+
+}}  // namespace raft {namespace tcp {
+
+
+#define DEBUG_APP_WITH_NODE(_logLevel,_nodeKey,...)	\
+	do{ \
+		DEBUG_APPLICATION_NO_NEW_LINE((_logLevel),"%s:%d  ",(_nodeKey).ip4Address,(int)((_nodeKey).port)); \
+		DEBUG_APPLICATION_NO_ADD_INFO((_logLevel),__VA_ARGS__); DEBUG_APPLICATION_NO_ADD_INFO((_logLevel),"\n"); \
+	}while(0)

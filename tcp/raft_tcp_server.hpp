@@ -67,6 +67,7 @@ protected:
 	void connect_toAnyNode_bridgeToNodeRaft(common::SocketTCP& sock, const sockaddr_in*remoteAddr);
 	void connect_toAnyNode_bridgeToNodeData(common::SocketTCP& sock, const sockaddr_in* remoteAddr);
 	void connect_fromClient_allNodesInfo(common::SocketTCP& sock);
+	void connect_toAnyNode_otherLeaderFound(common::SocketTCP& sock);
 
 	void CheckAllPossibleSeeds(const std::vector<NodeIdentifierKey>& vectPossibleNodes);
 

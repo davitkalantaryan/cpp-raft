@@ -229,6 +229,7 @@ raft_entry_t& RaftServer::get_entry_from_idx(int etyidx) {
 
 int RaftServer::recv_appendentries_response(RaftNode2* a_node, msg_appendentries_response_t *r) {
 
+	static int nIter = 0;
 	__log(NULL, "received appendentries response from: %p", a_node);
 
 	//p = get_node(node);
@@ -236,7 +237,7 @@ int RaftServer::recv_appendentries_response(RaftNode2* a_node, msg_appendentries
 
 	if (1 == r->success) {
 		int i;
-		std::cout << "INcrease Success" << std::endl;
+		std::cout << "INcrease Success" <<++nIter<< std::endl;
 		a_node->set_next_idx(r->current_idx);
 		for (i = r->first_idx; i <= r->current_idx; i++)
 			this->log->log_mark_node_has_committed(i);

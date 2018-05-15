@@ -47,11 +47,9 @@ void raft_swap_4_bytes(int32_t& a_unValue);
 
 #ifdef __cplusplus
 
+#ifndef OVERRIDE
 #define OVERRIDE	override
-
-namespace dynd{
-	namespace Request{enum Type{otherServer,clientAdd,clientQuery,clientDelete};}
-}
+#endif
 
 namespace raft{ 
 
@@ -59,15 +57,25 @@ namespace tcp{
 extern int g_nLogLevel;
 }
 
-namespace response { namespace error{ enum Type {
+namespace response {
+
+enum Type{
+	ok,
+	last
+};
+	
+namespace error{ enum Type {
 	nodeExist = -1
-};}}
+};}
+
+}
 
 namespace connect{
 namespace toAnyNode {enum Type { 
-	newNode = 0 ,
+	newNode = (int)response::last,
 	raftBridge,
 	dataBridge,
+	otherLeaderFound,
 	last
 };}
 
@@ -92,7 +100,7 @@ namespace fromClient {enum Type {
 namespace receive{
 
 namespace anyNode {enum Type { 
-	clbkCmd = 0 ,
+	clbkCmd = (int)connect::fromClient::last,
 	last
 };}
 
