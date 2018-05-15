@@ -59,6 +59,10 @@ namespace tcp{
 extern int g_nLogLevel;
 }
 
+namespace response { namespace error{ enum Type {
+	nodeExist = -1
+};}}
+
 namespace connect{
 namespace anyNode {enum Type { 
 	newNode = 0 ,

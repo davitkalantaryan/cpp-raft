@@ -43,7 +43,9 @@ public:
 	void StopServer();
 
 protected:
-	virtual void ReceiveFromDataSocket(RaftNode2* anyNode);
+	virtual void		ReceiveFromDataSocket(RaftNode2* anyNode);
+	virtual RaftNode2*	RemoveNode(RaftNode2* node) OVERRIDE;
+	virtual void		HandleNewConnection(char code,common::SocketTCP& clientSock, const sockaddr_in* remoteAddr);
 
 	void ThreadFunctionListen();
 	void ThreadFunctionPeriodic();
@@ -56,17 +58,14 @@ protected:
 
 	void AddClient(common::SocketTCP& clientSock, const sockaddr_in*remoteAddr);
 
-	void TryFindNewLeaderThrdSafe(const NodeIdentifierKey& nodeInfo, std::vector<NodeIdentifierKey>* pExisting);
-	bool AskInfoFromLeadersThrdSafe(const std::vector<NodeIdentifierKey>& leaders);
+	NodeIdentifierKey* TryFindLeaderThrdSafe(const NodeIdentifierKey& nodeInfo);
 	void AddOwnNode();
 
 	// utils
 	void connect_allNodes_newNode(common::SocketTCP& sock);
-	bool connect_leader_newNode(common::SocketTCP& sock, const sockaddr_in*remoteAddr,int isEndianDiffer);
-	bool connect_anyNode_bridgeToNodeRaft(common::SocketTCP& sock, int isEndianDiffer);
-	bool connect_anyNode_bridgeToNodeData(common::SocketTCP& sock, int isEndianDiffer);
-
-	virtual RaftNode2* RemoveNode(RaftNode2* node) OVERRIDE;
+	void connect_leader_newNode(common::SocketTCP& sock, const sockaddr_in*remoteAddr);
+	void connect_anyNode_bridgeToNodeRaft(common::SocketTCP& sock, const sockaddr_in*remoteAddr);
+	void connect_anyNode_bridgeToNodeData(common::SocketTCP& sock, const sockaddr_in* remoteAddr);
 
 	void CheckAllPossibleSeeds(const std::vector<NodeIdentifierKey>& vectPossibleNodes);
 
