@@ -62,10 +62,11 @@ protected:
 	void AddOwnNode();
 
 	// utils
-	void connect_allNodes_newNode(common::SocketTCP& sock);
-	void connect_leader_newNode(common::SocketTCP& sock, const sockaddr_in*remoteAddr);
-	void connect_anyNode_bridgeToNodeRaft(common::SocketTCP& sock, const sockaddr_in*remoteAddr);
-	void connect_anyNode_bridgeToNodeData(common::SocketTCP& sock, const sockaddr_in* remoteAddr);
+	void connect_toAnyNode_newNode(common::SocketTCP& sock);
+	void connect_toLeader_newNode(common::SocketTCP& sock, const sockaddr_in*remoteAddr);
+	void connect_toAnyNode_bridgeToNodeRaft(common::SocketTCP& sock, const sockaddr_in*remoteAddr);
+	void connect_toAnyNode_bridgeToNodeData(common::SocketTCP& sock, const sockaddr_in* remoteAddr);
+	void connect_fromClient_allNodesInfo(common::SocketTCP& sock);
 
 	void CheckAllPossibleSeeds(const std::vector<NodeIdentifierKey>& vectPossibleNodes);
 
@@ -77,6 +78,8 @@ protected:
 
     void InterruptRaftRcv();
     void InterruptDataRcv();
+
+	raft::tcp::NodeIdentifierKey* CollectAllNodesDataNotThrSafe(int* pnTotalSize);
 
 	static int	SendClbkFunction(void *cb_ctx, void *udata, RaftNode2* node, int msg_type, const unsigned char *send_data, int d_len);
 	static void LogClbkFunction(void *cb_ctx, void *src, const char *buf, ...);

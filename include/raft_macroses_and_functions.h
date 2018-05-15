@@ -64,20 +64,25 @@ namespace response { namespace error{ enum Type {
 };}}
 
 namespace connect{
-namespace anyNode {enum Type { 
+namespace toAnyNode {enum Type { 
 	newNode = 0 ,
 	raftBridge,
 	dataBridge,
 	last
 };}
 
-namespace leader {enum Type { 
-	newNode = (int)anyNode::last,
+namespace toLeader {enum Type { 
+	newNode = (int)toAnyNode::last,
 	last
 };}
 
-namespace follower {enum Type { 
-	newNode2 = (int)leader::last,  // this option most probably will not be necessary (renamed to newNode2)
+namespace toFollower {enum Type { 
+	newNode = (int)toLeader::last,  // this option most probably will not be necessary (renamed to newNode)
+	last
+};}
+
+namespace fromClient {enum Type { 
+	allNodesInfo = (int)toFollower::last,
 	last
 };}
 

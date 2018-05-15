@@ -6,12 +6,7 @@
 #include "raft_tcp_common.hpp"
 #include <memory.h>
 
-
-raft::tcp::NodeIdentifierKey::NodeIdentifierKey(const std::string& a_hostName, int a_port)
-{
-	set_ip4Address(a_hostName);
-	this->port = a_port;
-}
+#pragma warning(disable:4996)
 
 
 bool raft::tcp::NodeIdentifierKey::operator==(const NodeIdentifierKey& a_aM)const

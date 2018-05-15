@@ -9,7 +9,8 @@
 
 
 #include <common_sockettcp.hpp>
-
+#include <vector>
+#include "raft_tcp_common.hpp"
 
 namespace raft { namespace tcp{
 
@@ -18,6 +19,11 @@ class Client
 public:
 	Client();
 	virtual ~Client();
+
+	static bool ReceiveAllNodes(const char* nodeIp, int port, std::vector<NodeIdentifierKey>* pNodes);
+
+protected:
+	common::SocketTCP	m_socket;
 };
 
 }} // namespace raft { namespace tcp{

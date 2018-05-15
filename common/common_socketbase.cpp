@@ -138,8 +138,8 @@ int common::SocketBase::GetAndResetSocket()
 int common::SocketBase::DublicateSocket(int a_nProcID, void* a_pProtInfo)const
 {
 #ifdef _WIN32
-	WSAPROTOCOL_INFO* pProtInfo = (WSAPROTOCOL_INFO*)a_pProtInfo;
-	return WSADuplicateSocket(m_socket, (DWORD)a_nProcID, pProtInfo);
+	WSAPROTOCOL_INFOW* pProtInfo = (WSAPROTOCOL_INFOW*)a_pProtInfo;
+	return WSADuplicateSocketW(m_socket, (DWORD)a_nProcID, pProtInfo);
 #else
 	throw "For berkley sockets not implemented!";
 	return (a_nProcID == (int)((size_t)a_pProtInfo)) ? 1 : 0;

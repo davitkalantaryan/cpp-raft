@@ -15,7 +15,8 @@
 #define Sleep(_x) (  ((_x)>100000) ? sleep((_x)/1000) : usleep(1000*(_x))  )
 #endif
 
-#define MAX_IP4_LEN		24
+#define MAX_IP4_LEN				24
+#define SOCK_TIMEOUT_MS			100000
 
 namespace raft {namespace tcp {
 
@@ -23,8 +24,6 @@ typedef struct NodeIdentifierKey{
 	char ip4Address[MAX_IP4_LEN]; int32_t port;
 	/*----------------------------------------------*/
 	void set_ip4Address(const std::string& ip4Address);
-	NodeIdentifierKey() {}
-	NodeIdentifierKey(const std::string& hostName,int port);
 	bool operator==(const NodeIdentifierKey& aM)const;
 }NodeIdentifierKey;
 
