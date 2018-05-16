@@ -31,7 +31,10 @@ namespace raft { namespace tcp{
 
 namespace workRequest{enum Type{none,handleConnection};}
 struct SWorkerData { workRequest::Type reqType;int sockDescriptor;sockaddr_in remAddress; };
-struct SAddRemData { RaftNode2 *pNode; NodeIdentifierKey nodeKey; bool bAdd; SAddRemData();SAddRemData(RaftNode2*);};
+struct SAddRemData { 
+	RaftNode2 *pNode; NodeIdentifierKey nodeKey; char action; 
+	SAddRemData() :pNode(NULL){}
+};
 
 class Server : protected RaftServer
 {

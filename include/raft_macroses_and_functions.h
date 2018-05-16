@@ -109,7 +109,8 @@ namespace follower {enum Type {
 	last
 };}
 
-namespace leader {enum Type { 
+
+namespace fromLeader {enum Type { 
 	newNode = (int)follower::last,
 	removeNode,
 	oldLeaderDied,
@@ -117,7 +118,25 @@ namespace leader {enum Type {
 };}
 
 
+namespace fromNewLeader {enum Type { 
+	oldLeaderDied = (int)fromLeader::last,
+	last
+};}
+
+
 }  // namespace receive{
+
+
+namespace leaderInternal {enum Type { 
+	newNode = (int)receive::fromNewLeader::last,
+	removeNode,
+	last
+};}
+
+namespace newLeaderInternal {enum Type { 
+	becomeLeader = (int)leaderInternal::last,
+	last
+};}
 
 } // namespace raft{ 
 
