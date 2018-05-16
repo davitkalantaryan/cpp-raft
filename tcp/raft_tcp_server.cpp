@@ -250,7 +250,7 @@ void raft::tcp::Server::connect_toLeader_newNode(common::SocketTCP& a_clientSock
 	}
 
 	nNodesCount = m_nNodesCount;
-	pAllNodesInfo=CollectAllNodesDataNotThrSafe(&nTotalSize);
+	pAllNodesInfo=CollectAllNodesDataNotThrSafe(&nTotalSize,NULL);
 
 	m_mutexShrd.unlock_shared();
 
@@ -319,7 +319,7 @@ void raft::tcp::Server::connect_toAnyNode_bridgeToNodeRaft(common::SocketTCP& a_
 }
 
 
-raft::tcp::NodeIdentifierKey* raft::tcp::Server::CollectAllNodesDataNotThrSafe(int* a_pnTotalSize)
+raft::tcp::NodeIdentifierKey* raft::tcp::Server::CollectAllNodesDataNotThrSafe(int* a_pnTotalSize, int* a_pnLeaderIndex)
 {
 	RaftNode2* pNode;
 	NodeIdentifierKey *pAllNodesInfo, *pExistingNodeKey;
@@ -335,6 +335,7 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::CollectAllNodesDataNotThrSafe(i
 		pExistingNodeKey = (NodeIdentifierKey*)pNode->key2();
 		pAllNodesInfo[i].set_ip4Address(pExistingNodeKey->ip4Address);
 		pAllNodesInfo[i].port = pExistingNodeKey->port;
+		if(a_pnLeaderIndex && pNode->is_leader()){*a_pnLeaderIndex = i;}
 		pNode = pNode->next;
 		++i;
 	}
@@ -345,22 +346,22 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::CollectAllNodesDataNotThrSafe(i
 
 void raft::tcp::Server::connect_fromClient_allNodesInfo(common::SocketTCP& a_clientSock)
 {
+	struct { int nodesCount, leaderIndex; }nl;
 	NodeIdentifierKey *pAllNodesInfo;
-	int nSndRcv,nNodesCount,nTotalSize;
+	int nSndRcv,nTotalSize;
 
 	m_mutexShrd.lock_shared();
-	nNodesCount = m_nNodesCount;
-	pAllNodesInfo = CollectAllNodesDataNotThrSafe(&nTotalSize);
+	nl.nodesCount = m_nNodesCount;
+	pAllNodesInfo = CollectAllNodesDataNotThrSafe(&nTotalSize,&nl.leaderIndex);
 	m_mutexShrd.unlock_shared();
 
 	if(!pAllNodesInfo){return;}
 
-	nSndRcv=a_clientSock.writeC(&nNodesCount, 4);
-	if(nSndRcv!=4){free(pAllNodesInfo);return;}
+	nSndRcv=a_clientSock.writeC(&nl,8);
+	if(nSndRcv!=8){free(pAllNodesInfo);return;}
 
-	a_clientSock.writeC(pAllNodesInfo, nTotalSize);
+	a_clientSock.writeC(pAllNodesInfo,nTotalSize);
 	free(pAllNodesInfo);
-
 }
 
 
@@ -708,30 +709,32 @@ void raft::tcp::Server::ThreadFunctionWorker()
 			switch (cRequest)
 			{
 			case raft::connect::toAnyNode::newNode:
-				DEBUG_APPLICATION(1, "raft::connect::anyNode::newNode");
+				DEBUG_APPLICATION(1, "raft::connect::toAnyNode::newNode");
 				connect_toAnyNode_newNode(aClientSock);
 				break;
 			case raft::connect::toLeader::newNode:
 				connect_toLeader_newNode(aClientSock,&dataFromProducer.remAddress);
-				DEBUG_APPLICATION(1, "raft::connect::leader::newNode");
+				DEBUG_APPLICATION(1, "raft::connect::toLeader::newNode");
 				break;
 			case raft::connect::toAnyNode::raftBridge:
+				DEBUG_APPLICATION(1, "raft::connect::toAnyNode::raftBridge");
 				connect_toAnyNode_bridgeToNodeRaft(aClientSock, &dataFromProducer.remAddress);
-				DEBUG_APPLICATION(1,"raft::connect::anyNode::raftBridge");
 				break;
 			case raft::connect::toAnyNode::dataBridge:
+				DEBUG_APPLICATION(1, "raft::connect::toAnyNode::dataBridge");
 				connect_toAnyNode_bridgeToNodeData(aClientSock,&dataFromProducer.remAddress);
-				DEBUG_APPLICATION(1,"raft::connect::anyNode::dataBridge");
 				break;
 			case raft::connect::fromClient::allNodesInfo:
+				DEBUG_APPLICATION(1, "raft::connect::fromClient::allNodesInfo");
 				connect_fromClient_allNodesInfo(aClientSock);
 				break;
 			case raft::connect::toAnyNode::otherLeaderFound:
+				DEBUG_APPLICATION(1, "raft::connect::toAnyNode::otherLeaderFound");
 				connect_toAnyNode_otherLeaderFound(aClientSock);
 				break;
 			default:
 				HandleNewConnection(cRequest,aClientSock,&dataFromProducer.remAddress);
-				DEBUG_APPLICATION(0," ");
+				break;
 			}
 			aClientSock.closeC();
 		}

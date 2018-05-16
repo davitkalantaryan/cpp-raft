@@ -20,10 +20,10 @@ public:
 	Client();
 	virtual ~Client();
 
-	static bool ReceiveAllNodes(const char* nodeIp, int port, std::vector<NodeIdentifierKey>* pNodes);
+	static int ReceiveAllNodes(const char* nodeIp, int port, std::vector<NodeIdentifierKey>* pNodes);
 
 protected:
-	common::SocketTCP	m_socket;
+	//common::SocketTCP	m_socket;
 };
 
 }} // namespace raft { namespace tcp{

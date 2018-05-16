@@ -83,7 +83,7 @@ protected:
     void InterruptRaftRcv();
     void InterruptDataRcv();
 
-	raft::tcp::NodeIdentifierKey* CollectAllNodesDataNotThrSafe(int* pnTotalSize);
+	raft::tcp::NodeIdentifierKey* CollectAllNodesDataNotThrSafe(int* pnTotalSize, int* a_pnLeaderIndex);
 
 	static int	SendClbkFunction(void *cb_ctx, void *udata, RaftNode2* node, int msg_type, const unsigned char *send_data, int d_len);
 	static void LogClbkFunction(void *cb_ctx, void *src, const char *buf, ...);

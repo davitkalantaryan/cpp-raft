@@ -18,42 +18,41 @@ raft::tcp::Client::~Client()
 }
 
 
-bool raft::tcp::Client::ReceiveAllNodes(const char* a_nodeIp, int a_port, std::vector<NodeIdentifierKey>* a_pNodes)
+int raft::tcp::Client::ReceiveAllNodes(const char* a_nodeIp, int a_port, std::vector<NodeIdentifierKey>* a_pNodes)
 {
-	NodeIdentifierKey* pInfo = NULL;
+	struct {int nodesCount,leaderIndex;}nl;
 	common::SocketTCP aSocket;
-	int i,isEndianDiffer(0), nNodesCount, nTotalSize,nSndRcv;
-	uint16_t unRemEndian;
-	bool bReturn(false);
+	NodeIdentifierKey aNodeKey;
+	int i,nTotalSize,nSndRcv;
+	uint32_t isEndianDiffer;
+	int nReturn(-1);
 
-	if(aSocket.connectC(a_nodeIp,a_port)){goto returnPoint;}
-	aSocket.setTimeout(SOCK_TIMEOUT_MS);
+	aNodeKey.set_ip4Address(a_nodeIp);
+	aNodeKey.port = a_port;
 
-	nSndRcv=aSocket.readC(&unRemEndian,2);
-	if(nSndRcv!=2){goto returnPoint;}
-	if(unRemEndian!=1){ isEndianDiffer =1;}
+	try {  // we put into try block because std::vector::resize can throw exception
+		if (!ConnectAndGetEndian(&aSocket, aNodeKey, raft::connect::fromClient::allNodesInfo, &isEndianDiffer)) { goto returnPoint; }
 
-	nSndRcv=aSocket.readC(&nNodesCount, 4);
-	if(nSndRcv!=4){goto returnPoint;}
-	if (isEndianDiffer) {SWAP4BYTES(nNodesCount);}
-	if(nNodesCount<1){goto returnPoint;}
+		nSndRcv = aSocket.readC(&nl, 8);
+		if (nSndRcv != 8) { goto returnPoint; }
+		if (isEndianDiffer) { SWAP4BYTES(nl.nodesCount); }
+		if (isEndianDiffer) { SWAP4BYTES(nl.leaderIndex); }
+		if ((nl.nodesCount<1) || (nl.leaderIndex<0) || (nl.leaderIndex >= nl.nodesCount)) { goto returnPoint; }
 
-	nTotalSize = nNodesCount * sizeof(NodeIdentifierKey);
-	pInfo = (NodeIdentifierKey*)malloc(nTotalSize);
-	if (!pInfo) { goto returnPoint; }
+		nTotalSize = nl.nodesCount * sizeof(NodeIdentifierKey);
+		a_pNodes->resize(nl.nodesCount);
 
-	nSndRcv = aSocket.readC(pInfo, nTotalSize);
-	if (nSndRcv != nTotalSize) { goto returnPoint; }
+		nSndRcv = aSocket.readC(a_pNodes->data(), nTotalSize);
+		if (nSndRcv != nTotalSize) { goto returnPoint; }
 
-	a_pNodes->resize(nNodesCount);
-
-	for(i=0;i<nNodesCount;++i){
-		if(isEndianDiffer){SWAP4BYTES(pInfo[i].port);}
-		(*a_pNodes)[i] = pInfo[i];
+		if(isEndianDiffer){for(i=0;i<nl.nodesCount;++i){SWAP4BYTES((*a_pNodes)[i].port);}}
+	}
+	catch(...){
 	}
 
-	bReturn = true;
+	nReturn = nl.leaderIndex;
+
 returnPoint:
-	free(pInfo);
-	return bReturn;
+	aSocket.closeC();
+	return nReturn;
 }
