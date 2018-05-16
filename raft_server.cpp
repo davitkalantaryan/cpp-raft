@@ -24,7 +24,7 @@
 #include "raft_logger.h"
 #include "raft_node.h"
 #include "raft_private.h"
-
+#include "raft_macroses_and_functions.h"
 #include <iostream>
 
 #define MINIMUM_RAND_FACTOR	6
@@ -237,7 +237,7 @@ int RaftServer::recv_appendentries_response(RaftNode2* a_node, msg_appendentries
 
 	if (1 == r->success) {
 		int i;
-		std::cout << "INcrease Success" <<++nIter<< std::endl;
+		DEBUG_APPLICATION( 1,"Increase Success %d",++nIter);
 		a_node->set_next_idx(r->current_idx);
 		for (i = r->first_idx; i <= r->current_idx; i++)
 			this->log->log_mark_node_has_committed(i);
@@ -258,10 +258,10 @@ int RaftServer::recv_appendentries_response(RaftNode2* a_node, msg_appendentries
 	} else {
 		/* If AppendEntries fails because of log inconsistency:
 		 decrement nextIndex and retry (�5.3) */
-		assert(0 <= a_node->get_next_idx());
+		//assert(0 <= a_node->get_next_idx());   // comented by DK
 		// TODO does this have test coverage?
 		// TODO can jump back to where node is different instead of iterating
-		a_node->set_next_idx(a_node->get_next_idx() - 1);
+		//a_node->set_next_idx(a_node->get_next_idx() - 1);  // comented by DK
 		send_appendentries(a_node);
 	}
 
@@ -393,8 +393,10 @@ void RaftServer::recv_requestvote_response(RaftNode2* a_node, msg_requestvote_re
 
 	if (1 == r->vote_granted) {
 		a_node->SetVotesForMe(1);
-		if (raft_votes_is_majority(m_nNodesCount-1, get_nvotes_for_me())) // -1 because old leader is not normal, but still counted
+		if (raft_votes_is_majority(m_nNodesCount-1, get_nvotes_for_me())){ // -1 because old leader is not normal, but still counted
+			printf("!!!!!!!!!!!!! line:%d, trying to became leader\n",__LINE__);
 			become_leader();
+		}
 	}
 	else{
 		a_node->SetVotesForMe(0);

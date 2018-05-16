@@ -41,9 +41,6 @@ void raft_swap_4_bytes(int32_t& a_unValue);
 	}while(0)
 #endif
 
-#define ERR_REP(...)					fprintf(stderr,__VA_ARGS__);fprintf(stderr,"\n")
-#define LOG_REP(...)					fprintf(stdout,__VA_ARGS__);fprintf(stdout,"\n")
-
 
 #ifdef __cplusplus
 
