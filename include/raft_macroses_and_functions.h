@@ -10,6 +10,18 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <signal.h>
+
+#if defined(_WIN32) && !defined(_WLAC_USED)
+struct sigaction { void(*sa_handler)(int); };
+#define sigaction(_sigNum,_newAction,_oldAction)	\
+	do{ \
+		if((_oldAction)){(_oldAction)->sa_handler=signal((_sigNum),(_newAction)->sa_handler);} \
+		else{signal((_sigNum),(_newAction)->sa_handler);} \
+	}while(0)
+#endif
+
+#define NULL_ACTION	((struct sigaction*)0)
 
 #ifdef _WIN32
 #else

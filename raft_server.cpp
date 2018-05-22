@@ -29,6 +29,10 @@
 
 #define MINIMUM_RAND_FACTOR	6
 
+#if defined(_MSC_VER) && (_MSC_VER>1400)
+#pragma warning(disable:4996)
+#endif
+
 static void __log(void *src, const char *fmt, ...) {
 	char buf[1024];
 	va_list args;
@@ -325,7 +329,7 @@ int RaftServer::recv_appendentries(RaftNode2* a_node, MsgAppendEntries2 *ae) {
 			set_last_applied_idx(e.d_id < ae->getLeaderCommit() ? e.d_id : ae->getLeaderCommit());
 			while (1 == apply_entry())
 				;
-		} catch (std::runtime_error& err) {
+		} catch (std::runtime_error& ) {
 
 		}
 	}
@@ -451,7 +455,7 @@ int RaftServer::apply_entry() {
 
 	try {
 		e = this->log->log_get_from_idx(this->last_applied_idx + 1);
-	} catch (std::runtime_error& err) {
+	} catch (std::runtime_error&) {
 		return 0;
 	}
 

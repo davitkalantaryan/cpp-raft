@@ -36,6 +36,8 @@ struct SAddRemData {
 	SAddRemData() :pNode(NULL){}
 };
 
+extern int g_nApplicationRun;
+
 class Server : protected RaftServer
 {
 public:
@@ -45,10 +47,14 @@ public:
 	int RunServerOnOtherThreads(int raftPort, const std::vector<NodeIdentifierKey>& vectPossibleNodes, int workersCount);
 	void StopServer();
 
+	static void Initialize();
+	static void Cleanup();
+
 protected:
 	virtual void		ReceiveFromDataSocket(RaftNode2* anyNode);
 	virtual RaftNode2*	RemoveNode(RaftNode2* node) OVERRIDE;
 	virtual void		HandleNewConnection(char code,common::SocketTCP& clientSock, const sockaddr_in* remoteAddr);
+	virtual void		SignalHandler(int sigNum);
 
 	void ThreadFunctionListen();
 	void ThreadFunctionPeriodic();
@@ -88,6 +94,8 @@ protected:
 	static int	SendClbkFunction(void *cb_ctx, void *udata, RaftNode2* node, int msg_type, const unsigned char *send_data, int d_len);
 	static void LogClbkFunction(void *cb_ctx, void *src, const char *buf, ...);
 	static int	ApplyLogClbkFunction(void *cb_ctx, void *udata, const unsigned char *d_data, int d_len);
+
+	static void SigHandlerStatic(int a_nSigNum);
 
 protected:
 	common::ServerTCP								m_serverTcp;

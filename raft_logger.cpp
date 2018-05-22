@@ -29,7 +29,7 @@ raft_entry_t& RaftLogger::log_get_from_idx(int idx) {
 
 int RaftLogger::log_count()
 {
-    return entries.size();
+    return (int)entries.size();
 }
 
 void RaftLogger::log_delete(int idx)

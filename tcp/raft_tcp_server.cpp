@@ -7,6 +7,9 @@
 #include <string>
 #include <stdint.h>
 #include <signal.h>
+#ifndef _WIN32
+#include <pthread.h>
+#endif
 
 #define MIN_REP_RATE_MS					5
 #define DEF_REP_RATE_MS					5000
@@ -20,17 +23,20 @@
 #define closesocket	close
 #endif
 
-#ifdef HANDLE_SIG_ACTIONS
-#include <pthread.h>
-static void SigActionFunction (int, siginfo_t *, void *);
+struct ServersList { raft::tcp::Server *server; ServersList *prev, *next; };
+static struct ServersList* s_pFirst = NULL;
+//static pthread_rwlock_t s_pRWlockForServers = PTHREAD_RWLOCK_INITIALIZER;
+static newSharedMutex s_pRWlockForServers;
+
+//static void SigActionFunction (int, siginfo_t *, void *); last 2 arguments are not used
 static void AddNewRaftServer(raft::tcp::Server* a_pServer);
 static void RemoveRaftServer(raft::tcp::Server* a_pServer);
-#endif  // #ifdef HANDLE_SIG_ACTIONS
 
 static std::mutex s_mutexForRaftSend;
 
 namespace raft{namespace tcp{
 int g_nLogLevel = 0;
+int g_nApplicationRun = 0;
 }}
 
 typedef struct NodeTools{ 
@@ -77,6 +83,45 @@ raft::tcp::Server::~Server()
 }
 
 
+void raft::tcp::Server::Initialize()
+{
+	struct sigaction newAction;
+
+	newAction.sa_handler = &Server::SigHandlerStatic;
+#if !defined(_WIN32) || defined(_WLAC_USED)
+	newAction.sa_flags = 0;
+	sigemptyset(&newAction.sa_mask);
+	newAction.sa_restorer = NULL;
+
+	sigaction(SIGPIPE, &newAction, NULL);
+#else
+#endif
+
+	sigaction(SIGABRT, &newAction, NULL_ACTION);
+	sigaction(SIGFPE, &newAction, NULL_ACTION);
+	sigaction(SIGILL, &newAction, NULL_ACTION);
+	sigaction(SIGINT, &newAction, NULL_ACTION);
+	sigaction(SIGSEGV, &newAction, NULL_ACTION);
+	sigaction(SIGTERM, &newAction, NULL_ACTION);
+
+	common::socketN::Initialize();
+
+	g_nApplicationRun = 1;
+}
+
+
+void raft::tcp::Server::Cleanup()
+{
+	g_nApplicationRun = 0;
+	common::socketN::Cleanup();
+}
+
+
+void raft::tcp::Server::SignalHandler(int )
+{
+}
+
+
 RaftNode2* raft::tcp::Server::RemoveNode(RaftNode2* a_node)
 {
 	NodeTools* pNodeTool = (NodeTools*)a_node->get_udata();
@@ -99,20 +144,8 @@ int raft::tcp::Server::RunServerOnOtherThreads(int a_nRaftPort, const std::vecto
     DEBUG_HANGING();
 	std::thread* pWorker;
 
-#ifdef HANDLE_SIG_ACTIONS
-    struct sigaction newAction;
-
-    m_starterThread = pthread_self();
-
-    newAction.sa_flags = SA_SIGINFO;
-    sigemptyset(&newAction.sa_mask);
-    newAction.sa_restorer = NULL;
-    newAction.sa_sigaction = SigActionFunction;
-
-    sigaction(SIGPIPE,&newAction,NULL);
-    sigaction(SIGINT,&newAction,NULL);
-    //sigaction(SIG,&newAction,NULL);
-
+#ifndef _WIN32
+	m_starterThread = pthread_self();
 #endif  // #ifdef HANDLE_SIG_ACTIONS
 
 	if (m_nWork) {return -1;}
@@ -1236,6 +1269,75 @@ int raft::tcp::Server::ApplyLogClbkFunction(void *cb_ctx, void *udata, const uns
 }
 
 
+void raft::tcp::Server::SigHandlerStatic(int a_nSigNum)
+{
+    ServersList* pServer;
+
+#ifndef _WIN32
+	pthread_t interruptThread=pthread_self();
+#endif
+
+    DEBUG_APPLICATION(0,"Interrupt (No:%d)",a_nSigNum);
+
+	s_pRWlockForServers.lock_shared();
+    DEBUG_APPLICATION(1,"rd_lock");
+
+    pServer = s_pFirst;
+    while(pServer){
+
+		switch (a_nSigNum)
+		{
+		case SIGABRT:
+			break;
+		case SIGFPE:
+			break;
+		case SIGILL:
+			break;
+		case SIGINT:
+		{
+			static int snSigIntCount = 0;
+			DEBUG_APPLICATION(0, "Global flag set to 0, next SIGINT will stop server");
+
+			if(snSigIntCount++==0){
+				raft::tcp::g_nApplicationRun = 0;
+				break;
+			}
+
+			DEBUG_APPLICATION(0, "Process will be terminated");
+
+#ifdef _WIN32
+			pServer->server->StopServer();
+#else
+			if (interruptThread != pServer->server->m_starterThread) {
+				pthread_kill(pServer->server->m_starterThread, SIGINT);
+			}
+			else {
+				pServer->server->StopServer();
+			}
+#endif
+		}
+		break;
+		case SIGSEGV:
+			break;
+		case SIGTERM:
+			break;
+#if !defined(_WIN32) || defined(_WLAC_USED)
+		case SIGPIPE:
+			break;
+#endif
+		default:
+			break;
+		}
+		
+		pServer->server->SignalHandler(a_nSigNum);
+        pServer = pServer->next;
+    }
+
+	s_pRWlockForServers.unlock_shared();
+    DEBUG_APPLICATION(1,"unlock");
+}
+
+
 /********************************************************************************************************************/
 static int CreateEmptySocket()
 {
@@ -1243,24 +1345,18 @@ static int CreateEmptySocket()
 	return nSocket;
 }
 
-
-#ifdef HANDLE_SIG_ACTIONS
-struct ServersList{raft::tcp::Server *server;ServersList *prev, *next;};
-static struct ServersList* s_pFirst = NULL;
-static pthread_rwlock_t s_pRWlockForServers = PTHREAD_RWLOCK_INITIALIZER;
-
 static void AddNewRaftServer(raft::tcp::Server* a_pServer)
 {
     ServersList* pServerList = (ServersList*)calloc(1,sizeof(ServersList));
     if(!pServerList){HANDLE_MEM_DEF(" ");}
     pServerList->server = a_pServer;
     a_pServer->m_pReserved1 = pServerList;
-    pthread_rwlock_wrlock(&s_pRWlockForServers);
+	s_pRWlockForServers.lock();
     DEBUG_APPLICATION(1,"wr_lock");
     if(s_pFirst){s_pFirst->prev =pServerList;}
     pServerList->next = s_pFirst;
     s_pFirst = pServerList;
-    pthread_rwlock_unlock(&s_pRWlockForServers);
+	s_pRWlockForServers.unlock();
     DEBUG_APPLICATION(1,"unlock");
 }
 
@@ -1268,50 +1364,12 @@ static void AddNewRaftServer(raft::tcp::Server* a_pServer)
 static void RemoveRaftServer(raft::tcp::Server* a_pServer)
 {
     ServersList* pListItem = (ServersList*)a_pServer->m_pReserved1;
-    pthread_rwlock_wrlock(&s_pRWlockForServers);
+	s_pRWlockForServers.lock();
     DEBUG_APPLICATION(1,"wr_lock");
     if(pListItem->next){pListItem->next->prev=pListItem->prev;}
     if(pListItem->prev){pListItem->prev->next=pListItem->next;}
     if(pListItem==s_pFirst){s_pFirst=pListItem->next;}
-    pthread_rwlock_unlock(&s_pRWlockForServers);
+	s_pRWlockForServers.unlock();
     DEBUG_APPLICATION(1,"unlock");
     free(pListItem);
 }
-
-
-static void SigActionFunction (int a_nSigNum, siginfo_t * , void *)
-{
-    ServersList* pServer;
-    sigval aNewSig;
-    pthread_t interruptThread=pthread_self();
-
-    DEBUG_APPLICATION(0,"Interrupt (No:%d)",a_nSigNum);
-
-    pthread_rwlock_rdlock(&s_pRWlockForServers);
-    DEBUG_APPLICATION(1,"rd_lock");
-
-    pServer = s_pFirst;
-    while(pServer){
-        switch(a_nSigNum)
-        {
-        case SIGINT:
-            if(interruptThread != pServer->server->m_starterThread){
-                aNewSig.sival_ptr = NULL;
-                pthread_sigqueue(pServer->server->m_starterThread,SIGINT,aNewSig);
-            }
-            else{
-                pServer->server->StopServer();
-            }
-            break;
-        case SIGPIPE:
-            break;
-        default:
-            break;
-        }
-        pServer = pServer->next;
-    }
-
-    pthread_rwlock_unlock(&s_pRWlockForServers);
-    DEBUG_APPLICATION(1,"unlock");
-}
-#endif  // #ifdef HANDLE_SIG_ACTIONS
