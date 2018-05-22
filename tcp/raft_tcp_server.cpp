@@ -59,10 +59,6 @@ raft::tcp::Server::Server()
 {
 	raft_cbs_t aClbks;
 
-#ifdef HANDLE_SIG_ACTIONS
-    AddNewRaftServer(this);
-#endif
-
 	m_nWork = 0;
     m_infoSocketForRcvRaft2 = -1;
     m_infoSocketForRcvData2 = -1;
@@ -71,15 +67,15 @@ raft::tcp::Server::Server()
 	aClbks.log      = &raft::tcp::Server::LogClbkFunction;
 	aClbks.applylog = &raft::tcp::Server::ApplyLogClbkFunction;
 	this->set_callbacks(&aClbks, this);
+
+	AddNewRaftServer(this);
 }
 
 
 raft::tcp::Server::~Server()
 {
+	RemoveRaftServer(this);
 	this->StopServer();
-#ifdef HANDLE_SIG_ACTIONS
-    RemoveRaftServer(this);
-#endif //#ifdef HANDLE_SIG_ACTIONS
 }
 
 
@@ -160,6 +156,18 @@ int raft::tcp::Server::RunServerOnOtherThreads(int a_nRaftPort, const std::vecto
 
 	m_nWork = 1;
 
+#if !defined(_WIN32) || defined(_WLAC_USED)
+	// make a such that only main thread is interrupted 
+	// during SIGINT
+	struct sigaction newAction, oldAction;
+	newAction.sa_handler = SIG_IGN;
+	newAction.sa_flags = 0;
+	sigemptyset(&newAction.sa_mask);
+	newAction.sa_restorer = NULL;
+
+	sigaction(SIGINT, &newAction, &oldAction);
+#endif
+
 	m_threadTcpListen = std::thread(&Server::ThreadFunctionListen,this);
 	m_threadPeriodic = std::thread(&Server::ThreadFunctionPeriodic, this);
 	m_threadRcvRaftInfo = std::thread(&Server::ThreadFunctionRcvRaftInfo, this);
@@ -169,6 +177,10 @@ int raft::tcp::Server::RunServerOnOtherThreads(int a_nRaftPort, const std::vecto
 		pWorker = new std::thread(&Server::ThreadFunctionWorker, this);
 		m_vectThreadsWorkers.push_back(pWorker);
 	}
+
+#if !defined(_WIN32) || defined(_WLAC_USED)
+	sigaction(SIGINT, &oldAction, NULL_ACTION);
+#endif
 
 	return 0;
 }
