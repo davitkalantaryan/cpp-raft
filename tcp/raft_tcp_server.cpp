@@ -11,6 +11,8 @@
 #include <pthread.h>
 #endif
 
+#ifdef MAKE_LONG_WAIT_DEBUG
+
 #define MIN_REP_RATE_MS					5
 #define DEF_REP_RATE_MS					5000
 #define	TIMEOUTS_RATIO_MIN				5
@@ -18,6 +20,18 @@
 #define MAX_NUMBER_OF_PINGS				2
 #define MAX_UNANSWERED_PINGS			10
 #define MAX_ITER_OK_COUNT				6
+
+#else
+
+#define MIN_REP_RATE_MS					5
+#define DEF_REP_RATE_MS					2000
+#define	TIMEOUTS_RATIO_MIN				4
+#define MAX_NUMBER_OF_PINGS				2
+#define MAX_UNANSWERED_PINGS			5
+#define MAX_ITER_OK_COUNT				5
+
+#endif
+
 #ifdef _WIN32
 #else
 #define closesocket	close
