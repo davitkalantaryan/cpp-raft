@@ -241,7 +241,7 @@ int RaftServer::recv_appendentries_response(RaftNode2* a_node, msg_appendentries
 
 	if (1 == r->success) {
 		int i;
-		DEBUG_APPLICATION( 1,"Increase Success %d",++nIter);
+		DEBUG_APPLICATION( 3,"Increase Success %d",++nIter);
 		a_node->set_next_idx(r->current_idx);
 		for (i = r->first_idx; i <= r->current_idx; i++)
 			this->log->log_mark_node_has_committed(i);

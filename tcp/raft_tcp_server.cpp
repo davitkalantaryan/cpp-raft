@@ -738,65 +738,72 @@ void raft::tcp::Server::ThreadFunctionWorker()
 	char vcHostName[MAX_HOSTNAME_LENGTH];
 	char cRequest;
 
-	while(m_nWork){
-		m_semaWorker.wait();
+enterWhilePoint:
 
-		while(m_fifoWorker.Extract(&dataFromProducer)&&m_nWork){
+	try {
+		while (m_nWork) {
+			m_semaWorker.wait();
 
-			DEBUG_APPLICATION(1,
-				"conntion from %s(%s)",
-				common::socketN::GetHostName(&dataFromProducer.remAddress,vcHostName,MAX_HOSTNAME_LENGTH),
-				common::socketN::GetIPAddress(&dataFromProducer.remAddress));
-			aClientSock.SetNewSocketDescriptor(dataFromProducer.sockDescriptor);
-			aClientSock.setTimeout(SOCK_TIMEOUT_MS);
+			while (m_fifoWorker.Extract(&dataFromProducer) && m_nWork) {
 
-            snEndian = 1;
-			nSndRcv = aClientSock.writeC(&snEndian, 2);																// 2. Send endian				
-			if (nSndRcv != 2) {
-				DEBUG_APPLICATION(1,"Could not receive the endian of the connected pear");
+				DEBUG_APPLICATION(1,
+					"conntion from %s(%s)",
+					common::socketN::GetHostName(&dataFromProducer.remAddress, vcHostName, MAX_HOSTNAME_LENGTH),
+					common::socketN::GetIPAddress(&dataFromProducer.remAddress));
+				aClientSock.SetNewSocketDescriptor(dataFromProducer.sockDescriptor);
+				aClientSock.setTimeout(SOCK_TIMEOUT_MS);
+
+				snEndian = 1;
+				nSndRcv = aClientSock.writeC(&snEndian, 2);																// 2. Send endian				
+				if (nSndRcv != 2) {
+					DEBUG_APPLICATION(1, "Could not receive the endian of the connected pear");
+					aClientSock.closeC();
+					continue;
+				}
+
+				nSndRcv = aClientSock.readC(&cRequest, 1);																// 4. rcv request
+				if (nSndRcv != 1) {
+					DEBUG_APPLICATION(1, "Unable to read request type");
+					aClientSock.closeC();
+					continue;
+				}
+
+				switch (cRequest)
+				{
+				case raft::connect::toAnyNode::newNode:
+					DEBUG_APPLICATION(1, "raft::connect::toAnyNode::newNode");
+					connect_toAnyNode_newNode(aClientSock);
+					break;
+				case raft::connect::toLeader::newNode:
+					connect_toLeader_newNode(aClientSock, &dataFromProducer.remAddress);
+					DEBUG_APPLICATION(1, "raft::connect::toLeader::newNode");
+					break;
+				case raft::connect::toAnyNode::raftBridge:
+					DEBUG_APPLICATION(1, "raft::connect::toAnyNode::raftBridge");
+					connect_toAnyNode_bridgeToNodeRaft(aClientSock, &dataFromProducer.remAddress);
+					break;
+				case raft::connect::toAnyNode::dataBridge:
+					DEBUG_APPLICATION(1, "raft::connect::toAnyNode::dataBridge");
+					connect_toAnyNode_bridgeToNodeData(aClientSock, &dataFromProducer.remAddress);
+					break;
+				case raft::connect::fromClient::allNodesInfo:
+					DEBUG_APPLICATION(1, "raft::connect::fromClient::allNodesInfo");
+					connect_fromClient_allNodesInfo(aClientSock);
+					break;
+				case raft::connect::toAnyNode::otherLeaderFound:
+					DEBUG_APPLICATION(1, "raft::connect::toAnyNode::otherLeaderFound");
+					connect_toAnyNode_otherLeaderFound(aClientSock);
+					break;
+				default:
+					HandleNewConnection(cRequest, aClientSock, &dataFromProducer.remAddress);
+					break;
+				}
 				aClientSock.closeC();
-				continue;
-			}
-
-			nSndRcv = aClientSock.readC(&cRequest, 1);																// 4. rcv request
-			if (nSndRcv != 1) {
-				DEBUG_APPLICATION(1,"Unable to read request type");
-				aClientSock.closeC();
-				continue;
-			}
-
-			switch (cRequest)
-			{
-			case raft::connect::toAnyNode::newNode:
-				DEBUG_APPLICATION(1, "raft::connect::toAnyNode::newNode");
-				connect_toAnyNode_newNode(aClientSock);
-				break;
-			case raft::connect::toLeader::newNode:
-				connect_toLeader_newNode(aClientSock,&dataFromProducer.remAddress);
-				DEBUG_APPLICATION(1, "raft::connect::toLeader::newNode");
-				break;
-			case raft::connect::toAnyNode::raftBridge:
-				DEBUG_APPLICATION(1, "raft::connect::toAnyNode::raftBridge");
-				connect_toAnyNode_bridgeToNodeRaft(aClientSock, &dataFromProducer.remAddress);
-				break;
-			case raft::connect::toAnyNode::dataBridge:
-				DEBUG_APPLICATION(1, "raft::connect::toAnyNode::dataBridge");
-				connect_toAnyNode_bridgeToNodeData(aClientSock,&dataFromProducer.remAddress);
-				break;
-			case raft::connect::fromClient::allNodesInfo:
-				DEBUG_APPLICATION(1, "raft::connect::fromClient::allNodesInfo");
-				connect_fromClient_allNodesInfo(aClientSock);
-				break;
-			case raft::connect::toAnyNode::otherLeaderFound:
-				DEBUG_APPLICATION(1, "raft::connect::toAnyNode::otherLeaderFound");
-				connect_toAnyNode_otherLeaderFound(aClientSock);
-				break;
-			default:
-				HandleNewConnection(cRequest,aClientSock,&dataFromProducer.remAddress);
-				break;
-			}
-			aClientSock.closeC();
-		}
+			} // while (m_fifoWorker.Extract(&dataFromProducer) && m_nWork) {
+		}  // while (m_nWork) {
+	}
+	catch(...){
+		goto enterWhilePoint;
 	}
 }
 
@@ -1047,7 +1054,7 @@ void raft::tcp::Server::ThreadFunctionPeriodic()
 
 		while (m_nWork) {
 			if(is_leader() && (nIteration++ % 100)==0){
-				DEBUG_APPLICATION(1,"Leader node (leaderIteration=%d)", nIteration);
+				DEBUG_APPLICATION(2,"Leader node (leaderIteration=%d)", nIteration);
 			}
 			m_mutexShrd.lock_shared();
 			this->periodic(m_nPeriodForPeriodic);

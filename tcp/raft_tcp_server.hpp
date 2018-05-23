@@ -7,13 +7,6 @@
 #include <raft_server.h>
 #include "raft_tcp_common.hpp"
 #include <thread>
-#ifdef _WIN32
-#include <shared_mutex>
-typedef std::shared_mutex   newSharedMutex;
-#else
-#include <common_rwlock.hpp>
-typedef common::RWLock      newSharedMutex;
-#endif
 #include <string>
 //#include <unordered_map>
 #include <raft_node.h>

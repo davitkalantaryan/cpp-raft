@@ -6,6 +6,8 @@
 // To include   #include "raft_tcp_common.hpp"
 //
 
+#ifndef __raft_tcp_common_hpp__
+#define __raft_tcp_common_hpp__
 
 #include <common_sockettcp.hpp>
 #include <stdint.h>
@@ -41,3 +43,6 @@ bool ConnectAndGetEndian(common::SocketTCP* a_pSock,const NodeIdentifierKey& nod
 		DEBUG_APPLICATION_NO_NEW_LINE((_logLevel),"%s:%d  ",(_nodeKey).ip4Address,(int)((_nodeKey).port)); \
 		DEBUG_APPLICATION_NO_ADD_INFO((_logLevel),__VA_ARGS__); DEBUG_APPLICATION_NO_ADD_INFO((_logLevel),"\n"); \
 	}while(0)
+
+
+#endif  // #ifndef __raft_tcp_common_hpp__
