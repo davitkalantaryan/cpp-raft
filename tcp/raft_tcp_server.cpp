@@ -11,6 +11,8 @@
 #include <pthread.h>
 #endif
 
+// rep. rate is the rate of periodic raft job
+
 #ifdef MAKE_LONG_WAIT_DEBUG
 
 #define MIN_REP_RATE_MS					5
@@ -23,12 +25,12 @@
 
 #else
 
-#define MIN_REP_RATE_MS					5
-#define DEF_REP_RATE_MS					2000
-#define	TIMEOUTS_RATIO_MIN				4
-#define MAX_NUMBER_OF_PINGS				2
-#define MAX_UNANSWERED_PINGS			5
-#define MAX_ITER_OK_COUNT				5
+#define MIN_REP_RATE_MS					5		// les than this rep rate is not possible
+#define DEF_REP_RATE_MS					2000	// [ms] default rep rate is 2 seconds
+#define	TIMEOUTS_RATIO_MIN				6		// this is minimum ratio for follower between time of leader wait and rep. rate (to start election)
+#define MAX_NUMBER_OF_PINGS				2		// maximum number of pings that really will be done by leader
+#define MAX_UNANSWERED_PINGS			12		// number of virtual pings, after this leader will remove follower
+#define MAX_ITER_OK_COUNT				5		// used for syncronization
 
 #endif
 
@@ -149,7 +151,7 @@ void raft::tcp::Server::ReceiveFromDataSocket(RaftNode2*) // this should be over
 }
 
 
-int raft::tcp::Server::RunServerOnOtherThreads(int a_nRaftPort, const std::vector<NodeIdentifierKey>& a_vectPossibleNodes, int a_nWorkersCount)
+int raft::tcp::Server::RunServerOnOtherThreads(const std::vector<NodeIdentifierKey>& a_vectPossibleNodes, int a_nWorkersCount, int a_nRaftPort)
 {
     DEBUG_HANGING();
 	std::thread* pWorker;
@@ -160,7 +162,7 @@ int raft::tcp::Server::RunServerOnOtherThreads(int a_nRaftPort, const std::vecto
 
 	if (m_nWork) {return -1;}
 
-	m_nPortOwn = a_nRaftPort;
+	if(a_nRaftPort>0){m_nPortOwn = a_nRaftPort;} // otherwise child class inited m_nPortOwn
 	if(m_nPeriodForPeriodic<MIN_REP_RATE_MS){ m_nPeriodForPeriodic = DEF_REP_RATE_MS;}
 	if(this->request_timeout < m_nPeriodForPeriodic) { this->request_timeout = m_nPeriodForPeriodic;}
 	if(this->election_timeout < (TIMEOUTS_RATIO_MIN*this->request_timeout)) { this->election_timeout =(TIMEOUTS_RATIO_MIN*this->request_timeout);}
@@ -915,8 +917,8 @@ void raft::tcp::Server::ThreadFunctionAddRemoveNode()
 			case raft::newLeaderInternal::becomeLeader:
 				pKeyForDelete = (NodeIdentifierKey*)m_pLeaderNode->key2();
 				DEBUG_APP_WITH_NODE(0, *pKeyForDelete, "old leader died");
-				DEBUG_APPLICATION(0, "This node will be the leader");
 				this->RemoveNode(m_pLeaderNode);
+				DEBUG_APPLICATION(0, "This node will be the leader (numberOfNodes=%d)",m_nNodesCount);
 				m_pLeaderNode = m_thisNode;
 				m_pLeaderNode->makeLeader(1);
 				break;

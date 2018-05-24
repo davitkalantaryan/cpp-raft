@@ -29,6 +29,7 @@ typedef struct NodeIdentifierKey{
 	char ip4Address[MAX_IP4_LEN]; int32_t port;
 	/*----------------------------------------------*/
 	void set_ip4Address(const std::string& ip4Address);
+	void set_addressAndPort(char* addressAndPort, int32_t defaultPort);
 	bool operator==(const NodeIdentifierKey& aM)const;
 }NodeIdentifierKey;
 

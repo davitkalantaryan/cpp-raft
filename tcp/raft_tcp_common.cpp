@@ -25,6 +25,20 @@ void raft::tcp::NodeIdentifierKey::set_ip4Address(const std::string& a_hostName)
 }
 
 
+void raft::tcp::NodeIdentifierKey::set_addressAndPort(char* a_addressAndPort, int32_t a_defaultPort)
+{
+	char* pcPortStart = strchr(a_addressAndPort, ':');
+	
+	memset(this->ip4Address, 0, MAX_IP4_LEN);
+	if(pcPortStart){
+		*pcPortStart = 0;
+		this->port = atoi(pcPortStart + 1);
+	}
+	else {this->port=a_defaultPort;}
+	strncpy(this->ip4Address, a_addressAndPort, MAX_IP4_LEN);
+}
+
+
 namespace raft{namespace tcp{
 
 const char g_ccResponceOk= response::ok;

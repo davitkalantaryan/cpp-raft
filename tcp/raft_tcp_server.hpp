@@ -37,7 +37,7 @@ public:
 	Server();
 	virtual ~Server();
 
-	int RunServerOnOtherThreads(int raftPort, const std::vector<NodeIdentifierKey>& vectPossibleNodes, int workersCount);
+	int RunServerOnOtherThreads(const std::vector<NodeIdentifierKey>& vectPossibleNodes, int workersCount, int raftPort=-1);
 	void StopServer();
 
 	static void Initialize();
