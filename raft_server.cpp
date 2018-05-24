@@ -398,7 +398,7 @@ void RaftServer::recv_requestvote_response(RaftNode2* a_node, msg_requestvote_re
 	if (1 == r->vote_granted) {
 		a_node->SetVotesForMe(1);
 		if (raft_votes_is_majority(m_nNodesCount-1, get_nvotes_for_me())){ // -1 because old leader is not normal, but still counted
-			printf("!!!!!!!!!!!!! line:%d, trying to became leader\n",__LINE__);
+			DEBUG_APPLICATION(0,"starting to became leader");
 			become_leader();
 		}
 	}

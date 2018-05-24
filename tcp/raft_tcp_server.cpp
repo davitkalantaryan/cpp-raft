@@ -564,6 +564,7 @@ returnPoint:
 void raft::tcp::Server::ReceiveFromRaftSocket(RaftNode2* a_pNode)
 {
 	NodeTools *pNewNodeTools,*pTools = (NodeTools*)a_pNode->get_udata();
+	NodeIdentifierKey* pNodeKey = (NodeIdentifierKey*)a_pNode->key2();
 	SAddRemData			nodeData;
 	int nSndRcv;
 	bool bProblematic(true);
@@ -579,11 +580,11 @@ void raft::tcp::Server::ReceiveFromRaftSocket(RaftNode2* a_pNode)
 			++pTools->okCount;
 			break;
 		case raft::receive::anyNode::clbkCmd:
-			DEBUG_APPLICATION(2,"raft::receive::anyNode::clbkCmd");
+			DEBUG_APP_WITH_NODE(2,*pNodeKey,"raft::receive::anyNode::clbkCmd");
 			HandleSeedClbk(a_pNode);
 			break;
 		case raft::receive::fromLeader::newNode:
-			DEBUG_APPLICATION(1,"raft::receive::fromLeader::newNode");
+			DEBUG_APP_WITH_NODE(1,*pNodeKey,"raft::receive::fromLeader::newNode");
 			if (a_pNode != m_pLeaderNode) { goto returnPoint; }
 			nSndRcv = pTools->raftSocket2.readC(&nodeData.nodeKey, sizeof(NodeIdentifierKey));
 			if (nSndRcv != sizeof(NodeIdentifierKey)) { goto returnPoint; }
@@ -599,7 +600,7 @@ void raft::tcp::Server::ReceiveFromRaftSocket(RaftNode2* a_pNode)
 
 			break;
 		case raft::receive::fromLeader::removeNode:
-			DEBUG_APPLICATION(1,"raft::receive::fromLeader::removeNode");
+			DEBUG_APP_WITH_NODE(1, *pNodeKey,"raft::receive::fromLeader::removeNode");
 			if (a_pNode != m_pLeaderNode) { goto returnPoint; }
 			nSndRcv = pTools->raftSocket2.readC(&nodeData.nodeKey, sizeof(NodeIdentifierKey));
 			if (nSndRcv != sizeof(NodeIdentifierKey)) { goto returnPoint; }
@@ -613,7 +614,7 @@ void raft::tcp::Server::ReceiveFromRaftSocket(RaftNode2* a_pNode)
 
 			break;
 		case raft::receive::fromNewLeader::oldLeaderDied:
-			DEBUG_APPLICATION(1,"raft::receive::fromNewLeader::oldLeaderDied");
+			DEBUG_APP_WITH_NODE(1, *pNodeKey,"raft::receive::fromNewLeader::oldLeaderDied");
 			nSndRcv = pTools->raftSocket2.readC(&nodeData.nodeKey, sizeof(NodeIdentifierKey));
 			if (nSndRcv != sizeof(NodeIdentifierKey)) { goto returnPoint; }
 			if (pTools->isEndianDiffer) { SWAP4BYTES(nodeData.nodeKey.port); }
@@ -627,7 +628,7 @@ void raft::tcp::Server::ReceiveFromRaftSocket(RaftNode2* a_pNode)
 			m_semaAddRemove.post();
 			break;
 		default:
-			DEBUG_APPLICATION(0,"default:");
+			DEBUG_APP_WITH_NODE(0, *pNodeKey,"default:");
 			break;
 		}
 	}
