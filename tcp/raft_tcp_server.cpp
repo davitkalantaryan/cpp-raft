@@ -27,7 +27,7 @@
 
 #define MIN_REP_RATE_MS					5		// les than this rep rate is not possible
 #define DEF_REP_RATE_MS					2000	// [ms] default rep rate is 2 seconds
-#define	TIMEOUTS_RATIO_MIN				6		// this is minimum ratio for follower between time of leader wait and rep. rate (to start election)
+#define	TIMEOUTS_RATIO_MIN				11		// this is minimum ratio for follower between time of leader wait and rep. rate (to start election)
 #define MAX_NUMBER_OF_PINGS				2		// maximum number of pings that really will be done by leader
 #define MAX_UNANSWERED_PINGS			12		// number of virtual pings, after this leader will remove follower
 #define MAX_ITER_OK_COUNT				5		// used for syncronization
@@ -286,6 +286,9 @@ void raft::tcp::Server::connect_toLeader_newNode(common::SocketTCP& a_clientSock
 	bool bOk(false);
 
 	addNodeData.nodeKey.set_ip4Address(common::socketN::GetIPAddress(a_remoteAddr));
+	if(strcmp(addNodeData.nodeKey.ip4Address,"127.0.0.1")==0){
+		common::socketN::GetOwnIp4Address(addNodeData.nodeKey.ip4Address, MAX_IP4_LEN);
+	}
 
 	nSndRcv= a_clientSock.readC(&unRemEndian,2);
 	if(nSndRcv!= 2){ goto returnPoint;}
@@ -493,6 +496,7 @@ void raft::tcp::Server::ThreadFunctionListen()
 void raft::tcp::Server::HandleSeedClbk(RaftNode2* a_anyNode)
 {
 	NodeTools* pTools = (NodeTools*)a_anyNode->get_udata();
+	NodeIdentifierKey* pNodeKey = (NodeIdentifierKey*)a_anyNode->key2();
 	int nSndRcv, nToReceive;
 	int msg_type;
 	bool bProblematic(true);
@@ -505,7 +509,7 @@ void raft::tcp::Server::HandleSeedClbk(RaftNode2* a_anyNode)
 	case RAFT_MSG_REQUESTVOTE:
 	{
 		msg_requestvote_t reqVote(0,0,0,0);
-		DEBUG_APPLICATION(1,"RAFT_MSG_REQUESTVOTE");
+		DEBUG_APP_WITH_NODE(1,*pNodeKey,"RAFT_MSG_REQUESTVOTE");
 		nSndRcv = pTools->raftSocket2.readC(&reqVote, sizeof(msg_requestvote_t));
 		if (nSndRcv != sizeof(msg_requestvote_t)) { goto returnPoint; }
 		recv_requestvote(a_anyNode, &reqVote);
@@ -514,7 +518,7 @@ void raft::tcp::Server::HandleSeedClbk(RaftNode2* a_anyNode)
 	case RAFT_MSG_REQUESTVOTE_RESPONSE:
 	{
 		msg_requestvote_response_t  reqVoteResp;
-		DEBUG_APPLICATION(1,"RAFT_MSG_REQUESTVOTE_RESPONSE");
+		DEBUG_APP_WITH_NODE(1, *pNodeKey,"RAFT_MSG_REQUESTVOTE_RESPONSE");
 		nSndRcv = pTools->raftSocket2.readC(&reqVoteResp, sizeof(msg_requestvote_response_t));
 		if (nSndRcv != sizeof(msg_requestvote_response_t)) { goto returnPoint; }
 		recv_requestvote_response(a_anyNode, &reqVoteResp);
@@ -523,7 +527,7 @@ void raft::tcp::Server::HandleSeedClbk(RaftNode2* a_anyNode)
 	case RAFT_MSG_APPENDENTRIES:
 	{
 		MsgAppendEntries2 appEntries;
-		DEBUG_APPLICATION(3,"RAFT_MSG_APPENDENTRIES");
+		DEBUG_APP_WITH_NODE(3, *pNodeKey,"RAFT_MSG_APPENDENTRIES");
 		nSndRcv = pTools->raftSocket2.readC(&appEntries, SIZE_OF_INITIAL_RCV_OF_MSG_APP);
 		if (nSndRcv != SIZE_OF_INITIAL_RCV_OF_MSG_APP) { goto returnPoint; }
 		if(appEntries.getNEntries()){
@@ -537,7 +541,7 @@ void raft::tcp::Server::HandleSeedClbk(RaftNode2* a_anyNode)
 	case RAFT_MSG_APPENDENTRIES_RESPONSE:
 	{
 		msg_appendentries_response_t aApndResp;
-		DEBUG_APPLICATION(3,"RAFT_MSG_APPENDENTRIES_RESPONSE");
+		DEBUG_APP_WITH_NODE(3, *pNodeKey,"RAFT_MSG_APPENDENTRIES_RESPONSE");
 		nSndRcv = pTools->raftSocket2.readC(&aApndResp, sizeof(msg_appendentries_response_t));
 		if (nSndRcv != sizeof(msg_appendentries_response_t)) { goto returnPoint; }
 		a_anyNode->pingReceived();
@@ -546,7 +550,7 @@ void raft::tcp::Server::HandleSeedClbk(RaftNode2* a_anyNode)
 	}
 	break;
 	default:
-		DEBUG_APPLICATION(0,"raft-receive: default:");
+		DEBUG_APP_WITH_NODE(0, *pNodeKey,"raft-receive: default:");
 		goto returnPoint;
 	}
 
@@ -1323,10 +1327,13 @@ void raft::tcp::Server::SigHandlerStatic(int a_nSigNum)
 		switch (a_nSigNum)
 		{
 		case SIGABRT:
+			printf("SIGABRT\n");
 			break;
 		case SIGFPE:
+			printf("SIGFPE\n");
 			break;
 		case SIGILL:
+			printf("SIGILL\n");
 			break;
 		case SIGINT:
 		{
@@ -1353,14 +1360,17 @@ void raft::tcp::Server::SigHandlerStatic(int a_nSigNum)
 		}
 		break;
 		case SIGSEGV:
+			printf("SIGSEGV\n");
 			break;
 		case SIGTERM:
 			break;
 #if !defined(_WIN32) || defined(_WLAC_USED)
 		case SIGPIPE:
+			printf("SIGPIPE\n");
 			break;
 #endif
 		default:
+			printf("default\n");
 			break;
 		}
 		
