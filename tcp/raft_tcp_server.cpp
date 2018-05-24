@@ -782,8 +782,13 @@ enterWhilePoint:
 					connect_toAnyNode_newNode(aClientSock);
 					break;
 				case raft::connect::toLeader::newNode:
-					connect_toLeader_newNode(aClientSock, &dataFromProducer.remAddress);
-					DEBUG_APPLICATION(1, "raft::connect::toLeader::newNode");
+					if(!is_leader()){
+						ERROR_LOGGING("This node is not leader, but reques is done for leader!\n");
+					}
+					else{
+						connect_toLeader_newNode(aClientSock, &dataFromProducer.remAddress);
+						DEBUG_APPLICATION(1, "raft::connect::toLeader::newNode");
+					}
 					break;
 				case raft::connect::toAnyNode::raftBridge:
 					DEBUG_APPLICATION(1, "raft::connect::toAnyNode::raftBridge");
@@ -983,10 +988,19 @@ void raft::tcp::Server::CheckAllPossibleSeeds(const std::vector<NodeIdentifierKe
 	try {
 
 		for(i=0;i<cnSize;++i){
+			DEBUG_APP_WITH_NODE(2, a_vectPossibleNodes[i], "trying to connect");
 			if(  (strncmp(vcOwnIp4Address,a_vectPossibleNodes[i].ip4Address,MAX_IP4_LEN)==0)&&(m_nPortOwn==a_vectPossibleNodes[i].port) ){nThisIndex=i;continue;}
 			else {
 				cpcPosibleSeedIp = common::socketN::GetIp4AddressFromHostName(a_vectPossibleNodes[i].ip4Address);
-				if (cpcPosibleSeedIp && (strncmp(vcOwnIp4Address, cpcPosibleSeedIp, MAX_IP4_LEN) == 0) && (m_nPortOwn == a_vectPossibleNodes[i].port)) { nThisIndex=i; continue; }
+				if (cpcPosibleSeedIp) {
+					DEBUG_APP_WITH_NODE(3, a_vectPossibleNodes[i],"cpcPosibleSeedIp=%s, m_nPortOwn=%d", cpcPosibleSeedIp, m_nPortOwn);
+					if(strcmp(cpcPosibleSeedIp,"127.0.0.1")==0){
+						if(m_nPortOwn== a_vectPossibleNodes[i].port){nThisIndex = i; continue;}
+					}
+					else if(strncmp(vcOwnIp4Address, cpcPosibleSeedIp, MAX_IP4_LEN) == 0){
+						if(m_nPortOwn== a_vectPossibleNodes[i].port){nThisIndex = i; continue;}
+					}
+				}
 			}
             DEBUG_HANGING();
 			pNodesFromLeader=TryFindLeaderThrdSafe(a_vectPossibleNodes[i]);
@@ -1115,8 +1129,8 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindLeaderThrdSafe(const Nod
 	aSocket.closeC();
 
 	/*******************************************************************************************************************************************/
-
-	if(!ConnectAndGetEndian(&aSocket,a_nodeInfo,raft::connect::toLeader::newNode,&isEndianDiffer)){goto returnPoint;}	// 1. connect, getEndian and sendRequest
+	DEBUG_APP_WITH_NODE(1, leaderNodeKey,"connect to leader");
+	if(!ConnectAndGetEndian(&aSocket, leaderNodeKey,raft::connect::toLeader::newNode,&isEndianDiffer)){goto returnPoint;}	// 1. connect, getEndian and sendRequest
 	
 	snEndian2 = 1;
 	nSndRcv = aSocket.writeC(&snEndian2, 2);																			// 2. send endian
