@@ -294,7 +294,7 @@ void raft::tcp::Server::connect_toLeader_newNode(common::SocketTCP& a_clientSock
 	if(nEndianDiffer){ SWAP4BYTES(addNodeData.nodeKey.port);}
 
 	pNewNodeTool = new NodeTools;
-	if (!pNewNodeTool) { HANDLE_MEM_DEF(" "); }
+	HANDLE_MEM_DEF2(pNewNodeTool," ");
 	pNewNodeTool->isEndianDiffer = nEndianDiffer;
 	
 	m_mutexShrd.lock_shared();
@@ -317,7 +317,7 @@ void raft::tcp::Server::connect_toLeader_newNode(common::SocketTCP& a_clientSock
 	// add this new node here
 	pNewNodeTool->raftSocket2.SetNewSocketDescriptor(a_clientSock);
 	addNodeData.pNode = new RaftNode2(pNewNodeTool);
-	if (!addNodeData.pNode) { HANDLE_MEM_DEF(" "); }
+	HANDLE_MEM_DEF2(addNodeData.pNode," ");
 	addNodeData.action = raft::leaderInternal::newNode;
 
 	// start process adding and informing other nodes
@@ -386,7 +386,7 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::CollectAllNodesDataNotThrSafe(i
 	
 	*a_pnTotalSize = m_nNodesCount * sizeof(NodeIdentifierKey);
 	pAllNodesInfo = (NodeIdentifierKey*)malloc(*a_pnTotalSize);
-	if (!pAllNodesInfo) { HANDLE_MEM_DEF(" "); }
+	HANDLE_MEM_DEF2(pAllNodesInfo, " ");
 
 	// collect info
 	pNode = m_firstNode;
@@ -583,9 +583,9 @@ void raft::tcp::Server::ReceiveFromRaftSocket(RaftNode2* a_pNode)
 			if (nSndRcv != sizeof(NodeIdentifierKey)) { goto returnPoint; }
 			if (pTools->isEndianDiffer) { SWAP4BYTES(nodeData.nodeKey.port); }
 			pNewNodeTools = new NodeTools;
-			if (!pNewNodeTools) { HANDLE_MEM_DEF(" "); }
+			HANDLE_MEM_DEF2(pNewNodeTools, " ");
 			nodeData.pNode = new RaftNode2(pNewNodeTools);
-			if (!nodeData.pNode) { HANDLE_MEM_DEF(" "); }
+			HANDLE_MEM_DEF2(nodeData.pNode, " ");
 
 			nodeData.action = raft::receive::fromLeader::newNode;
 			m_fifoAddDel.AddElement(nodeData);
@@ -1078,7 +1078,7 @@ void raft::tcp::Server::AddOwnNode()
 	common::socketN::GetOwnIp4Address(aOwnHost.ip4Address, MAX_IP4_LEN);
 	aOwnHost.port = m_nPortOwn;
 	pNode = new RaftNode2(pTools);
-	if (!pNode) { HANDLE_MEM_DEF(" "); }
+	HANDLE_MEM_DEF2(pNode, " ");
 	m_thisNode = pNode;
 	if(is_leader()){m_pLeaderNode=pNode;pNode->makeLeader(1);}
 	this->AddNode(pNode, &aOwnHost, sizeof(NodeIdentifierKey));
@@ -1125,7 +1125,7 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindLeaderThrdSafe(const Nod
 
 	nBytesToReceive = numberOfNodes * sizeof(NodeIdentifierKey);
 	pNodesInfo = (NodeIdentifierKey*)malloc(nBytesToReceive);
-	if (!pNodesInfo) { HANDLE_MEM_DEF(" "); }
+	HANDLE_MEM_DEF2(pNodesInfo, " ");
 
 	nSndRcv = aSocket.readC(pNodesInfo, nBytesToReceive);																// 5. receive all nodes info
 	if (nSndRcv != nBytesToReceive) { goto returnPoint; }
@@ -1139,9 +1139,9 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindLeaderThrdSafe(const Nod
 
 	for(i=0;i<numberOfNodes;++i){
 		pTools = new NodeTools;
-		if(!pTools){HANDLE_MEM_DEF(" ");}
+		HANDLE_MEM_DEF2(pTools, " ");
 		pNewNode = new RaftNode2(pTools);
-		if (!pNewNode) { HANDLE_MEM_DEF(" "); }
+		HANDLE_MEM_DEF2(pNewNode, " ");
 		this->AddNode(pNewNode, &pNodesInfo[i], sizeof(NodeIdentifierKey));
 		if(leaderNodeKey== pNodesInfo[i]){
 			pNewNode->makeLeader(1);
@@ -1381,7 +1381,7 @@ static int CreateEmptySocket()
 static void AddNewRaftServer(raft::tcp::Server* a_pServer)
 {
     ServersList* pServerList = (ServersList*)calloc(1,sizeof(ServersList));
-    if(!pServerList){HANDLE_MEM_DEF(" ");}
+	HANDLE_MEM_DEF2(pServerList, " ");
     pServerList->server = a_pServer;
     a_pServer->m_pReserved1 = pServerList;
 	s_pRWlockForServers.lock();

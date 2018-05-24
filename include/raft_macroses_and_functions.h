@@ -54,13 +54,6 @@ void raft_swap_4_bytes(int32_t& a_unValue);
 #else
 #endif
 
-#ifndef HANDLE_MEM_DEF
-#define HANDLE_MEM_DEF(...)				\
-	do{ \
-		fprintf(stderr,"fl:%s,ln:%d-> low memory",__FILE__,__LINE__);fprintf(stderr,__VA_ARGS__);fprintf(stderr,"\n");exit(1); \
-	}while(0)
-#endif
-
 
 #ifdef __cplusplus
 
@@ -178,6 +171,14 @@ namespace newLeaderInternal {enum Type {
 
 #define ERROR_LOGGING(...)	\
 	do{ fprintf(stderr,"ERROR: fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);fprintf(stderr,__VA_ARGS__);}while(0)
+
+#define HANDLE_MEM_DEF2(_pointer,...)				\
+	do{ \
+		if(!(_pointer)){ \
+			fprintf(stderr,"fl:%s,ln:%d-> low memory",FILE_FROM_PATH(__FILE__),__LINE__); \
+			fprintf(stderr,__VA_ARGS__);fprintf(stderr,"\n");exit(1); \
+		} \
+	}while(0)
 
 
 #if 0
