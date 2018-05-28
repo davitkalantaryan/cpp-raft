@@ -4,6 +4,8 @@
 
 #include "common_servertcp.hpp"
 
+#include <signal.h>
+
 #ifdef _WIN32
 #include <WinSock2.h>
 #include <WS2tcpip.h>
@@ -19,7 +21,6 @@
 static void SigActionFunction (int a_nSigNum, siginfo_t * , void *);
 #endif
 
-#include <signal.h>
 
 namespace WORK_STATUSES {enum{STOPPED=0,TRYING_TO_STOP,RUN};}
 
