@@ -1,9 +1,8 @@
 //
 //
 //
-#include "common_servertcp.hpp"
 
-#include <signal.h>
+#include "common_servertcp.hpp"
 
 #ifdef _WIN32
 #include <WinSock2.h>
@@ -20,6 +19,8 @@
 static void SigActionFunction (int a_nSigNum, siginfo_t * , void *);
 #endif
 
+#include <signal.h>
+
 namespace WORK_STATUSES {enum{STOPPED=0,TRYING_TO_STOP,RUN};}
 
 
@@ -29,6 +30,7 @@ common::ServerTCP::ServerTCP()
 	m_nServerThreadId(0)
 {
 }
+
 
 common::ServerTCP::~ServerTCP()
 {

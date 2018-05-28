@@ -5,7 +5,7 @@
 #ifndef __common_iodevice_hpp__
 #define __common_iodevice_hpp__
 
-#if defined(_MSC_VER) & (_MSC_VER==1913)
+#if defined(_MSC_VER) & (_MSC_VER>=1913)
 #ifndef CINTERFACE
 #define CINTERFACE
 #endif
