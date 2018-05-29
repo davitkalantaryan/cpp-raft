@@ -105,7 +105,7 @@ protected:
 	std::thread										m_threadRcvData;
 	std::thread										m_threadAddRemoveNode;
 	std::vector<std::thread*>						m_vectThreadsWorkers;
-    newSharedMutex                                  m_mutexShrd;
+    newSharedMutex                                  m_shrdMutexForNodes;
 	common::UnnamedSemaphoreLite					m_semaWorker;
 	common::UnnamedSemaphoreLite					m_semaAddRemove;
 	common::FifoFast<SWorkerData>					m_fifoWorker;

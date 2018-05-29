@@ -7,6 +7,7 @@
 #include <string>
 #include <stdint.h>
 #include <signal.h>
+#include "common/newlockguards.hpp"
 #ifndef _WIN32
 #include <pthread.h>
 #endif
@@ -272,6 +273,7 @@ void raft::tcp::Server::connect_toLeader_newNode(common::SocketTCP& a_clientSock
     NodeIdentifierKey	*pAllNodesInfo=NULL;
 	NodeTools*			pNewNodeTool = NULL;
 	RaftNode2*			pNode;
+	common::NewSharedLockGuard<newSharedMutex> aShrdLockGuard;
 	SAddRemData			addNodeData;
     int nNodesCount,nTotalSize;
 	int nSndRcv, nEndianDiffer(0);
@@ -295,11 +297,11 @@ void raft::tcp::Server::connect_toLeader_newNode(common::SocketTCP& a_clientSock
 	HANDLE_MEM_DEF2(pNewNodeTool," ");
 	pNewNodeTool->isEndianDiffer = nEndianDiffer;
 	
-	m_mutexShrd.lock_shared();
+	aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes);  // locking
 
 	// first let's check if the node does not exist
 	if(m_hashNodes.FindEntry(&addNodeData.nodeKey,sizeof(NodeIdentifierKey),&pNode)){
-		m_mutexShrd.unlock_shared();
+		aShrdLockGuard.UnsetAndUnlockMutex();
 		// send 0, as a sign, that node exists
 		nTotalSize = raft::response::error::nodeExist;
 		a_clientSock.writeC(&nTotalSize, 4);
@@ -309,8 +311,7 @@ void raft::tcp::Server::connect_toLeader_newNode(common::SocketTCP& a_clientSock
 	nNodesCount = m_nNodesCount;
 	pAllNodesInfo=CollectAllNodesDataNotThrSafe(&nTotalSize,NULL);
 
-	m_mutexShrd.unlock_shared();
-
+	aShrdLockGuard.UnsetAndUnlockMutex();  // unlocking
 
 	// add this new node here
 	pNewNodeTool->raftSocket2.SetNewSocketDescriptor(a_clientSock);
@@ -344,6 +345,7 @@ void raft::tcp::Server::connect_toAnyNode_bridgeToNodeRaft(common::SocketTCP& a_
 	RaftNode2* pNode;
 	NodeTools* pNodeTools;
 	NodeIdentifierKey aRemHost;
+	common::NewSharedLockGuard<newSharedMutex> aShrdLockGuard;
 	int nEndianDiffer(0);
 	int nSndRcv;
 	uint16_t unRemEndian;
@@ -358,16 +360,16 @@ void raft::tcp::Server::connect_toAnyNode_bridgeToNodeRaft(common::SocketTCP& a_
 	if(nSndRcv!=4){return;}
 	if(nEndianDiffer){SWAP4BYTES(aRemHost.port);}
 
-	m_mutexShrd.lock_shared();
+	aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes);  // locking
 	if(!m_hashNodes.FindEntry(&aRemHost,sizeof(NodeIdentifierKey),&pNode)){
-		m_mutexShrd.unlock_shared();
+		aShrdLockGuard.UnsetAndUnlockMutex();
 		return;
 	}
 	
 	pNodeTools = (NodeTools*)pNode->get_udata();
 	pNodeTools->isEndianDiffer = nEndianDiffer;
 	pNodeTools->raftSocket2.SetNewSocketDescriptor(a_clientSock);
-	m_mutexShrd.unlock_shared();
+	aShrdLockGuard.UnsetAndUnlockMutex();       // unlocking
 
 	InterruptRaftRcv();
 
@@ -405,12 +407,13 @@ void raft::tcp::Server::connect_fromClient_allNodesInfo(common::SocketTCP& a_cli
 {
 	struct { int nodesCount, leaderIndex; }nl;
 	NodeIdentifierKey *pAllNodesInfo;
+	common::NewSharedLockGuard<newSharedMutex> aShrdLockGuard;
 	int nSndRcv,nTotalSize;
 
-	m_mutexShrd.lock_shared();
+	aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes);  // locking
 	nl.nodesCount = m_nNodesCount;
 	pAllNodesInfo = CollectAllNodesDataNotThrSafe(&nTotalSize,&nl.leaderIndex);
-	m_mutexShrd.unlock_shared();
+	aShrdLockGuard.UnsetAndUnlockMutex();   // ---> unlocking
 
 	if(!pAllNodesInfo){return;}
 
@@ -448,6 +451,7 @@ void raft::tcp::Server::connect_toAnyNode_bridgeToNodeData(common::SocketTCP& a_
 	RaftNode2* pNode;
 	NodeTools* pNodeTools;
 	NodeIdentifierKey aRemHost;
+	common::NewSharedLockGuard<newSharedMutex> aShrdLockGuard;
 	int nSndRcv, nEndianDiffer(0);
 	uint16_t unRemEndian;
 
@@ -461,16 +465,16 @@ void raft::tcp::Server::connect_toAnyNode_bridgeToNodeData(common::SocketTCP& a_
 	if(nSndRcv!=4){return;}
 	if(nEndianDiffer){SWAP4BYTES(aRemHost.port);}
 
-	m_mutexShrd.lock_shared();
+	aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes);  // --> locking
 	if(!m_hashNodes.FindEntry(&aRemHost,sizeof(NodeIdentifierKey),&pNode)){
-		m_mutexShrd.unlock_shared();
+		aShrdLockGuard.UnsetAndUnlockMutex();
 		return;
 	}
 	
 	pNodeTools = (NodeTools*)pNode->get_udata();
 	pNodeTools->isEndianDiffer = nEndianDiffer;
 	pNodeTools->dataSocket.SetNewSocketDescriptor(a_clientSock);
-	m_mutexShrd.unlock_shared();
+	aShrdLockGuard.UnsetAndUnlockMutex();  // --> unlocking
 
 	InterruptDataRcv();
 
@@ -640,72 +644,82 @@ void raft::tcp::Server::FunctionForMultiRcv(volatile int* a_pnSocketForInfo, voi
 {
 	NodeTools* pNodeTools;
 	RaftNode2* pNode;
+	common::NewSharedLockGuard<newSharedMutex> aShrdLockGuard;
 	fd_set rFds, eFds;
 	int nMax, nCurrentSocket, nSelectReturn, nSocketsFound, nSocketToIgnore=-1, nLastSocket;
     volatile int& nSocketForInfo = *a_pnSocketForInfo;
-	while (m_nWork){
-		FD_ZERO(&rFds); FD_ZERO(&eFds);
-		m_mutexShrd.lock_shared();
-		if(nSocketForInfo<=0){nSocketForInfo=CreateEmptySocket();}
-		nMax = nSocketForInfo;
+
+enterLoopPoint:
+	try{
+
+		while (m_nWork) {
+			FD_ZERO(&rFds); FD_ZERO(&eFds);
+			aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes);  // --> locking
+			if (nSocketForInfo <= 0) { nSocketForInfo = CreateEmptySocket(); }
+			nMax = nSocketForInfo;
 #ifdef _WIN32
-		FD_SET(nSocketForInfo, &rFds);
+			FD_SET(nSocketForInfo, &rFds);
 #else
-		FD_SET(nSocketForInfo, &eFds);
+			FD_SET(nSocketForInfo, &eFds);
 #endif
-		pNode = m_firstNode;
-		nLastSocket = -1;
-		while(pNode){
-			if((pNode!=m_thisNode)&&(!pNode->isProblematic())){
-				pNodeTools = (NodeTools*)pNode->get_udata();
-				nCurrentSocket = a_bIsRaft?pNodeTools->raftSocket2:pNodeTools->dataSocket;
-				if((nCurrentSocket>0)&&(nCurrentSocket!=nSocketToIgnore)){
-					FD_SET(nCurrentSocket,&rFds);
-					FD_SET(nCurrentSocket,&eFds);
-					if(nCurrentSocket>nMax){nMax= nCurrentSocket;}
-				}  // if(pNodeTools->socket>0){
-			}  // if(pNode!=m_thisNode){
-			pNode = pNode->next;
-		}// while(pNode){
-		m_mutexShrd.unlock_shared();
+			pNode = m_firstNode;
+			nLastSocket = -1;
+			while (pNode) {
+				if ((pNode != m_thisNode) && (!pNode->isProblematic())) {
+					pNodeTools = (NodeTools*)pNode->get_udata();
+					nCurrentSocket = a_bIsRaft ? pNodeTools->raftSocket2 : pNodeTools->dataSocket;
+					if ((nCurrentSocket>0) && (nCurrentSocket != nSocketToIgnore)) {
+						FD_SET(nCurrentSocket, &rFds);
+						FD_SET(nCurrentSocket, &eFds);
+						if (nCurrentSocket>nMax) { nMax = nCurrentSocket; }
+					}  // if(pNodeTools->socket>0){
+				}  // if(pNode!=m_thisNode){
+				pNode = pNode->next;
+			}// while(pNode){
+			aShrdLockGuard.UnsetAndUnlockMutex();  // --> unlocking
 
-		nSelectReturn = ::select(++nMax, &rFds, NULL, &eFds, NULL);
-		if (!m_nWork) { break; }
-		if (nSelectReturn < 0) { 
-            DEBUG_APPLICATION(2,"Select returned negative value");
-            //Sleep(2000);  // most probably last client was problematic
-			nSocketToIgnore = nLastSocket;
-		} // will never happen
-        else {nSocketToIgnore=-1;}
-        nSocketsFound = 0;
-        m_mutexShrd.lock_shared();
-        if(FD_ISSET(nSocketForInfo,&rFds)||FD_ISSET(nSocketForInfo,&eFds)){
-            ++nSocketsFound;
-            closesocket(nSocketForInfo);  //  is it necessary?
-            nSocketForInfo = -1;
-        }
+			nSelectReturn = ::select(++nMax, &rFds, NULL, &eFds, NULL);
+			if (!m_nWork) { break; }
+			if (nSelectReturn < 0) {
+				DEBUG_APPLICATION(2, "Select returned negative value");
+				//Sleep(2000);  // most probably last client was problematic
+				nSocketToIgnore = nLastSocket;
+			} // will never happen (or?)
+			else { nSocketToIgnore = -1; }
+			nSocketsFound = 0;
+			aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes);  // --> locking
+			if (FD_ISSET(nSocketForInfo, &rFds) || FD_ISSET(nSocketForInfo, &eFds)) {
+				++nSocketsFound;
+				closesocket(nSocketForInfo);  //  is it necessary?
+				nSocketForInfo = -1;
+			}
 
-        pNode = m_firstNode;
-        while (pNode && (nSocketsFound<nSelectReturn)) {
-            if (pNode != m_thisNode) {
-                pNodeTools = (NodeTools*)pNode->get_udata();
-                nCurrentSocket = a_bIsRaft?pNodeTools->raftSocket2:pNodeTools->dataSocket;
-                if (FD_ISSET(nCurrentSocket, &rFds)) {
-                    // call receive ...
-                    nLastSocket = nCurrentSocket;
-                    (this->*a_fpRcvFnc)(pNode);
-                    ++nSocketsFound;
-                }  // if(pNodeTools->socket>0){
-                if (FD_ISSET(nCurrentSocket, &eFds)) {
-                    pNode->setProblematic(1);
-                    ++nSocketsFound;
-                }  // if(pNodeTools->socket>0){
-            }  // if(pNode!=m_thisNode){
-            pNode = pNode->next;
-        }// while(pNode){
-        m_mutexShrd.unlock_shared();
+			pNode = m_firstNode;
+			while (pNode && (nSocketsFound<nSelectReturn)) {
+				if (pNode != m_thisNode) {
+					pNodeTools = (NodeTools*)pNode->get_udata();
+					nCurrentSocket = a_bIsRaft ? pNodeTools->raftSocket2 : pNodeTools->dataSocket;
+					if (FD_ISSET(nCurrentSocket, &rFds)) {
+						// call receive ...
+						nLastSocket = nCurrentSocket;
+						(this->*a_fpRcvFnc)(pNode);
+						++nSocketsFound;
+					}  // if(pNodeTools->socket>0){
+					if (FD_ISSET(nCurrentSocket, &eFds)) {
+						pNode->setProblematic(1);
+						++nSocketsFound;
+					}  // if(pNodeTools->socket>0){
+				}  // if(pNode!=m_thisNode){
+				pNode = pNode->next;
+			}// while(pNode){
+			aShrdLockGuard.UnsetAndUnlockMutex();  // --> unlocking
 
-	} // while (m_nWork){
+		} // while (m_nWork){
+	}
+	catch(...){
+		aShrdLockGuard.UnsetAndUnlockMutex();
+		goto enterLoopPoint;
+	}
 
 	if(nSocketForInfo>0){closesocket(nSocketForInfo);nSocketForInfo=-1;}
 }
@@ -738,9 +752,8 @@ void raft::tcp::Server::ThreadFunctionWorker()
 	char vcHostName[MAX_HOSTNAME_LENGTH];
 	char cRequest;
 
-enterWhilePoint:
-
 	try {
+	enterWhilePoint:
 		while (m_nWork) {
 			m_semaWorker.wait();
 
@@ -829,133 +842,142 @@ void raft::tcp::Server::ThreadFunctionAddRemoveNode()
 	NodeIdentifierKey* pKeyForNewLeader;
 	NodeIdentifierKey* pKeyToInform=NULL;
 	SAddRemData aData;
+	common::NewSharedLockGuard<newSharedMutex> aShrdLockGuard;
+	common::NewLockGuard<newSharedMutex> aLockGuard;
 	int nSndRcv, nIter;
 	uint32_t unOkCount;
 	char cRequest;
 	bool bInformFollowers, bWaitDone;
+	
+enterLoopPoint:
+	try {
+		while (m_nWork) {
+			m_semaAddRemove.wait();
 
+			while (m_fifoAddDel.Extract(&aData) && m_nWork) {
 
-	while(m_nWork){
-		m_semaAddRemove.wait();
+				switch (aData.action)
+				{
+				case raft::newLeaderInternal::becomeLeader:
+					cRequest = raft::receive::fromNewLeader::oldLeaderDied;
+					bInformFollowers = true;
+					bWaitDone = false;
+					pSkipNode = m_pLeaderNode;
+					pKeyToInform = (NodeIdentifierKey*)m_pLeaderNode->key2();
+					break;
+				case raft::leaderInternal::newNode:
+					cRequest = raft::receive::fromLeader::newNode;
+					bInformFollowers = true;
+					bWaitDone = true;
+					pSkipNode = NULL;
+					pKeyToInform = &aData.nodeKey;
+					break;
+				case raft::leaderInternal::removeNode:
+					cRequest = raft::receive::fromLeader::removeNode;
+					bInformFollowers = true;
+					bWaitDone = false;
+					pSkipNode = aData.pNode;
+					pKeyToInform = (NodeIdentifierKey*)aData.pNode->key2();
+					break;
+				default:
+					bInformFollowers = false;
+					break;
+				}  // switch (aData.action)
 
-		while(m_fifoAddDel.Extract(&aData) && m_nWork){
+				if (bInformFollowers) {
+					aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes);
+					pNextNode = m_firstNode;
+					while (pNextNode) {
+						if ((pNextNode != m_thisNode) && (pNextNode != pSkipNode) && !pNextNode->isProblematic()) {
+							pNodeTools = (NodeTools*)pNextNode->get_udata();
+							unOkCount = pNodeTools->okCount;
+							s_mutexForRaftSend.lock();
+							nSndRcv = pNodeTools->raftSocket2.writeC(&cRequest, 1);
+							if (nSndRcv != 1) { s_mutexForRaftSend.unlock(); pNextNode->setProblematic(1); goto nextNodePoint; }
+							nSndRcv = pNodeTools->raftSocket2.writeC(pKeyToInform, sizeof(NodeIdentifierKey));
+							s_mutexForRaftSend.unlock();
+							if (nSndRcv != sizeof(NodeIdentifierKey)) { pNextNode->setProblematic(1); goto nextNodePoint; }
 
-			switch (aData.action)
-			{
-			case raft::newLeaderInternal::becomeLeader:
-				cRequest = raft::receive::fromNewLeader::oldLeaderDied;
-				bInformFollowers = true;
-				bWaitDone = false;
-				pSkipNode = m_pLeaderNode;
-				pKeyToInform = (NodeIdentifierKey*)m_pLeaderNode->key2();
-				break;
-			case raft::leaderInternal::newNode:
-				cRequest = raft::receive::fromLeader::newNode;
-				bInformFollowers = true;
-				bWaitDone = true;
-				pSkipNode = NULL;
-				pKeyToInform = &aData.nodeKey;
-				break;
-			case raft::leaderInternal::removeNode:
-				cRequest = raft::receive::fromLeader::removeNode;
-				bInformFollowers = true;
-				bWaitDone = false;
-				pSkipNode = aData.pNode;
-				pKeyToInform = (NodeIdentifierKey*)aData.pNode->key2();
-				break;
-			default:
-				bInformFollowers = false;
-				break;
-			}  // switch (aData.action)
+							if (bWaitDone) { // wait untill done
+								nIter = 0;
+								while ((unOkCount == pNodeTools->okCount) && (nIter<MAX_ITER_OK_COUNT)) { Sleep(1); ++nIter; }
+							}
 
-			if(bInformFollowers){
-				m_mutexShrd.lock_shared();
-				pNextNode = m_firstNode;
-				while (pNextNode) {
-					if ((pNextNode != m_thisNode) && (pNextNode!=pSkipNode) && !pNextNode->isProblematic()) {
-						pNodeTools = (NodeTools*)pNextNode->get_udata();
-						unOkCount = pNodeTools->okCount;
-						s_mutexForRaftSend.lock();
-						nSndRcv = pNodeTools->raftSocket2.writeC(&cRequest, 1);
-						if (nSndRcv != 1) { s_mutexForRaftSend.unlock(); pNextNode->setProblematic(1); goto nextNodePoint; }
-						nSndRcv = pNodeTools->raftSocket2.writeC(pKeyToInform,sizeof(NodeIdentifierKey));
-						s_mutexForRaftSend.unlock();
-						if (nSndRcv != sizeof(NodeIdentifierKey)) { pNextNode->setProblematic(1); goto nextNodePoint; }
-
-						if (bWaitDone) { // wait untill done
-							nIter = 0;
-							while ((unOkCount==pNodeTools->okCount) && (nIter<MAX_ITER_OK_COUNT)){Sleep(1);++nIter;}
 						}
+					nextNodePoint:
+						pNextNode = pNextNode->next;
+					}  // while (pNextNode) {
 
-					}
-				nextNodePoint:
-					pNextNode = pNextNode->next;
-				}  // while (pNextNode) {
+					aShrdLockGuard.UnsetAndUnlockMutex();
+				} // if(bInformFollowers){
 
-				m_mutexShrd.unlock_shared();
-			} // if(bInformFollowers){
+				aLockGuard.SetAndLockMutex(&m_shrdMutexForNodes);
+				switch (aData.action)
+				{
+				case raft::leaderInternal::newNode: case raft::receive::fromLeader::newNode:
+					DEBUG_APPLICATION(1, "Node (add): %s:%d, numOfNodes=%d", aData.nodeKey.ip4Address, (int)aData.nodeKey.port, m_nNodesCount + 1);
+					this->AddNode(aData.pNode, &aData.nodeKey, sizeof(NodeIdentifierKey));
+					break;
+				case raft::receive::fromNewLeader::oldLeaderDied:
+					pKeyForDelete = (NodeIdentifierKey*)m_pLeaderNode->key2();
+					pKeyForNewLeader = (NodeIdentifierKey*)aData.pNode->key2();
+					DEBUG_APPLICATION(1, "old leader (%s:%d) will be deleted", pKeyForDelete->ip4Address, (int)pKeyForDelete->port);
+					DEBUG_APPLICATION(1, "New leader is  %s:%d. NodesCount=%d", pKeyForNewLeader->ip4Address, (int)pKeyForNewLeader->port, m_nNodesCount - 1);
+					this->RemoveNode(m_pLeaderNode);
+					m_pLeaderNode = aData.pNode;
+					m_pLeaderNode->makeLeader(1);
+					this->become_follower();
+					break;
+				case raft::leaderInternal::removeNode: case raft::receive::fromLeader::removeNode:
+					pKeyForDelete = (NodeIdentifierKey*)aData.pNode->key2();
+					DEBUG_APPLICATION(1, "Node (del): %s:%d, numOfNodes=%d", pKeyForDelete->ip4Address, (int)pKeyForDelete->port, m_nNodesCount - 1);
+					this->RemoveNode(aData.pNode);
+					break;
+				case raft::newLeaderInternal::becomeLeader:
+					pKeyForDelete = (NodeIdentifierKey*)m_pLeaderNode->key2();
+					DEBUG_APP_WITH_NODE(0, *pKeyForDelete, "old leader died");
+					this->RemoveNode(m_pLeaderNode);
+					DEBUG_APPLICATION(0, "This node will be the leader (numberOfNodes=%d)", m_nNodesCount);
+					m_pLeaderNode = m_thisNode;
+					m_pLeaderNode->makeLeader(1);
+					break;
+				default:
+					DEBUG_APPLICATION(0, "default");
+					break;
+				}
+				aLockGuard.UnsetAndUnlockMutex();
+				InterruptRaftRcv();
+				InterruptDataRcv();
 
-			m_mutexShrd.lock();
-			switch (aData.action)
-			{
-			case raft::leaderInternal::newNode: case raft::receive::fromLeader::newNode:
-				DEBUG_APPLICATION(1, "Node (add): %s:%d, numOfNodes=%d", aData.nodeKey.ip4Address, (int)aData.nodeKey.port, m_nNodesCount + 1);
-				this->AddNode(aData.pNode, &aData.nodeKey, sizeof(NodeIdentifierKey));
-				break;
-			case raft::receive::fromNewLeader::oldLeaderDied:
-				pKeyForDelete = (NodeIdentifierKey*)m_pLeaderNode->key2();
-				pKeyForNewLeader = (NodeIdentifierKey*)aData.pNode->key2();
-				DEBUG_APPLICATION(1, "old leader (%s:%d) will be deleted",pKeyForDelete->ip4Address, (int)pKeyForDelete->port);
-				DEBUG_APPLICATION(1, "New leader is  %s:%d. NodesCount=%d",pKeyForNewLeader->ip4Address,(int)pKeyForNewLeader->port,m_nNodesCount-1);
-				this->RemoveNode(m_pLeaderNode);
-				m_pLeaderNode = aData.pNode;
-				m_pLeaderNode->makeLeader(1);
-				this->become_follower();
-				break;
-			case raft::leaderInternal::removeNode: case raft::receive::fromLeader::removeNode:
-				pKeyForDelete = (NodeIdentifierKey*)aData.pNode->key2();
-				DEBUG_APPLICATION(1, "Node (del): %s:%d, numOfNodes=%d", pKeyForDelete->ip4Address, (int)pKeyForDelete->port, m_nNodesCount - 1);
-				this->RemoveNode(aData.pNode);
-				break;
-			case raft::newLeaderInternal::becomeLeader:
-				pKeyForDelete = (NodeIdentifierKey*)m_pLeaderNode->key2();
-				DEBUG_APP_WITH_NODE(0, *pKeyForDelete, "old leader died");
-				this->RemoveNode(m_pLeaderNode);
-				DEBUG_APPLICATION(0, "This node will be the leader (numberOfNodes=%d)",m_nNodesCount);
-				m_pLeaderNode = m_thisNode;
-				m_pLeaderNode->makeLeader(1);
-				break;
-			default:
-				DEBUG_APPLICATION(0, "default");
-				break;
-			}
-			m_mutexShrd.unlock();
-            InterruptRaftRcv();
-            InterruptDataRcv();
+				aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes);
+				switch (aData.action)
+				{
+				case raft::leaderInternal::newNode:
+					pNodeTools = (NodeTools*)aData.pNode->get_udata();
+					s_mutexForRaftSend.lock();
+					pNodeTools->raftSocket2.writeC(&g_ccResponceOk, 1);
+					s_mutexForRaftSend.unlock();
+					break;
+				case raft::receive::fromLeader::newNode:
+					pNodeToolsLeader = (NodeTools*)m_pLeaderNode->get_udata();
+					s_mutexForRaftSend.lock();
+					pNodeToolsLeader->raftSocket2.writeC(&g_ccResponceOk, 1);
+					s_mutexForRaftSend.unlock();
+					break;
+				default:
+					break;
+				}
+				aShrdLockGuard.UnsetAndUnlockMutex();
 
-			m_mutexShrd.lock_shared();
-			switch (aData.action)
-			{
-			case raft::leaderInternal::newNode:
-				pNodeTools = (NodeTools*)aData.pNode->get_udata();
-				s_mutexForRaftSend.lock();
-				pNodeTools->raftSocket2.writeC(&g_ccResponceOk, 1);
-				s_mutexForRaftSend.unlock();
-				break;
-			case raft::receive::fromLeader::newNode:
-				pNodeToolsLeader = (NodeTools*)m_pLeaderNode->get_udata();
-				s_mutexForRaftSend.lock();
-				pNodeToolsLeader->raftSocket2.writeC(&g_ccResponceOk, 1);
-				s_mutexForRaftSend.unlock();
-				break;
-			default:
-				break;
-			}
-			m_mutexShrd.unlock_shared();
+			} // while(m_fifoAddDel.Extract(&aData) && m_nWork){
 
-		} // while(m_fifoAddDel.Extract(&aData) && m_nWork){
-
-	}  // while(m_nWork){
+		}  // while(m_nWork){
+	}
+	catch(...){
+		aShrdLockGuard.UnsetAndUnlockMutex();
+		aLockGuard.UnsetAndUnlockMutex();
+		goto enterLoopPoint;
+	}
 }
 
 
@@ -1062,21 +1084,25 @@ void raft::tcp::Server::CheckAllPossibleSeeds(const std::vector<NodeIdentifierKe
 
 void raft::tcp::Server::ThreadFunctionPeriodic()
 {
+	common::NewSharedLockGuard<newSharedMutex> aShrdLockGuard;
+	int nIteration(0);
+	
+enterLoopPoint:
 	try {
-
-		int nIteration = 0;
-
+		
 		while (m_nWork) {
 			if(is_leader() && (nIteration++ % 100)==0){
 				DEBUG_APPLICATION(2,"Leader node (leaderIteration=%d)", nIteration);
 			}
-			m_mutexShrd.lock_shared();
+			aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes);
 			this->periodic(m_nPeriodForPeriodic);
-			m_mutexShrd.unlock_shared();
+			aShrdLockGuard.UnsetAndUnlockMutex();
 			Sleep(m_nPeriodForPeriodic);
 		}
 	}
 	catch (...) {
+		aShrdLockGuard.UnsetAndUnlockMutex();
+		goto enterLoopPoint;
 	}
 }
 

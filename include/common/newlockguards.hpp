@@ -15,7 +15,8 @@ public:
 	NewLockGuard();
 	virtual ~NewLockGuard();
 
-	void SetMutex(TypeMutex* pMutex);
+	void SetAndLockMutex(TypeMutex* pMutex);
+	void UnsetAndUnlockMutex();
 
 protected:
 	TypeMutex* m_pMutex;
@@ -23,13 +24,14 @@ protected:
 
 /*//////////////////////////////////////////*/
 template <typename TypeMutex>
-class NewReadLockGuard
+class NewSharedLockGuard
 {
 public:
-	NewReadLockGuard();
-	virtual ~NewReadLockGuard();
+	NewSharedLockGuard();
+	virtual ~NewSharedLockGuard();
 
-	void SetMutex(TypeMutex* pMutex);
+	void SetAndLockMutex(TypeMutex* pMutex);
+	void UnsetAndUnlockMutex();
 
 protected:
 	TypeMutex * m_pMutex;

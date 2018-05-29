@@ -28,17 +28,26 @@ common::NewLockGuard<TypeMutex>::~NewLockGuard()
 }
 
 
+template <typename TypeMutex>
+void common::NewLockGuard<TypeMutex>::SetAndLockMutex(TypeMutex* a_pMutex)
+{
+	a_pMutex->lock();
+	m_pMutex = a_pMutex;
+}
+
 
 template <typename TypeMutex>
-void common::NewLockGuard<TypeMutex>::SetMutex(TypeMutex* a_pMutex)
+void common::NewLockGuard<TypeMutex>::UnsetAndUnlockMutex()
 {
-	m_pMutex = a_pMutex;
+	TypeMutex* pMutex = m_pMutex;
+	m_pMutex = NULL;
+	if(pMutex){pMutex->unlock();}
 }
 
 /*//////////////////////////////////////////////////////////////////////////*/
 
 template <typename TypeMutex>
-common::NewReadLockGuard<TypeMutex>::NewReadLockGuard()
+common::NewSharedLockGuard<TypeMutex>::NewSharedLockGuard()
 	:
 	m_pMutex(NULL)
 {
@@ -46,19 +55,26 @@ common::NewReadLockGuard<TypeMutex>::NewReadLockGuard()
 
 
 template <typename TypeMutex>
-common::NewReadLockGuard<TypeMutex>::~NewReadLockGuard()
+common::NewSharedLockGuard<TypeMutex>::~NewSharedLockGuard()
 {
 	if(m_pMutex){m_pMutex->unlock_shared();}
 }
 
 
-
 template <typename TypeMutex>
-void common::NewReadLockGuard<TypeMutex>::SetMutex(TypeMutex* a_pMutex)
+void common::NewSharedLockGuard<TypeMutex>::SetAndLockMutex(TypeMutex* a_pMutex)
 {
+	a_pMutex->lock_shared();
 	m_pMutex = a_pMutex;
 }
 
 
-#endif  // #ifndef __common_newlockguards_hpp__
+template <typename TypeMutex>
+void common::NewSharedLockGuard<TypeMutex>::UnsetAndUnlockMutex()
+{
+	TypeMutex* pMutex = m_pMutex;
+	m_pMutex = NULL;
+	if(pMutex){pMutex->unlock_shared();}
+}
 
+#endif  // #ifndef __common_newlockguards_hpp__
