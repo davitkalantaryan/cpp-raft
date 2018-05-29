@@ -169,8 +169,8 @@ namespace newLeaderInternal {enum Type {
 
 #define DEBUG_APPLICATION(_logLevel,...) do{DEBUG_APPLICATION_NO_NEW_LINE(_logLevel,__VA_ARGS__);DEBUG_APPLICATION_NEW_LINE(_logLevel);}while(0)
 
-#define ERROR_LOGGING(...)	\
-	do{ fprintf(stderr,"ERROR: fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);fprintf(stderr,__VA_ARGS__);}while(0)
+#define ERROR_LOGGING2(...)	\
+	do{ fprintf(stderr,"ERROR: fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);fprintf(stderr,__VA_ARGS__);fprintf(stderr,"\n");}while(0)
 
 #define HANDLE_MEM_DEF2(_pointer,...)				\
 	do{ \

@@ -752,8 +752,9 @@ void raft::tcp::Server::ThreadFunctionWorker()
 	char vcHostName[MAX_HOSTNAME_LENGTH];
 	char cRequest;
 
+	
+enterLoopPoint:
 	try {
-	enterWhilePoint:
 		while (m_nWork) {
 			m_semaWorker.wait();
 
@@ -789,7 +790,7 @@ void raft::tcp::Server::ThreadFunctionWorker()
 					break;
 				case raft::connect::toLeader::newNode:
 					if(!is_leader()){
-						ERROR_LOGGING("This node is not leader, but reques is done for leader!\n");
+						ERROR_LOGGING2("This node is not leader, but reques is done for leader!");
 					}
 					else{
 						connect_toLeader_newNode(aClientSock, &dataFromProducer.remAddress);
@@ -821,7 +822,7 @@ void raft::tcp::Server::ThreadFunctionWorker()
 		}  // while (m_nWork) {
 	}
 	catch(...){
-		goto enterWhilePoint;
+		goto enterLoopPoint;
 	}
 }
 
