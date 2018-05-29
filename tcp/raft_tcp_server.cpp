@@ -55,13 +55,6 @@ int g_nLogLevel = 0;
 int g_nApplicationRun = 0;
 }}
 
-typedef struct NodeTools{ 
-	common::SocketTCP dataSocket, raftSocket2; 
-	uint32_t isEndianDiffer : 1,okCount : 3;
-	/*-----------------------------------------*/
-	NodeTools(){isEndianDiffer=okCount=0;} 
-}NodeTools;
-
 static int CreateEmptySocket();
 
 #define FOLLOWER_SEES_ERR(...)	Sleep(2000)

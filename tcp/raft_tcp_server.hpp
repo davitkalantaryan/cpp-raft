@@ -29,6 +29,13 @@ struct SAddRemData {
 	SAddRemData() :pNode(NULL){}
 };
 
+typedef struct NodeTools {
+	common::SocketTCP dataSocket, raftSocket2;
+	uint32_t isEndianDiffer : 1, okCount : 3;
+	/*-----------------------------------------*/
+	NodeTools() { isEndianDiffer = okCount = 0; }
+}NodeTools;
+
 extern int g_nApplicationRun;
 
 class Server : protected RaftServer
