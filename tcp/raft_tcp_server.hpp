@@ -30,11 +30,15 @@ struct SAddRemData {
 };
 
 typedef struct NodeTools {
+	void*	clbkData;
 	common::SocketTCP dataSocket, raftSocket2;
 	uint32_t isEndianDiffer : 1, okCount : 3;
 	/*-----------------------------------------*/
-	NodeTools() { isEndianDiffer = okCount = 0; }
+	NodeTools() { clbkData = NULL; isEndianDiffer = okCount = 0; }
 }NodeTools;
+
+#define SET_CLBK_DATA(_node,_clbkData) ((raft::tcp::NodeTools*)((_node)->get_udata()))->clbkData = (_clbkData)
+#define GET_CLBK_DATA(_node) ((raft::tcp::NodeTools*)((_node)->get_udata()))->clbkData
 
 extern int g_nApplicationRun;
 
@@ -54,6 +58,7 @@ protected:
 	virtual void		ReceiveFromDataSocket(RaftNode2* anyNode);
 	virtual RaftNode2*	RemoveNode(RaftNode2* node) OVERRIDE;
 	virtual void		HandleNewConnection(char code,common::SocketTCP& clientSock, const sockaddr_in* remoteAddr);
+	virtual void		StateChanged(char state, raft::tcp::NodeIdentifierKey key, void* clbkData);
 	virtual void		SignalHandler(int sigNum);
 
 	void ThreadFunctionListen();

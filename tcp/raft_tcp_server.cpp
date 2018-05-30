@@ -52,7 +52,6 @@ static void RemoveRaftServer(raft::tcp::Server* a_pServer);
 static std::mutex s_mutexForRaftSend;
 
 namespace raft{namespace tcp{
-int g_nLogLevel = 0;
 int g_nApplicationRun = 0;
 }}
 
@@ -120,6 +119,11 @@ void raft::tcp::Server::Cleanup()
 {
 	g_nApplicationRun = 0;
 	common::socketN::Cleanup();
+}
+
+
+void raft::tcp::Server::StateChanged(char a_state, NodeIdentifierKey a_key, void* a_clbkData)
+{
 }
 
 
@@ -835,6 +839,7 @@ void raft::tcp::Server::HandleNewConnection(char,common::SocketTCP&, const socka
 
 void raft::tcp::Server::ThreadFunctionAddRemoveNode()
 {
+	void* clbkData;
 	RaftNode2* pSkipNode(NULL);
 	RaftNode2* pNextNode;
 	NodeTools* pNodeTools;
@@ -842,6 +847,7 @@ void raft::tcp::Server::ThreadFunctionAddRemoveNode()
 	NodeIdentifierKey* pKeyForDelete;
 	NodeIdentifierKey* pKeyForNewLeader;
 	NodeIdentifierKey* pKeyToInform=NULL;
+	NodeIdentifierKey keyForInform;
 	SAddRemData aData;
 	common::NewSharedLockGuard<newSharedMutex> aShrdLockGuard;
 	common::NewLockGuard<newSharedMutex> aLockGuard;
@@ -865,6 +871,8 @@ enterLoopPoint:
 					bWaitDone = false;
 					pSkipNode = m_pLeaderNode;
 					pKeyToInform = (NodeIdentifierKey*)m_pLeaderNode->key2();
+					keyForInform = *pKeyToInform;
+					clbkData = NULL;
 					break;
 				case raft::leaderInternal::newNode:
 					cRequest = raft::receive::fromLeader::newNode;
@@ -872,6 +880,8 @@ enterLoopPoint:
 					bWaitDone = true;
 					pSkipNode = NULL;
 					pKeyToInform = &aData.nodeKey;
+					keyForInform = *pKeyToInform;
+					clbkData = NULL;
 					break;
 				case raft::leaderInternal::removeNode:
 					cRequest = raft::receive::fromLeader::removeNode;
@@ -879,9 +889,13 @@ enterLoopPoint:
 					bWaitDone = false;
 					pSkipNode = aData.pNode;
 					pKeyToInform = (NodeIdentifierKey*)aData.pNode->key2();
+					keyForInform = *pKeyToInform;
+					clbkData = GET_CLBK_DATA(aData.pNode);
 					break;
 				default:
 					bInformFollowers = false;
+					if(aData.pNode){keyForInform=*((NodeIdentifierKey*)aData.pNode->key2());clbkData=GET_CLBK_DATA(aData.pNode);}
+					else {keyForInform=aData.nodeKey;clbkData=NULL;}
 					break;
 				}  // switch (aData.action)
 
@@ -943,7 +957,7 @@ enterLoopPoint:
 					m_pLeaderNode->makeLeader(1);
 					break;
 				default:
-					DEBUG_APPLICATION(0, "default");
+					DEBUG_APPLICATION(2, "default");
 					break;
 				}
 				aLockGuard.UnsetAndUnlockMutex();
@@ -968,6 +982,7 @@ enterLoopPoint:
 				default:
 					break;
 				}
+				StateChanged(aData.action,keyForInform,clbkData);
 				aShrdLockGuard.UnsetAndUnlockMutex();
 
 			} // while(m_fifoAddDel.Extract(&aData) && m_nWork){

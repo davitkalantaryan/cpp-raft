@@ -42,6 +42,7 @@ void raft::tcp::NodeIdentifierKey::set_addressAndPort(char* a_addressAndPort, in
 namespace raft{namespace tcp{
 
 const char g_ccResponceOk= response::ok;
+int g_nLogLevel = 0;
 
 bool ConnectAndGetEndian(common::SocketTCP* a_pSock, const NodeIdentifierKey& a_nodeInfo,char a_cRequest, uint32_t* a_pIsEndianDiffer)
 {
