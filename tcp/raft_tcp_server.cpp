@@ -1348,9 +1348,9 @@ int raft::tcp::Server::SendClbkFunction(void *a_cb_ctx, void *udata, RaftNode2* 
 		}
 		break;
 	case RAFT_MSG_REQUESTVOTE:
-		if(a_node->isProblematic()){a_node->makePing(2);}  // make extra ping
-		unPingCount = (int)a_node->makePing(2);
-		if((unPingCount>MAX_UNANSWERED_PINGS)&& pServer->is_follower()){
+		if(a_node->isProblematic()){a_node->makePing(4);}  // make extra ping
+		unPingCount = (int)a_node->makePing(1);
+		if((unPingCount>MAX_UNANSWERED_PINGS)&& pServer->is_candidate()){
 			a_node->SetUnableToVote();
 			pServer->become_candidate();
 		}

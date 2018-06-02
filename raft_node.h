@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define BITS_OF_PING_COUNT	5
+#define BITS_OF_PING_COUNT	6
 
 extern const uint32_t	g_cunRaftMaxPing/* = (1 << BITS_OF_PING_COUNT) - 1*/;
 

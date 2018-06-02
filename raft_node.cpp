@@ -50,7 +50,7 @@ void RaftNode2::pingReceived()
 
 uint32_t RaftNode2::makePing(uint32_t a_unCount)
 {
-	if(m_unPingCount<g_cunRaftMaxPing){m_unPingCount += a_unCount;}
+	if((m_unPingCount+ a_unCount)<=g_cunRaftMaxPing){m_unPingCount += a_unCount;}
 	return m_unPingCount;
 }
 
