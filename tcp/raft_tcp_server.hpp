@@ -24,8 +24,12 @@ namespace raft { namespace tcp{
 
 namespace workRequest{enum Type{none,handleConnection};}
 struct SWorkerData { workRequest::Type reqType;int sockDescriptor;sockaddr_in remAddress; };
-struct SAddRemData { 
-	RaftNode2 *pNode; NodeIdentifierKey nodeKey; char action; 
+struct SAddRemData {
+	char action;
+	union {
+		struct {RaftNode2 *pNode; NodeIdentifierKey nodeKey;};
+		void* forUser;
+	}; 
 	SAddRemData() :pNode(NULL){}
 };
 
@@ -58,7 +62,9 @@ protected:
 	virtual void		ReceiveFromDataSocket(RaftNode2* anyNode);
 	virtual RaftNode2*	RemoveNode(RaftNode2* node) OVERRIDE;
 	virtual void		HandleNewConnection(char code,common::SocketTCP& clientSock, const sockaddr_in* remoteAddr);
-	virtual void		StateChanged(char state, raft::tcp::NodeIdentifierKey key, void* clbkData);
+	virtual void		StateChangedBeforeNoLock(const SAddRemData& changeData);
+	virtual void		StateChangedLocked(const SAddRemData& changeData);
+	virtual void		StateChangedAfter(char state, raft::tcp::NodeIdentifierKey key, void* clbkData);
 	virtual void		SignalHandler(int sigNum);
 
 	void ThreadFunctionListen();

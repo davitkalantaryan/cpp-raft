@@ -122,7 +122,17 @@ void raft::tcp::Server::Cleanup()
 }
 
 
-void raft::tcp::Server::StateChanged(char a_state, NodeIdentifierKey a_key, void* a_clbkData)
+void raft::tcp::Server::StateChangedAfter(char a_state, NodeIdentifierKey a_key, void* a_clbkData)
+{
+}
+
+
+void raft::tcp::Server::StateChangedBeforeNoLock(const SAddRemData& a_changeData)
+{
+}
+
+
+void raft::tcp::Server::StateChangedLocked(const SAddRemData& a_changeData)
 {
 }
 
@@ -522,6 +532,7 @@ void raft::tcp::Server::HandleSeedClbk(RaftNode2* a_anyNode)
 		DEBUG_APP_WITH_NODE(1, *pNodeKey,"RAFT_MSG_REQUESTVOTE_RESPONSE");
 		nSndRcv = pTools->raftSocket2.readC(&reqVoteResp, sizeof(msg_requestvote_response_t));
 		if (nSndRcv != sizeof(msg_requestvote_response_t)) { goto returnPoint; }
+		a_anyNode->pingReceived();
 		recv_requestvote_response(a_anyNode, &reqVoteResp);
 	}
 	break;
@@ -863,6 +874,8 @@ enterLoopPoint:
 
 			while (m_fifoAddDel.Extract(&aData) && m_nWork) {
 
+				StateChangedBeforeNoLock(aData);
+
 				switch (aData.action)
 				{
 				case raft::newLeaderInternal::becomeLeader:
@@ -894,8 +907,9 @@ enterLoopPoint:
 					break;
 				default:
 					bInformFollowers = false;
-					if(aData.pNode){keyForInform=*((NodeIdentifierKey*)aData.pNode->key2());clbkData=GET_CLBK_DATA(aData.pNode);}
-					else {keyForInform=aData.nodeKey;clbkData=NULL;}
+					//if(aData.pNode){keyForInform=*((NodeIdentifierKey*)aData.pNode->key2());clbkData=GET_CLBK_DATA(aData.pNode);}
+					//else {keyForInform=aData.nodeKey;clbkData=NULL;}
+					keyForInform = aData.nodeKey; clbkData = NULL;
 					break;
 				}  // switch (aData.action)
 
@@ -927,6 +941,7 @@ enterLoopPoint:
 				} // if(bInformFollowers){
 
 				aLockGuard.SetAndLockMutex(&m_shrdMutexForNodes);
+				StateChangedLocked(aData);
 				switch (aData.action)
 				{
 				case raft::leaderInternal::newNode: case raft::receive::fromLeader::newNode:
@@ -982,7 +997,7 @@ enterLoopPoint:
 				default:
 					break;
 				}
-				StateChanged(aData.action,keyForInform,clbkData);
+				StateChangedAfter(aData.action,keyForInform,clbkData);
 				aShrdLockGuard.UnsetAndUnlockMutex();
 
 			} // while(m_fifoAddDel.Extract(&aData) && m_nWork){
@@ -1283,7 +1298,18 @@ void raft::tcp::Server::become_leader()
 
 void raft::tcp::Server::become_candidate()
 {
-	if(m_nNodesCount<3){ // only died leader remains no need to make election
+	RaftNode2* pNexNode = m_firstNode;
+	int nNodesWillVote(0);
+
+	m_pLeaderNode->SetUnableToVote();
+	while(pNexNode){
+		if(pNexNode->isAbleToVote()){++nNodesWillVote;}
+		pNexNode = pNexNode->next;
+	}
+
+	DEBUG_APPLICATION(1,"Number of nodes in elections is: %d",nNodesWillVote);
+
+	if(nNodesWillVote<2){ // no node to take part on election, so become leader
 		become_leader();
 	}
 	else{
@@ -1311,14 +1337,22 @@ int raft::tcp::Server::SendClbkFunction(void *a_cb_ctx, void *udata, RaftNode2* 
 	switch (a_msg_type)
 	{
 	case RAFT_MSG_APPENDENTRIES:
-		if(a_node->isProblematic()){a_node->makePing();}  // make extra ping
-		unPingCount = (int)a_node->makePing();
+		if(a_node->isProblematic()){a_node->makePing(1);}  // make extra ping
+		unPingCount = (int)a_node->makePing(1);
 		if((unPingCount>MAX_UNANSWERED_PINGS)&& pServer->is_leader()){
 			SAddRemData remData;
 			remData.action = raft::leaderInternal::removeNode;
 			remData.pNode = a_node;
 			pServer->m_fifoAddDel.AddElement(remData);
 			pServer->m_semaAddRemove.post();
+		}
+		break;
+	case RAFT_MSG_REQUESTVOTE:
+		if(a_node->isProblematic()){a_node->makePing(2);}  // make extra ping
+		unPingCount = (int)a_node->makePing(2);
+		if((unPingCount>MAX_UNANSWERED_PINGS)&& pServer->is_follower()){
+			a_node->SetUnableToVote();
+			pServer->become_candidate();
 		}
 		break;
 	default:
@@ -1366,10 +1400,10 @@ void raft::tcp::Server::SigHandlerStatic(int a_nSigNum)
 	pthread_t interruptThread=pthread_self();
 #endif
 
-    DEBUG_APPLICATION(0,"Interrupt (No:%d)",a_nSigNum);
+    DEBUG_APPLICATION(1,"Interrupt (No:%d)",a_nSigNum);
 
 	s_pRWlockForServers.lock_shared();
-    DEBUG_APPLICATION(1,"rd_lock");
+    DEBUG_APPLICATION(4,"rd_lock");
 
     pServer = s_pFirst;
     while(pServer){
@@ -1377,13 +1411,13 @@ void raft::tcp::Server::SigHandlerStatic(int a_nSigNum)
 		switch (a_nSigNum)
 		{
 		case SIGABRT:
-			printf("SIGABRT\n");
+			DEBUG_APPLICATION(0,"SIGABRT");
 			break;
 		case SIGFPE:
-			printf("SIGFPE\n");
+			DEBUG_APPLICATION(0,"SIGFPE");
 			break;
 		case SIGILL:
-			printf("SIGILL\n");
+			DEBUG_APPLICATION(0,"SIGILL");
 			break;
 		case SIGINT:
 		{
@@ -1410,17 +1444,17 @@ void raft::tcp::Server::SigHandlerStatic(int a_nSigNum)
 		}
 		break;
 		case SIGSEGV:
-			printf("SIGSEGV\n");
+			DEBUG_APPLICATION(0,"SIGSEGV");
 			break;
 		case SIGTERM:
 			break;
 #if !defined(_WIN32) || defined(_WLAC_USED)
 		case SIGPIPE:
-			printf("SIGPIPE\n");
+			DEBUG_APPLICATION(1,"SIGPIPE");
 			break;
 #endif
 		default:
-			printf("default\n");
+			DEBUG_APPLICATION(1,"default:");
 			break;
 		}
 		
@@ -1429,7 +1463,7 @@ void raft::tcp::Server::SigHandlerStatic(int a_nSigNum)
     }
 
 	s_pRWlockForServers.unlock_shared();
-    DEBUG_APPLICATION(1,"unlock");
+    DEBUG_APPLICATION(4,"unlock");
 }
 
 

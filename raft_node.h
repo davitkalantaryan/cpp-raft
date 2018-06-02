@@ -27,7 +27,9 @@ public:
 	void		setProblematic(uint32_t problematic=1);
 	uint32_t	unansweredPingCount()const;
 	void		pingReceived();
-	uint32_t	makePing();
+	uint32_t	makePing(uint32_t a_unCount);
+	void		SetUnableToVote();
+	uint32_t	isAbleToVote()const;
  
 public:
 	RaftNode2 * prev, *next;
@@ -39,6 +41,7 @@ private:
 	int			m_keyLen;
 	uint32_t	m_isLeader : 1;
 	uint32_t	m_isProblematic : 1;
+	uint32_t	m_isAbleToVote : 1;
 	uint32_t	m_unPingCount : BITS_OF_PING_COUNT;
 };
 
