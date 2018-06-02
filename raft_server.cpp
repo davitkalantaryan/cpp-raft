@@ -48,10 +48,7 @@ RaftServer::RaftServer() :
                 1000), request_timeout(200), cb_ctx(NULL)
 {
 	d_state.set(RAFT_STATE_FOLLOWER);
-	//RaftNode2	*m_first, *m_last;
-	//size_t		m_unNodesCount;
-    m_thisNode = m_lastNode=m_firstNode=NULL;
-	m_nNodesCount = 0;
+	
 	m_voted_for = NULL;
 	m_nLeaderCommit = 0;
 }
@@ -68,74 +65,36 @@ RaftServer::~RaftServer()
 }
 
 
+void RaftServer::CleanNodeData(RaftNode2* )
+{
+}
+
+
+void RaftServer::RemoveNode2(RaftNode2* a_node)
+{
+	m_Nodes.RemoveData(a_node);
+	CleanNodeData(a_node);
+	delete a_node;
+}
+
+
 void RaftServer::ClearAllNodes()
 {
-	RaftNode2 *pNextNode, *pToDelete=m_firstNode;
+	RaftNode2 *pNextNode, *pToDelete = m_Nodes.first();
 
 	while(pToDelete){
-		pNextNode = RemoveNode(pToDelete);
+		pNextNode = m_Nodes.RemoveData(pToDelete);
+		CleanNodeData(pToDelete);
+		delete pToDelete;
 		pToDelete = pNextNode;
 	}
 
-	m_nNodesCount = 0;
-}
-
-
-void RaftServer::AddNode(RaftNode2* a_node, const void* a_key, int a_keyLen)
-{
-	RaftNode2* pNodeTmp;
-	void* keyOnHash;
-
-	if(m_hashNodes.FindEntry(a_key,a_keyLen,&pNodeTmp)){return;}
-
-	if(m_lastNode){m_lastNode->next=a_node;}
-	else{m_firstNode=a_node;}
-
-	a_node->prev = m_lastNode;
-	m_lastNode = a_node;
-	keyOnHash=m_hashNodes.AddEntry2(a_key, a_keyLen, a_node);
-	a_node->setKeyAndKeylen(keyOnHash, a_keyLen);
-	++m_nNodesCount;
-}
-
-
-RaftNode2* RaftServer::FindNode(const void* a_key, int a_keyLen)
-{
-	RaftNode2* pNodeTmp;
-	if(m_hashNodes.FindEntry(a_key,a_keyLen,&pNodeTmp)){return pNodeTmp;}
-	return NULL;
-}
-
-
-RaftNode2* RaftServer::RemoveNode(RaftNode2* a_node)
-{
-	RaftNode2* pNext;
-	if(!m_hashNodes.RemoveEntry(a_node->key2(),a_node->keyLen2())){return NULL;}
-	pNext = a_node->next;
-	if(a_node->prev){ a_node->prev->next=a_node->next; }
-	if(a_node->next){ a_node->next->prev=a_node->prev; }
-	if(a_node==m_firstNode){m_firstNode=a_node->next;}
-	if(a_node==m_lastNode){ m_lastNode =a_node->prev;}
-	delete a_node;
-	--m_nNodesCount;
-	return pNext;
-}
-
-
-void RaftServer::RemoveNode(const void* a_key, int a_keyLen)
-{
-	RaftNode2* pNode;
-	if(!m_hashNodes.FindEntry(a_key,a_keyLen,&pNode)){return;}
-	RemoveNode(pNode);
 }
 
 
 void RaftServer::forAllNodesExceptSelf(std::function<void(RaftNode2*)> a_callback, bool a_bSkipLeader) {
 
-	RaftNode2* pNode;
-
-	// close with mutex
-	pNode = m_firstNode;
+	RaftNode2* pNode = m_Nodes.first();
 
 	while(pNode){
 		if (pNode == m_thisNode) {goto nextNodePoint;}
@@ -145,8 +104,8 @@ nextNodePoint:
 		pNode = pNode->next;
 	}
 
-	// open mutex
 }
+
 
 void RaftServer::election_start() {
 
@@ -170,7 +129,7 @@ void RaftServer::become_leader() {
 }
 
 void RaftServer::become_candidate() {
-	int nRandFactor = (m_nNodesCount > MINIMUM_RAND_FACTOR) ? m_nNodesCount : MINIMUM_RAND_FACTOR;
+	int nRandFactor = (m_Nodes.count() > MINIMUM_RAND_FACTOR) ? m_Nodes.count() : MINIMUM_RAND_FACTOR;
 
 	__log(NULL, "becoming candidate");
 
@@ -249,7 +208,7 @@ int RaftServer::recv_appendentries_response(RaftNode2* a_node, msg_appendentries
 		while (this->get_commit_idx() < r->current_idx) {
 			raft_entry_t& e = this->log->log_get_from_idx(this->last_applied_idx + 1);
 			/* majority has this */
-			if (m_nNodesCount / 2 <= e.d_num_nodes) {
+			if (m_Nodes.count() / 2 <= e.d_num_nodes) {
 				if (1 != apply_entry())
 					throw std::runtime_error("Could Not Apply!");
 				if (e.getId() == r->current_idx) {
@@ -397,7 +356,7 @@ void RaftServer::recv_requestvote_response(RaftNode2* a_node, msg_requestvote_re
 
 	if (1 == r->vote_granted) {
 		a_node->SetVotesForMe(1);
-		if (raft_votes_is_majority(m_nNodesCount-1, get_nvotes_for_me())){ // -1 because old leader is not normal, but still counted
+		if (raft_votes_is_majority(m_Nodes.count()-1, get_nvotes_for_me())){ // -1 because old leader is not normal, but still counted
 			DEBUG_APPLICATION(0,"starting to became leader");
 			become_leader();
 		}
@@ -508,7 +467,7 @@ void RaftServer::set_configuration(const std::vector<raft_node_configuration_t>&
 
 int RaftServer::get_nvotes_for_me() 
 {
-	RaftNode2*	pNode = m_firstNode;
+	RaftNode2*	pNode = m_Nodes.first();
 	int votes = 0;
 
 	while(pNode){
@@ -551,7 +510,7 @@ int RaftServer::get_request_timeout() {
 }
 
 size_t RaftServer::get_num_nodes() {
-	return m_nNodesCount;
+	return m_Nodes.count();
 }
 
 int RaftServer::get_timeout_elapsed() {

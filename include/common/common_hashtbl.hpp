@@ -26,6 +26,7 @@ public:
 	int   AddEntry (const void* key, uint32_t keyLen, const DataType& data);
 	void* AddEntry2(const void* key, uint32_t keyLen, const DataType& data);  // NULL is error
 	bool  RemoveEntry(const void* key, uint32_t keyLen);
+	bool  RemoveEntry2(const void* key, uint32_t keyLen, DataType* dataPtr);
 	bool  FindEntry(const void* key, uint32_t keyLen, DataType* dataPtr);
 
 protected:

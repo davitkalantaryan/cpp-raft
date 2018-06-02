@@ -114,6 +114,14 @@ void* common::HashTbl<DataType>::AddEntry2(const void* a_key, uint32_t a_nKeyLen
 template <typename DataType>
 bool common::HashTbl<DataType>::RemoveEntry(const void* a_key, uint32_t a_nKeyLen)
 {
+	DataType aData;
+	return RemoveEntry2(a_key, a_nKeyLen, &aData);
+}
+
+
+template <typename DataType>
+bool common::HashTbl<DataType>::RemoveEntry2(const void* a_key, uint32_t a_nKeyLen, DataType* a_pData)
+{
 	HashItem<DataType> *pItem;
 	uint32_t unHash(((*m_fpHashFnc)(a_key, a_nKeyLen))&m_unRoundedTableSizeMin1);
 
@@ -124,6 +132,7 @@ bool common::HashTbl<DataType>::RemoveEntry(const void* a_key, uint32_t a_nKeyLe
 			if(pItem->prev){pItem->prev->next=pItem->next;}
 			if(pItem->next){pItem->next->prev=pItem->prev;}
 			if(pItem==m_pTable[unHash]){m_pTable[unHash]=pItem->next;}
+			*a_pData = pItem->data;
 			delete pItem;
 			return true;
 		}

@@ -10,7 +10,6 @@
 #include <string>
 //#include <unordered_map>
 #include <raft_node.h>
-#include <common_hashtbl.hpp>
 #include <stdint.h>
 #include "raft_macroses_and_functions.h"
 #include "common_unnamedsemaphorelite.hpp"
@@ -60,7 +59,7 @@ public:
 
 protected:
 	virtual void		ReceiveFromDataSocket(RaftNode2* anyNode);
-	virtual RaftNode2*	RemoveNode(RaftNode2* node) OVERRIDE;
+	virtual void		CleanNodeData(RaftNode2*) OVERRIDE;
 	virtual void		HandleNewConnection(char code,common::SocketTCP& clientSock, const sockaddr_in* remoteAddr);
 	virtual void		StateChangedBeforeNoLock(const SAddRemData& changeData);
 	virtual void		StateChangedLocked(const SAddRemData& changeData);
@@ -116,7 +115,9 @@ protected:
 	std::thread										m_threadRcvData;
 	std::thread										m_threadAddRemoveNode;
 	std::vector<std::thread*>						m_vectThreadsWorkers;
-    newSharedMutex                                  m_shrdMutexForNodes;
+private:
+    newSharedMutex                                  m_shrdMutexForNodes2;
+protected:
 	common::UnnamedSemaphoreLite					m_semaWorker;
 	common::UnnamedSemaphoreLite					m_semaAddRemove;
 	common::FifoFast<SWorkerData>					m_fifoWorker;

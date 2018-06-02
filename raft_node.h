@@ -20,9 +20,6 @@ public:
 	void		makeLeader(int isLeader=1);
 	void		SetVotesForMe(int vote = 1);
 	int			GetVotesForMe()const;
-	int			keyLen2()const {return m_keyLen;}
-	void*		key2() { return m_key; }
-	void		setKeyAndKeylen(void* key, int keyLen);
 	uint32_t	isProblematic()const;
 	void		setProblematic(uint32_t problematic=1);
 	uint32_t	unansweredPingCount()const;
@@ -33,12 +30,12 @@ public:
  
 public:
 	RaftNode2 * prev, *next;
+	void*		key;
+	size_t		keyLength;
 private:
 	void*		m_d_udata;
-	void*		m_key;
 	int			next_idx;
 	int			m_votes_for_me;
-	int			m_keyLen;
 	uint32_t	m_isLeader : 1;
 	uint32_t	m_isProblematic : 1;
 	uint32_t	m_isAbleToVote : 1;

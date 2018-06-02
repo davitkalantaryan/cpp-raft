@@ -22,15 +22,16 @@ RaftNode2::RaftNode2(void* a_udata) :
 	prev(NULL),
 	next(NULL),
 	m_d_udata(a_udata),
-	m_key(NULL),
 	next_idx(0),
-	m_votes_for_me(0),
-	m_keyLen(0)
+	m_votes_for_me(0)
 {
 	m_isLeader = 0;
 	m_isProblematic = 0;
 	m_isAbleToVote = 1;
 	m_unPingCount = 0;
+
+	this->key = NULL;
+	this->keyLength = 0;
 }
 
 
@@ -79,16 +80,8 @@ void RaftNode2::setProblematic(uint32_t a_problematic)
 }
 
 
-void RaftNode2::setKeyAndKeylen(void* a_key, int a_keyLen)
-{
-	m_key = a_key;
-	m_keyLen = a_keyLen;
-}
-
-
 int RaftNode2::is_leader()
 {
-    // TODO
     return m_isLeader;
 }
 

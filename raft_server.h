@@ -9,7 +9,7 @@
 #include <functional>
 #include <vector>
 #include <memory>
-#include <common_hashtbl.hpp>
+#include <common/listspecialandhashtbl.hpp>
 
 class RaftLogger;
 class RaftNode2;
@@ -47,9 +47,9 @@ protected: // in order to make usable variables by inherites
 	/// who has voted for me. This is an array with N = 'num_nodes' elements
 	//std::vector<int> votes_for_me;
 	//std::vector<RaftNode2> nodes;
-	RaftNode2					*m_firstNode, *m_lastNode;
-	int							m_nNodesCount;
-	common::HashTbl<RaftNode2*>	m_hashNodes;
+	
+	common::ListspecialAndHashtbl<RaftNode2>	m_Nodes;
+	
 	int							m_nLeaderCommit;
 
 	int election_timeout;
@@ -241,19 +241,11 @@ public:
 	inline Raft::State& get_state() {
 		return d_state;
 	}
-	;
 
-	//inline NodeIter get_last_node() {
-	//	return nodes.end();
-	//}
-
-
-protected:
-	void AddNode(RaftNode2* node,const void* key, int keyLen);
-	RaftNode2* FindNode(const void* key, int keyLen);
-	virtual RaftNode2* RemoveNode(RaftNode2* node);
-	void RemoveNode(const void* key, int keyLen);
+protected:	
+	void RemoveNode2(RaftNode2* node);
 	void ClearAllNodes();
+	virtual void CleanNodeData(RaftNode2* pNode);
 
 };
 
