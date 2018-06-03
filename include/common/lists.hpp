@@ -12,7 +12,13 @@
 namespace common {
 
 // By special we assume that
-// template argument Type has 2 fields Type *prev, *next
+// template argument Type has is one of this
+// a) pointer
+// b) or class, where operator->() is overloaded
+//
+// if we have Type aData;, then aData->prev is valid, and aData->next is valid
+// 
+// usually better to use the class common::List, that works for any type
 
 template <typename Type>
 class ListSpecial
@@ -21,14 +27,14 @@ public:
 	ListSpecial();
 	virtual ~ListSpecial();
 
-	void  AddData(Type* newData);
-	Type* RemoveData(Type* dataToRemove);
+	void  AddData(Type newData);
+	Type  RemoveData(Type dataToRemove);
 
-	Type* first() {return m_pFirst;}
+	Type  first() {return m_first;}
 	int   count()const {return m_nCount;}
 
 protected:
-	Type	*m_pFirst, *m_pLast;
+	Type	m_first, m_last;
 	int		m_nCount;
 };
 
@@ -64,7 +70,7 @@ public:
 	int   count()const {return m_listSp.count();}
 
 protected:
-	ListSpecial<common::listN::ListItem<Type>>	m_listSp;
+	ListSpecial<common::listN::ListItem<Type>*>	m_listSp;
 };
 
 

@@ -48,7 +48,7 @@ protected: // in order to make usable variables by inherites
 	//std::vector<int> votes_for_me;
 	//std::vector<RaftNode2> nodes;
 	
-	common::ListspecialAndHashtbl<RaftNode2>	m_Nodes;
+	common::ListspecialAndHashtbl<RaftNode2*>	m_Nodes;
 	
 	int							m_nLeaderCommit;
 

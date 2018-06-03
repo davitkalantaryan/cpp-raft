@@ -24,19 +24,18 @@ template <typename Type>
 class ListspecialAndHashtbl
 {
 public:
-	ListspecialAndHashtbl();
 	virtual ~ListspecialAndHashtbl();
 
-	bool  AddData(Type* newData, const void* a_key, size_t a_keyLen);			// is added, or this is a dublication
-	Type* RemoveData(Type* dataToRemove);
-	Type* RemoveData(const void* key, size_t keyLength);
-	bool  FindEntry(const void* key, size_t keyLength, Type** a_ppData);
+	bool  AddData(Type newData, const void* a_key, size_t a_keyLen);			// is added, or this is a dublication
+	Type  RemoveData(Type dataToRemove);
+	Type  RemoveData(const void* key, size_t keyLength);
+	bool  FindEntry(const void* key, size_t keyLength, Type* a_ppData);
 
-	Type* first() { return m_list.first(); }
+	Type  first() { return m_list.first(); }
 	int   count()const {return m_list.count();}
 
 protected:
-	HashTbl<Type*>		m_hash;
+	HashTbl<Type>		m_hash;
 	ListSpecial<Type>	m_list;
 };
 

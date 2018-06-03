@@ -21,8 +21,8 @@
 template <typename Type>
 common::ListSpecial<Type>::ListSpecial()
 	:
-	m_pFirst(NULL),
-	m_pLast(NULL),
+	m_first((Type)0),
+	m_last((Type)0),
 	m_nCount(0)
 {
 }
@@ -35,25 +35,25 @@ common::ListSpecial<Type>::~ListSpecial()
 
 
 template <typename Type>
-void common::ListSpecial<Type>::AddData(Type* a_pNewData)
+void common::ListSpecial<Type>::AddData(Type a_newData)
 {
-	if(!m_pFirst){m_pFirst=a_pNewData;}
-	else{m_pLast->next=a_pNewData;}
-	a_pNewData->prev = m_pLast;
-	m_pLast = a_pNewData;
-	a_pNewData->next = NULL;
+	if(!m_first){m_first=a_newData;}
+	else{m_last->next= a_newData;}
+	a_newData->prev = m_last;
+	m_last = a_newData;
+	a_newData->next = (Type)0;
 	++m_nCount;
 }
 
 
 template <typename Type>
-Type* common::ListSpecial<Type>::RemoveData(Type* a_pDataToRemove)
+Type common::ListSpecial<Type>::RemoveData(Type a_dataToRemove)
 {
-	if(a_pDataToRemove->prev){a_pDataToRemove->prev->next=a_pDataToRemove->next;}
-	if(a_pDataToRemove->next){a_pDataToRemove->next->prev=a_pDataToRemove->prev;}
-	if(a_pDataToRemove==m_pFirst){m_pFirst=m_pLast=NULL;}
+	if(a_dataToRemove->prev){ a_dataToRemove->prev->next= a_dataToRemove->next;}
+	if(a_dataToRemove->next){ a_dataToRemove->next->prev= a_dataToRemove->prev;}
+	if(a_dataToRemove == m_first){m_first=m_last=(Type)0;}
 	--m_nCount;
-	return a_pDataToRemove->next;
+	return a_dataToRemove->next;
 }
 
 
@@ -70,7 +70,8 @@ common::listN::ListItem<Type>* common::List<Type>::AddData(const Type& a_newData
 	//common::listN::ListItem<Type>* pNewItem = (common::listN::ListItem<Type>*)malloc(sizeof(common::listN::ListItem<Type>));
 	common::listN::ListItem<Type>* pNewItem = new common::listN::ListItem<Type>(a_newData);
 	if(!pNewItem){return NULL;}
-	return m_listSp.AddData(pNewItem);
+	m_listSp.AddData(pNewItem);
+	return pNewItem;
 }
 
 

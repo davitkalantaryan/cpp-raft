@@ -13,11 +13,6 @@
 #include "listspecialandhashtbl.hpp"
 #endif
 
-template <typename Type>
-common::ListspecialAndHashtbl<Type>::ListspecialAndHashtbl()
-{
-}
-
 
 template <typename Type>
 common::ListspecialAndHashtbl<Type>::~ListspecialAndHashtbl()
@@ -26,11 +21,11 @@ common::ListspecialAndHashtbl<Type>::~ListspecialAndHashtbl()
 
 
 template <typename Type>
-bool common::ListspecialAndHashtbl<Type>::AddData(Type* a_newData, const void* a_key, size_t a_keyLen)
+bool common::ListspecialAndHashtbl<Type>::AddData(Type a_newData, const void* a_key, size_t a_keyLen)
 {
-	Type* pNodeTmp;
+	Type dataTmp;
 
-	if(m_hash.FindEntry(a_key,a_keyLen,&pNodeTmp)){return false;}
+	if(m_hash.FindEntry(a_key,a_keyLen,&dataTmp)){return false;}
 
 	m_list.AddData(a_newData);
 	a_newData->key = m_hash.AddEntry2(a_key, a_keyLen, a_newData);
@@ -41,30 +36,30 @@ bool common::ListspecialAndHashtbl<Type>::AddData(Type* a_newData, const void* a
 
 
 template <typename Type>
-Type* common::ListspecialAndHashtbl<Type>::RemoveData(Type* a_dataToRemove)
+Type common::ListspecialAndHashtbl<Type>::RemoveData(Type a_dataToRemove)
 {
-	if(!m_hash.RemoveEntry(a_dataToRemove->key, a_dataToRemove->keyLength)){
-		return NULL;
+	if(!m_hash.RemoveEntry(a_dataToRemove->key,a_dataToRemove->keyLength)){
+		return (Type)0;
 	}
 	return m_list.RemoveData(a_dataToRemove);
 }
 
 
 template <typename Type>
-Type* common::ListspecialAndHashtbl<Type>::RemoveData(const void* a_key, size_t a_keyLength)
+Type common::ListspecialAndHashtbl<Type>::RemoveData(const void* a_key, size_t a_keyLength)
 {
-	Type* pNodeTmp;
-	if(!m_hash.RemoveEntry2(a_key, a_keyLength,&pNodeTmp)){
-		return NULL;
+	Type dataTmp;
+	if(!m_hash.RemoveEntry2(a_key, a_keyLength,&dataTmp)){
+		return (Type)0;
 	}
 	return m_list.RemoveData(pNodeTmp);
 }
 
 
 template <typename Type>
-bool common::ListspecialAndHashtbl<Type>::FindEntry(const void* a_key, size_t a_keyLength, Type** a_ppData)
+bool common::ListspecialAndHashtbl<Type>::FindEntry(const void* a_key, size_t a_keyLength, Type* a_pData)
 {
-	return m_hash.FindEntry(a_key, a_keyLength, a_ppData);
+	return m_hash.FindEntry(a_key, a_keyLength, a_pData);
 }
 
 #endif   // #ifndef __common__impl_listspecialandhashtbl_hpp__
