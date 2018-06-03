@@ -40,7 +40,7 @@ typedef struct NodeTools {
 	NodeTools() { clbkData = NULL; isEndianDiffer = okCount = 0; }
 }NodeTools;
 
-#define SET_CLBK_DATA(_node,_clbkData) ((raft::tcp::NodeTools*)((_node)->get_udata()))->clbkData = (_clbkData)
+//#define SET_CLBK_DATA(_node,_clbkData) ((raft::tcp::NodeTools*)((_node)->get_udata()))->clbkData = (_clbkData)
 #define GET_CLBK_DATA(_node) ((raft::tcp::NodeTools*)((_node)->get_udata()))->clbkData
 
 extern int g_nApplicationRun;
@@ -59,6 +59,7 @@ public:
 
 protected:
 	virtual void		ReceiveFromDataSocket(RaftNode2* anyNode);
+	virtual void		AddAdditionalDataToNode(RaftNode2* newNode);
 	virtual void		CleanNodeData(RaftNode2*) OVERRIDE;
 	virtual void		HandleNewConnection(char code,common::SocketTCP& clientSock, const sockaddr_in* remoteAddr);
 	virtual void		StateChangedBeforeNoLock(const SAddRemData& changeData);

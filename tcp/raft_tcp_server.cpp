@@ -142,6 +142,11 @@ void raft::tcp::Server::SignalHandler(int )
 }
 
 
+void raft::tcp::Server::AddAdditionalDataToNode(RaftNode2* a_newNode)
+{
+}
+
+
 void raft::tcp::Server::CleanNodeData(RaftNode2* a_node)
 {
 	NodeTools* pNodeTool = (NodeTools*)a_node->get_udata();
@@ -930,6 +935,7 @@ enterLoopPoint:
 				{
 				case raft::leaderInternal::newNode: case raft::receive::fromLeader::newNode:
 					DEBUG_APPLICATION(1, "Node (add): %s:%d, numOfNodes=%d", aData.nodeKey.ip4Address, (int)aData.nodeKey.port, m_Nodes.count() + 1);
+					AddAdditionalDataToNode(aData.pNode);
 					m_Nodes.AddData(aData.pNode, &aData.nodeKey, sizeof(NodeIdentifierKey));
 					break;
 				case raft::receive::fromNewLeader::oldLeaderDied:
@@ -1137,6 +1143,7 @@ void raft::tcp::Server::AddOwnNode()
 	HANDLE_MEM_DEF2(pNode, " ");
 	m_thisNode = pNode;
 	if(is_leader()){m_pLeaderNode=pNode;pNode->makeLeader(1);}
+	AddAdditionalDataToNode(pNode);
 	m_Nodes.AddData(pNode, &aOwnHost, sizeof(NodeIdentifierKey));
 }
 
@@ -1204,6 +1211,7 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindLeaderThrdSafe(const Nod
 		HANDLE_MEM_DEF2(pTools, " ");
 		pNewNode = new RaftNode2(pTools);
 		HANDLE_MEM_DEF2(pNewNode, " ");
+		AddAdditionalDataToNode(pNewNode);
 		m_Nodes.AddData(pNewNode, &pNodesInfo[i], sizeof(NodeIdentifierKey));
 		if(leaderNodeKey== pNodesInfo[i]){
 			pNewNode->makeLeader(1);

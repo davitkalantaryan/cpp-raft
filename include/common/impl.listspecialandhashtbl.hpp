@@ -15,8 +15,6 @@
 
 template <typename Type>
 common::ListspecialAndHashtbl<Type>::ListspecialAndHashtbl()
-	:
-	m_unCount(0)
 {
 }
 
@@ -38,8 +36,6 @@ bool common::ListspecialAndHashtbl<Type>::AddData(Type* a_newData, const void* a
 	a_newData->key = m_hash.AddEntry2(a_key, a_keyLen, a_newData);
 	a_newData->keyLength = a_keyLen;
 
-	++m_unCount;
-
 	return true;
 }
 
@@ -50,7 +46,6 @@ Type* common::ListspecialAndHashtbl<Type>::RemoveData(Type* a_dataToRemove)
 	if(!m_hash.RemoveEntry(a_dataToRemove->key, a_dataToRemove->keyLength)){
 		return NULL;
 	}
-	--m_unCount;
 	return m_list.RemoveData(a_dataToRemove);
 }
 
@@ -62,7 +57,6 @@ Type* common::ListspecialAndHashtbl<Type>::RemoveData(const void* a_key, size_t 
 	if(!m_hash.RemoveEntry2(a_key, a_keyLength,&pNodeTmp)){
 		return NULL;
 	}
-	--m_unCount;
 	return m_list.RemoveData(pNodeTmp);
 }
 

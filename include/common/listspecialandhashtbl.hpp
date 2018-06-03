@@ -8,7 +8,7 @@
 #define __common_listspecialandhashtbl_hpp__
 
 #include "common_hashtbl.hpp"
-#include "listspecial.hpp"
+#include "lists.hpp"
 
 // By special we assume that
 // template argument Type has following 4 fields 
@@ -33,12 +33,11 @@ public:
 	bool  FindEntry(const void* key, size_t keyLength, Type** a_ppData);
 
 	Type* first() { return m_list.first(); }
-	int   count()const {return m_unCount;}
+	int   count()const {return m_list.count();}
 
 protected:
 	HashTbl<Type*>		m_hash;
 	ListSpecial<Type>	m_list;
-	int					m_unCount;
 };
 
 } // namespace common{
