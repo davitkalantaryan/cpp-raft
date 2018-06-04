@@ -40,8 +40,11 @@ typedef struct NodeTools {
 	NodeTools() { clbkData = NULL; isEndianDiffer = okCount = 0; }
 }NodeTools;
 
+#define GET_NODE_TOOLS(_node)	((raft::tcp::NodeTools*)((_node)->get_udata()))
+
 //#define SET_CLBK_DATA(_node,_clbkData) ((raft::tcp::NodeTools*)((_node)->get_udata()))->clbkData = (_clbkData)
-#define GET_CLBK_DATA(_node) ((raft::tcp::NodeTools*)((_node)->get_udata()))->clbkData
+#define GET_CLBK_DATA(_node)	(GET_NODE_TOOLS((_node))->clbkData)
+#define NODE_KEY(_node)			((raft::tcp::NodeIdentifierKey*)((_node)->key))
 
 extern int g_nApplicationRun;
 

@@ -30,7 +30,7 @@ public:
 	void  AddData(Type newData);
 	Type  RemoveData(Type dataToRemove);
 
-	Type  first() {return m_first;}
+	Type  first()const {return m_first;}
 	int   count()const {return m_nCount;}
 
 protected:
@@ -66,7 +66,7 @@ public:
 	common::listN::ListItem<Type>* AddData(const Type& newData);
 	common::listN::ListItem<Type>* RemoveData(common::listN::ListItem<Type>* itemToRemove);
 
-	common::listN::ListItem<Type>* first() {return m_listSp.first();}
+	common::listN::ListItem<Type>* first()const {return m_listSp.first();}
 	int   count()const {return m_listSp.count();}
 
 protected:

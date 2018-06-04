@@ -31,7 +31,7 @@ public:
 	Type  RemoveData(const void* key, size_t keyLength);
 	bool  FindEntry(const void* key, size_t keyLength, Type* a_ppData);
 
-	Type  first() { return m_list.first(); }
+	Type  first()const { return m_list.first(); }
 	int   count()const {return m_list.count();}
 
 protected:
