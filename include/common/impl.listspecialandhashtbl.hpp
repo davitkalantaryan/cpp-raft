@@ -52,7 +52,7 @@ Type common::ListspecialAndHashtbl<Type>::RemoveData(const void* a_key, size_t a
 	if(!m_hash.RemoveEntry2(a_key, a_keyLength,&dataTmp)){
 		return (Type)0;
 	}
-	return m_list.RemoveData(pNodeTmp);
+	return m_list.RemoveData(dataTmp);
 }
 
 
