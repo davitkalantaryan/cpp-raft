@@ -29,7 +29,7 @@ public:
 	bool  AddData(Type newData, const void* a_key, size_t a_keyLen);			// is added, or this is a dublication
 	Type  RemoveData(Type dataToRemove);
 	Type  RemoveData(const void* key, size_t keyLength);
-	bool  FindEntry(const void* key, size_t keyLength, Type* a_ppData);
+	bool  FindEntry(const void* key, size_t keyLength, Type* a_ppData)const;
 
 	Type  first()const { return m_list.first(); }
 	int   count()const {return m_list.count();}

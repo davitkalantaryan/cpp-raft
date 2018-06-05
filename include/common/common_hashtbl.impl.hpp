@@ -144,7 +144,7 @@ bool common::HashTbl<DataType>::RemoveEntry2(const void* a_key, uint32_t a_nKeyL
 
 
 template <typename DataType>
-bool common::HashTbl<DataType>::FindEntry(const void* a_key, uint32_t a_nKeyLen, DataType* a_pData)
+bool common::HashTbl<DataType>::FindEntry(const void* a_key, uint32_t a_nKeyLen, DataType* a_pData)const
 {
 	HashItem<DataType> *pItem;
 	uint32_t unHash(((*m_fpHashFnc)(a_key, a_nKeyLen))&m_unRoundedTableSizeMin1);

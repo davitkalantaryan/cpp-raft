@@ -57,7 +57,7 @@ Type common::ListspecialAndHashtbl<Type>::RemoveData(const void* a_key, size_t a
 
 
 template <typename Type>
-bool common::ListspecialAndHashtbl<Type>::FindEntry(const void* a_key, size_t a_keyLength, Type* a_pData)
+bool common::ListspecialAndHashtbl<Type>::FindEntry(const void* a_key, size_t a_keyLength, Type* a_pData)const
 {
 	return m_hash.FindEntry(a_key, a_keyLength, a_pData);
 }
