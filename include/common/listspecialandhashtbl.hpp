@@ -33,6 +33,7 @@ public:
 
 	Type  first()const { return m_list.first(); }
 	int   count()const {return m_list.count();}
+	const ListSpecial<Type>& listSpecial()const {return m_list;}
 
 protected:
 	HashTbl<Type>		m_hash;

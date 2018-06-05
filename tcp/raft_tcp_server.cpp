@@ -349,7 +349,7 @@ returnPoint:
 }
 
 
-void raft::tcp::Server::connect_toAnyNode_bridgeToNodeRaft(common::SocketTCP& a_clientSock, const sockaddr_in* a_remoteAddr)
+RaftNode2* raft::tcp::Server::connect_toAnyNode_bridgeToNodeRaft(common::SocketTCP& a_clientSock, const sockaddr_in* a_remoteAddr)
 {
 	// this socket should remain 
 	RaftNode2* pNode;
@@ -362,15 +362,15 @@ void raft::tcp::Server::connect_toAnyNode_bridgeToNodeRaft(common::SocketTCP& a_
 	aRemHost.set_ip4Address(common::socketN::GetIPAddress(a_remoteAddr));	// let us specify host IP
 
 	nSndRcv = a_clientSock.readC(&unRemEndian,2);							// endian
-	if(nSndRcv!=2){return;}
+	if(nSndRcv!=2){return NULL;}
 	if(unRemEndian!=1){nEndianDiffer=1;}
 
 	nSndRcv = a_clientSock.readC(&aRemHost.port,4);							// port
-	if(nSndRcv!=4){return;}
+	if(nSndRcv!=4){return NULL;}
 	if(nEndianDiffer){SWAP4BYTES(aRemHost.port);}
 
 	if(!m_Nodes.FindEntry(&aRemHost,sizeof(NodeIdentifierKey),&pNode)){
-		return;
+		return NULL;
 	}
 	
 	pNodeTools = (NodeTools*)pNode->get_udata();
@@ -381,6 +381,7 @@ void raft::tcp::Server::connect_toAnyNode_bridgeToNodeRaft(common::SocketTCP& a_
 
 	a_clientSock.writeC(&g_ccResponceOk, 1);
 	a_clientSock.ResetSocketWithoutClose();
+	return pNode;
 }
 
 
@@ -448,7 +449,7 @@ void raft::tcp::Server::connect_toAnyNode_otherLeaderFound(common::SocketTCP& a_
 }
 
 
-void raft::tcp::Server::connect_toAnyNode_bridgeToNodeData(common::SocketTCP& a_clientSock, const sockaddr_in* a_remoteAddr)
+RaftNode2* raft::tcp::Server::connect_toAnyNode_bridgeToNodeData(common::SocketTCP& a_clientSock, const sockaddr_in* a_remoteAddr)
 {
 	// this socket should remain 
 	RaftNode2* pNode;
@@ -460,15 +461,15 @@ void raft::tcp::Server::connect_toAnyNode_bridgeToNodeData(common::SocketTCP& a_
 	aRemHost.set_ip4Address(common::socketN::GetIPAddress(a_remoteAddr));	// let us specify host IP
 
 	nSndRcv = a_clientSock.readC(&unRemEndian,2);							// endian
-	if(nSndRcv!=2){return;}
+	if(nSndRcv!=2){return NULL;}
 	if(unRemEndian!=1){nEndianDiffer=1;}
 
 	nSndRcv = a_clientSock.readC(&aRemHost.port,4);							// port
-	if(nSndRcv!=4){return;}
+	if(nSndRcv!=4){return NULL;}
 	if(nEndianDiffer){SWAP4BYTES(aRemHost.port);}
 
 	if(!m_Nodes.FindEntry(&aRemHost,sizeof(NodeIdentifierKey),&pNode)){
-		return;
+		return NULL;
 	}
 	
 	pNodeTools = (NodeTools*)pNode->get_udata();
@@ -479,6 +480,8 @@ void raft::tcp::Server::connect_toAnyNode_bridgeToNodeData(common::SocketTCP& a_
 
 	a_clientSock.writeC(&g_ccResponceOk, 1);
 	a_clientSock.ResetSocketWithoutClose();
+
+	return pNode;
 }
 
 
@@ -745,6 +748,7 @@ void raft::tcp::Server::ThreadFunctionRcvRaftInfo()
 
 void raft::tcp::Server::ThreadFunctionWorker()
 {
+	RaftNode2* pNode;
 	common::SocketTCP aClientSock;
 	SWorkerData dataFromProducer;
 	common::NewSharedLockGuard<newSharedMutex> aShrdLockGuard;
@@ -761,6 +765,7 @@ enterLoopPoint:
 
 			while (m_fifoWorker.Extract(&dataFromProducer) && m_nWork) {
 
+				pNode = NULL;
 				DEBUG_APPLICATION(1,
 					"conntion from %s(%s)",
 					common::socketN::GetHostName(&dataFromProducer.remAddress, vcHostName, MAX_HOSTNAME_LENGTH),
@@ -801,11 +806,11 @@ enterLoopPoint:
 					break;
 				case raft::connect::toAnyNode::raftBridge:
 					DEBUG_APPLICATION(1, "raft::connect::toAnyNode::raftBridge");
-					connect_toAnyNode_bridgeToNodeRaft(aClientSock, &dataFromProducer.remAddress);
+					pNode=connect_toAnyNode_bridgeToNodeRaft(aClientSock, &dataFromProducer.remAddress);
 					break;
 				case raft::connect::toAnyNode::dataBridge:
 					DEBUG_APPLICATION(1, "raft::connect::toAnyNode::dataBridge");
-					connect_toAnyNode_bridgeToNodeData(aClientSock, &dataFromProducer.remAddress);
+					pNode=connect_toAnyNode_bridgeToNodeData(aClientSock, &dataFromProducer.remAddress);
 					break;
 				case raft::connect::fromClient::allNodesInfo:
 					DEBUG_APPLICATION(1, "raft::connect::fromClient::allNodesInfo");
@@ -818,7 +823,7 @@ enterLoopPoint:
 				default:
 					break;
 				}
-				HandleNewConnection(cRequest, aClientSock, &dataFromProducer.remAddress);
+				HandleNewConnection(cRequest, aClientSock, &dataFromProducer.remAddress,pNode);
 				aShrdLockGuard.UnsetAndUnlockMutex();								// --> shared unlock
 				aClientSock.closeC();
 			} // while (m_fifoWorker.Extract(&dataFromProducer) && m_nWork) {
@@ -830,7 +835,7 @@ enterLoopPoint:
 }
 
 
-void raft::tcp::Server::HandleNewConnection(char,common::SocketTCP&, const sockaddr_in*)
+void raft::tcp::Server::HandleNewConnection(char,common::SocketTCP&, const sockaddr_in*, RaftNode2*)
 {
 	// this function should be overritten
 }

@@ -64,7 +64,7 @@ protected:
 	virtual void		ReceiveFromDataSocket(RaftNode2* anyNode);
 	virtual void		AddAdditionalDataToNode(RaftNode2* newNode);
 	virtual void		CleanNodeData(RaftNode2*) OVERRIDE;
-	virtual void		HandleNewConnection(char code,common::SocketTCP& clientSock, const sockaddr_in* remoteAddr);
+	virtual void		HandleNewConnection(char code,common::SocketTCP& clientSock, const sockaddr_in* remoteAddr, RaftNode2* pNode);
 	virtual void		StateChangedBeforeNoLock(const SAddRemData& changeData);
 	virtual void		StateChangedLocked(const SAddRemData& changeData);
 	virtual void		StateChangedAfter(char state, raft::tcp::NodeIdentifierKey key, void* clbkData);
@@ -87,8 +87,8 @@ protected:
 	// utils
 	void connect_toAnyNode_newNode(common::SocketTCP& sock);
 	void connect_toLeader_newNode(common::SocketTCP& sock, const sockaddr_in*remoteAddr);
-	void connect_toAnyNode_bridgeToNodeRaft(common::SocketTCP& sock, const sockaddr_in*remoteAddr);
-	void connect_toAnyNode_bridgeToNodeData(common::SocketTCP& sock, const sockaddr_in* remoteAddr);
+	RaftNode2* connect_toAnyNode_bridgeToNodeRaft(common::SocketTCP& sock, const sockaddr_in*remoteAddr);
+	RaftNode2* connect_toAnyNode_bridgeToNodeData(common::SocketTCP& sock, const sockaddr_in* remoteAddr);
 	void connect_fromClient_allNodesInfo(common::SocketTCP& sock);
 	void connect_toAnyNode_otherLeaderFound(common::SocketTCP& sock);
 
