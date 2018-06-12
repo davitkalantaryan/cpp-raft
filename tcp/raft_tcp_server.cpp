@@ -476,10 +476,10 @@ RaftNode2* raft::tcp::Server::connect_toAnyNode_bridgeToNodeData(common::SocketT
 	pNodeTools->isEndianDiffer = nEndianDiffer;
 	pNodeTools->dataSocket.SetNewSocketDescriptor(a_clientSock);
 
-	InterruptDataRcv();
-
 	a_clientSock.writeC(&g_ccResponceOk, 1);
 	a_clientSock.ResetSocketWithoutClose();
+
+	InterruptDataRcv();
 
 	return pNode;
 }
