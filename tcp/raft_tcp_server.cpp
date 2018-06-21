@@ -30,7 +30,7 @@
 #define DEF_REP_RATE_MS					2000	// [ms] default rep rate is 2 seconds
 #define	TIMEOUTS_RATIO_MIN				11		// this is minimum ratio for follower between time of leader wait and rep. rate (to start election)
 #define MAX_NUMBER_OF_PINGS				2		// maximum number of pings that really will be done by leader
-#define MAX_UNANSWERED_PINGS			12		// number of virtual pings, after this leader will remove follower
+#define MAX_UNANSWERED_PINGS			14		// number of virtual pings, after this leader will remove follower
 #define MAX_ITER_OK_COUNT				5		// used for syncronization
 
 #endif
