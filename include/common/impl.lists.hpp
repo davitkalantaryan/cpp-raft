@@ -51,7 +51,8 @@ Type common::ListSpecial<Type>::RemoveData(Type a_dataToRemove)
 {
 	if(a_dataToRemove->prev){ a_dataToRemove->prev->next= a_dataToRemove->next;}
 	if(a_dataToRemove->next){ a_dataToRemove->next->prev= a_dataToRemove->prev;}
-	if(a_dataToRemove == m_first){m_first=m_last=(Type)0;}
+	if(a_dataToRemove == m_first){m_first=a_dataToRemove->next;}
+	if(a_dataToRemove == m_last){m_last=a_dataToRemove->prev;}
 	--m_nCount;
 	return a_dataToRemove->next;
 }
