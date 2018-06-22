@@ -25,10 +25,10 @@ bool common::ListspecialAndHashtbl<Type>::AddData(Type a_newData, const void* a_
 {
 	Type dataTmp;
 
-	if(m_hash.FindEntry(a_key,a_keyLen,&dataTmp)){return false;}
+	if(m_hash.FindEntry(a_key,(uint32_t)a_keyLen,&dataTmp)){return false;}
 
 	m_list.AddData(a_newData);
-	a_newData->key = m_hash.AddEntry2(a_key, a_keyLen, a_newData);
+	a_newData->key = m_hash.AddEntry2(a_key, (uint32_t)a_keyLen, a_newData);
 	a_newData->keyLength = a_keyLen;
 
 	return true;
