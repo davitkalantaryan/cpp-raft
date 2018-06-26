@@ -7,8 +7,8 @@
  *
  */
 
-#ifndef __fifofast_impl_hpp__
-#define __fifofast_impl_hpp__
+#ifndef __impl_fifofast_hpp__
+#define __impl_fifofast_hpp__
 
 #ifndef __COMMON_FIFOFAST_HPP__
 #error This file should be included only from fifofast.h
@@ -318,4 +318,4 @@ void common::FifoAndStack<TypeFifo,Type>::IterateOverStack(TypeOwner* a_owner, v
 
 
 
-#endif  // #ifndef __fifofast_tos__
+#endif  // #ifndef __impl_fifofast_hpp__

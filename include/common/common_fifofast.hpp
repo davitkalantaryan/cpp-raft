@@ -10,7 +10,7 @@
 #define __COMMON_FIFOFAST_HPP__
 
 #include <stdlib.h>
-#include "mutex_cpp11.hpp"
+#include "cpp11+/mutex_cpp11.hpp"
 
 #ifndef LIKELY
 #define LIKELY(_x_) ((_x_))
@@ -106,6 +106,6 @@ public:
 
 } // namespace common
 
-#include "common_fifofast.impl.hpp"
+#include "impl.common_fifofast.hpp"
 
 #endif // __COMMON_FIFOFAST_HPP__

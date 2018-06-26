@@ -3,7 +3,7 @@
 #ifndef __common_raft_server2_hpp__
 #define __common_raft_server2_hpp__
 
-#include <common_servertcp.hpp>
+#include <common/common_servertcp.hpp>
 #include <raft_server.h>
 #include "raft_tcp_common.hpp"
 #include <thread>
@@ -12,8 +12,8 @@
 #include <raft_node.h>
 #include <stdint.h>
 #include "raft_macroses_and_functions.h"
-#include "common_unnamedsemaphorelite.hpp"
-#include "common_fifofast.hpp"
+#include "common/common_unnamedsemaphorelite.hpp"
+#include "common/common_fifofast.hpp"
 #include <vector>
 #if defined(HANDLE_SIG_ACTIONS) || defined(WLAC_USED)
 #include <pthread.h>

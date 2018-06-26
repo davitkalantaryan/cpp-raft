@@ -9,7 +9,7 @@
 #ifndef __raft_tcp_common_hpp__
 #define __raft_tcp_common_hpp__
 
-#include <common_sockettcp.hpp>
+#include <common/common_sockettcp.hpp>
 #include <stdint.h>
 #include <string>
 #include "raft_macroses_and_functions.h"
