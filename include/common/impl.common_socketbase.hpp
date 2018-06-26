@@ -2,8 +2,8 @@
 // common_socketbase.impl.hpp
 // 2017 Jul 07
 
-#ifndef __common_socketbase_impl_hpp__
-#define __common_socketbase_impl_hpp__
+#ifndef __impl_common_socketbase_hpp__
+#define __impl_common_socketbase_hpp__
 
 #ifndef __common_socketbase_hpp__
 #error do not include this header directly
@@ -121,4 +121,4 @@ int	selectMltCpp3(
 
 
 
-#endif  // #ifndef __common_socketbase_impl_hpp__
+#endif  // #ifndef __impl_common_socketbase_hpp__

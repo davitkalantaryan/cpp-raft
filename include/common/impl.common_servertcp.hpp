@@ -2,8 +2,8 @@
 // common_servertcp.impl.hpp
 // 2017 Aug 02
 
-#ifndef __common_servertcp_impl_hpp__
-#define __common_servertcp_impl_hpp__
+#ifndef __impl_common_servertcp_hpp__
+#define __impl_common_servertcp_hpp__
 
 #ifndef __common_servertcp_hpp__
 #error do not include this file directly
@@ -26,4 +26,4 @@ int common::ServerTCP::StartServer(
 }
 
 
-#endif  // #ifndef __common_servertcp_impl_hpp__
+#endif  // #ifndef __impl_common_servertcp_hpp__

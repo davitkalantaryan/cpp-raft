@@ -5,8 +5,8 @@
 #ifndef __common_servertcp_hpp__
 #define __common_servertcp_hpp__
 
-#include "common_sockettcp.hpp"
-#include "common_defination.h"
+#include "common/common_sockettcp.hpp"
+#include "cpp11+/common_defination.h"
 #ifndef _WIN32
 #include <pthread.h>
 #endif
@@ -77,7 +77,7 @@ protected:
 
 }
 
-#include "common_servertcp.impl.hpp"
+#include "impl.common_servertcp.hpp"
 
 
 

@@ -5,7 +5,7 @@
 #ifndef __common_socketbase_hpp__
 #define __common_socketbase_hpp__
 
-#include <common_iodevice.hpp>
+#include "common_iodevice.hpp"
 
 #if !defined(E_FATAL) & !defined(E_NO_BIND)
 
@@ -163,6 +163,6 @@ namespace socketN {
 
 }
 
-#include "common_socketbase.impl.hpp"
+#include "impl.common_socketbase.hpp"
 
 #endif  // #ifndef __common_socketbase_hpp__

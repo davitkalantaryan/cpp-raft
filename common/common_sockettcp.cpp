@@ -2,7 +2,7 @@
 // common_sockettcp.cpp
 // 2017 Jul 06
 
-#include "common_sockettcp.hpp"
+#include "common/common_sockettcp.hpp"
 #define DO_NOT_CALL_SELECT	-2003
 
 #ifdef _WIN32

@@ -3,8 +3,8 @@
 // created on:	2018 May 23
 //
 
-#ifndef __common_newlockguards_impl_hpp__
-#define __common_newlockguards_impl_hpp__
+#ifndef __impl_common_newlockguards_hpp__
+#define __impl_common_newlockguards_hpp__
 
 #ifndef __common_newlockguards_hpp__
 #error does not include this file directly
@@ -77,4 +77,4 @@ void common::NewSharedLockGuard<TypeMutex>::UnsetAndUnlockMutex()
 	if(pMutex){pMutex->unlock_shared();}
 }
 
-#endif  // #ifndef __common_newlockguards_hpp__
+#endif  // #ifndef __impl_common_newlockguards_hpp__

@@ -39,6 +39,6 @@ protected:
 
 } // namespace common {
 
-#include "newlockguards.impl.hpp"
+#include "impl.newlockguards.hpp"
 
 #endif  // #ifndef __common_newlockguards_hpp__

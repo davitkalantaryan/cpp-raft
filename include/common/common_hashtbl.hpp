@@ -45,7 +45,7 @@ protected:
 
 }
 
-#include "common_hashtbl.impl.hpp"
+#include "impl.common_hashtbl.hpp"
 
 
 

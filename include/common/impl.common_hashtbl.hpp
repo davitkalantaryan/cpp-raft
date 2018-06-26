@@ -2,8 +2,8 @@
 // common_hashtbl.impl.hpp
 // 2017 Jul 21
 
-#ifndef __common_hashtbl_impl_hpp__
-#define __common_hashtbl_impl_hpp__
+#ifndef __impl_common_hashtbl_hpp__
+#define __impl_common_hashtbl_hpp__
 
 #include <malloc.h>
 #include <memory.h>
@@ -242,4 +242,4 @@ static inline uint32_t hash1_( const void* a_pKey, uint32_t a_unKeySize )
 }}
 
 
-#endif  // #ifndef __common_hashtbl_impl_hpp__
+#endif  // #ifndef __impl_common_hashtbl_hpp__

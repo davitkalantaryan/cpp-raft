@@ -2,7 +2,7 @@
 // common_iodevice.cpp
 // 2017 Jul 6
 
-#include "common_iodevice.hpp"
+#include "common/common_iodevice.hpp"
 
 common::IODevice::IODevice()
 	:
