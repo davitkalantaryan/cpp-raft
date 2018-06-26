@@ -38,7 +38,7 @@ bool common::ListspecialAndHashtbl<Type>::AddData(Type a_newData, const void* a_
 template <typename Type>
 Type common::ListspecialAndHashtbl<Type>::RemoveData(Type a_dataToRemove)
 {
-	if(!m_hash.RemoveEntry(a_dataToRemove->key,a_dataToRemove->keyLength)){
+	if(!m_hash.RemoveEntry(a_dataToRemove->key,(uint32_t)a_dataToRemove->keyLength)){
 		return (Type)0;
 	}
 	return m_list.RemoveData(a_dataToRemove);

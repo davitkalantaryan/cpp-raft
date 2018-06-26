@@ -12,7 +12,7 @@
 
 #ifdef _SELECT_NEEDED_
 
-#ifdef WIN32
+#ifdef _WIN32
 //#include <windows.h>
 #else
 #include <sys/socket.h>
@@ -63,7 +63,7 @@ int	selectMltCpp3(
 	if(a_pnStopSocket){
 		if((*a_pnStopSocket)<0){(*a_pnStopSocket) = (int)socket(AF_INET, SOCK_STREAM, 0);}
 		if((*a_pnStopSocket)<0){return (*a_pnStopSocket);}
-#ifdef WIN32
+#ifdef _WIN32
 		pRfds = &rfds;
 		FD_SET((*a_pnStopSocket), &rfds);
 #else

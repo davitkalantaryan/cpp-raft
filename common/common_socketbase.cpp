@@ -6,6 +6,7 @@
 
 #include <string.h>
 #include <time.h>
+#include <signal.h>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -70,23 +71,30 @@ void common::SocketBase::closeHard(void)
 
 int common::SocketBase::setTimeout(int a_nTimeoutMs)
 {
-    if(a_nTimeoutMs>=0){
-        char* pInput;
-        int nInputLen;
+
+	char* pInput;
+	int nInputLen;
 #ifdef _WIN32
-        DWORD dwTimeout = a_nTimeoutMs;
-        pInput = (char*)&dwTimeout;
-        nInputLen = sizeof(DWORD);
+	DWORD dwTimeout;
+	if (a_nTimeoutMs >= 0) {dwTimeout = a_nTimeoutMs;}
+	else {dwTimeout = 1000000000;}
+	pInput = (char*)&dwTimeout;
+	nInputLen = sizeof(DWORD);
 #else
-        struct timeval tv;
-        tv.tv_sec = a_nTimeoutMs / 1000;
-        tv.tv_usec = (a_nTimeoutMs % 1000) * 1000;
-        pInput = (char*)&tv;
-        nInputLen = sizeof(struct timeval);
+	struct timeval tv;
+	if (a_nTimeoutMs >= 0) {
+		tv.tv_sec = a_nTimeoutMs / 1000;
+		tv.tv_usec = (a_nTimeoutMs % 1000) * 1000;
+	}
+	else {
+		tv.tv_sec = 1000000;
+		tv.tv_usec = 1000;
+	}
+	pInput = (char*)&tv;
+	nInputLen = sizeof(struct timeval);
 #endif
 
-        if (setsockopt(m_socket,SOL_SOCKET,SO_RCVTIMEO,pInput,nInputLen) < 0){return -1;}
-    }
+	if (setsockopt(m_socket,SOL_SOCKET,SO_RCVTIMEO,pInput,nInputLen) < 0){return -1;}
 
 	return 0;
 }
@@ -148,6 +156,11 @@ int common::SocketBase::DublicateSocket(int a_nProcID, void* a_pProtInfo)const
 
 namespace common{ namespace socketN{
 
+static void SignalHandler(int)
+{
+    //
+}
+
 int Initialize()
 {
 #ifdef _WIN32
@@ -174,7 +187,17 @@ int Initialize()
 		return 0;
 	}
 
-#endif
+#else    // #ifdef _WIN32
+
+	struct sigaction newAction;
+
+	newAction.sa_flags = 0;
+	newAction.sa_handler =SignalHandler;
+	sigemptyset(&newAction.sa_mask);
+	newAction.sa_restorer = NULL;
+	sigaction(SIGPIPE,&newAction,NULL);
+
+#endif   // #ifdef _WIN32
 
 	return 1;
 }
@@ -237,7 +260,7 @@ const char* GetIPAddress(
 }
 
 
-#ifdef WIN32
+#ifdef _WIN32
 //#include <Ws2tcpip.h>
 //#include <Wspiapi.h>
 //#include <ws2def>
@@ -255,7 +278,7 @@ const char* GetHostName(
 	char* a_pcBuffer, int a_nBuffLen)
 {
 	if (!a_addr) { return "NULL"; }
-#ifndef WIN32
+#ifndef _WIN32
 	getnameinfo((struct sockaddr *)a_addr, sizeof(sockaddr), a_pcBuffer, a_nBuffLen, NULL, 0, NI_NUMERICSERV);
 #else
 	HMODULE h = ::GetModuleHandle(TEXT("ws2_32.dll"));

@@ -64,12 +64,6 @@
 #define __OVERRIDE__
 #endif
 
-//#ifdef __CPP11_DEFINED__
-//#ifndef STDN
-//#define STDN std
-//#endif
-//#endif  // #ifdef __CPP11_DEFINED__
-
 #include <stdarg.h>
 
 #ifdef __cplusplus
