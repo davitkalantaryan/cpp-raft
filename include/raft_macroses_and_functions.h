@@ -11,14 +11,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <signal.h>
+#include <cpp11+/shared_mutex_cpp14.hpp>
 
-#ifdef _WIN32
-#include <shared_mutex>
-typedef std::shared_mutex   newSharedMutex;
-#else
-#include <common_rwlock.hpp>
-typedef common::RWLock      newSharedMutex;
-#endif
 
 #if defined(_WIN32) && !defined(_WLAC_USED)
 struct sigaction { void(*sa_handler)(int); };

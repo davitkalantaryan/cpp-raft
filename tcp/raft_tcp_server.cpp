@@ -43,7 +43,7 @@
 struct ServersList { raft::tcp::Server *server; ServersList *prev, *next; };
 static struct ServersList* s_pFirst = NULL;
 //static pthread_rwlock_t s_pRWlockForServers = PTHREAD_RWLOCK_INITIALIZER;
-static newSharedMutex s_pRWlockForServers;
+static STDN::shared_mutex s_pRWlockForServers;
 
 //static void SigActionFunction (int, siginfo_t *, void *); last 2 arguments are not used
 static void AddNewRaftServer(raft::tcp::Server* a_pServer);
@@ -647,7 +647,7 @@ void raft::tcp::Server::FunctionForMultiRcv(volatile int* a_pnSocketForInfo, voi
 {
 	NodeTools* pNodeTools;
 	RaftNode2* pNode;
-	common::NewSharedLockGuard<newSharedMutex> aShrdLockGuard;
+	common::NewSharedLockGuard<STDN::shared_mutex> aShrdLockGuard;
 	fd_set rFds, eFds;
 	int nMax, nCurrentSocket, nSelectReturn, nSocketsFound, nSocketToIgnore=-1, nLastSocket;
     volatile int& nSocketForInfo = *a_pnSocketForInfo;
@@ -751,7 +751,7 @@ void raft::tcp::Server::ThreadFunctionWorker()
 	RaftNode2* pNode;
 	common::SocketTCP aClientSock;
 	SWorkerData dataFromProducer;
-	common::NewSharedLockGuard<newSharedMutex> aShrdLockGuard;
+	common::NewSharedLockGuard<STDN::shared_mutex> aShrdLockGuard;
     int nSndRcv;
 	int16_t	snEndian;
 	char vcHostName[MAX_HOSTNAME_LENGTH];
@@ -853,8 +853,8 @@ void raft::tcp::Server::ThreadFunctionAddRemoveNode()
 	NodeIdentifierKey* pKeyToInform=NULL;
 	NodeIdentifierKey keyForInform;
 	SAddRemData aData;
-	common::NewSharedLockGuard<newSharedMutex> aShrdLockGuard;
-	common::NewLockGuard<newSharedMutex> aLockGuard;
+	common::NewSharedLockGuard<STDN::shared_mutex> aShrdLockGuard;
+	common::NewLockGuard<STDN::shared_mutex> aLockGuard;
 	int nSndRcv, nIter;
 	uint32_t unOkCount;
 	char cRequest;
@@ -1111,7 +1111,7 @@ void raft::tcp::Server::CheckAllPossibleSeeds(const std::vector<NodeIdentifierKe
 
 void raft::tcp::Server::ThreadFunctionPeriodic()
 {
-	common::NewSharedLockGuard<newSharedMutex> aShrdLockGuard;
+	common::NewSharedLockGuard<STDN::shared_mutex> aShrdLockGuard;
 	int nIteration(0);
 	
 enterLoopPoint:

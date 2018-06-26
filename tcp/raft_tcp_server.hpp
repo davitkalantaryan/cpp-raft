@@ -120,7 +120,7 @@ protected:
 	std::thread										m_threadAddRemoveNode;
 	std::vector<std::thread*>						m_vectThreadsWorkers;
 private:
-    newSharedMutex                                  m_shrdMutexForNodes2;
+    STDN::shared_mutex                              m_shrdMutexForNodes2;
 protected:
 	common::UnnamedSemaphoreLite					m_semaWorker;
 	common::UnnamedSemaphoreLite					m_semaAddRemove;
