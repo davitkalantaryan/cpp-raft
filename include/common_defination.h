@@ -40,6 +40,23 @@
 #endif  // #ifndef __CPP11_DEFINED__
 #endif  // #ifndef __NOT_USE_CPP11__
 
+// Is C++14
+#ifndef __NOT_USE_CPP14__
+#ifndef __CPP14_DEFINED__
+#if defined(_MSC_VER)
+#if __cplusplus >= 199711L
+#define __CPP14_DEFINED__
+#endif // #if __cplusplus >= 199711L
+#elif defined(__GNUC__) // #if defined(_MSC_VER)
+#if __cplusplus > 201103L
+#define __CPP14_DEFINED__
+#endif // #if __cplusplus > 199711L
+#else // #if defined(_MSC_VER)
+#error this compiler is not supported
+#endif // #if defined(_MSC_VER)
+#endif  // #ifndef __CPP14_DEFINED__
+#endif  // #ifndef __NOT_USE_CPP14__
+
 // This should be done after check
 #ifdef __CPP11_DEFINED__
 #define __OVERRIDE__	override
@@ -47,11 +64,11 @@
 #define __OVERRIDE__
 #endif
 
-#ifdef __CPP11_DEFINED__
-#ifndef STDN
-#define STDN std
-#endif
-#endif  // #ifdef __CPP11_DEFINED__
+//#ifdef __CPP11_DEFINED__
+//#ifndef STDN
+//#define STDN std
+//#endif
+//#endif  // #ifdef __CPP11_DEFINED__
 
 #include <stdarg.h>
 

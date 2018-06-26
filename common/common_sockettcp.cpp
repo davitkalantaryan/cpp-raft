@@ -74,13 +74,13 @@ int common::SocketTCP::connectC(const char *a_svrName, int a_port, int a_connect
 #ifdef	_WIN32
 	unsigned long on = 1;
 	ioctlsocket(m_socket, FIONBIO, &on);
-#else  /* #ifdef	WIN32 */
+#else  /* #ifdef	_WIN32 */
 	int status;
 	if ((status = fcntl(m_socket, F_GETFL, 0)) != -1){
 		status |= O_NONBLOCK;
 		fcntl(m_socket, F_SETFL, status);
 	}
-#endif  /* #ifdef	WIN32 */
+#endif  /* #ifdef	_WIN32 */
 
 	int addr_len = sizeof(addr);
 	rtn = ::connect(m_socket, (struct sockaddr *) &addr, addr_len);
