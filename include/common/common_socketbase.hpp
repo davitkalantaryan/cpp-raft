@@ -23,10 +23,6 @@
 #define E_WINSOCK_VERSION	-42	/* WINSOCK DLL version not requested */
 #define	E_CONN_CLOSED		-46	/* connecttion closed by peer */
 
-#ifndef INADDR_NONE
-#define INADDR_NONE     0xffffffff
-#endif
-
 #ifdef	_WIN32
 #include <WinSock2.h>
 #include <WS2tcpip.h>
@@ -50,6 +46,10 @@
 #endif
 #endif
 #endif
+#endif
+
+#ifndef INADDR_NONE
+#define INADDR_NONE     0xffffffff
 #endif
 
 #ifdef	_WIN32
