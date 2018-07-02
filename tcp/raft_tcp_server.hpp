@@ -28,6 +28,10 @@ struct SAddRemData {
 	union {
 		struct {RaftNode2 *pNode; NodeIdentifierKey nodeKey;};
 		void* forUser;
+		struct {
+			char* leaderBuf;
+			int   leaderBufSize;
+		}lb;
 	}; 
 	SAddRemData() :pNode(NULL){}
 };

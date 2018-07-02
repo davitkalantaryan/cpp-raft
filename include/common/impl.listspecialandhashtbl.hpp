@@ -62,4 +62,31 @@ bool common::ListspecialAndHashtbl<Type>::FindEntry(const void* a_key, size_t a_
 	return m_hash.FindEntry(a_key, a_keyLength, a_pData);
 }
 
+
+template <typename Type>
+void  common::ListspecialAndHashtbl<Type>::MoveContentToOtherList(ListspecialAndHashtbl<Type>* a_pOther)
+{
+	if(!a_pOther->count()){
+		m_hash.MoveContentToEmptyHash(&(a_pOther->m_hash));
+	}
+	else {
+		Type aItem = m_list.first();
+		while(aItem){
+			m_hash.RemoveEntry(aItem->key,aItem->keyLength);
+			aItem->key = a_pOther->m_hash.AddEntry2(aItem->key, (uint32_t)aItem->keyLength,aItem);
+			aItem = (Type)aItem->next;
+		}
+	}
+	m_list.MoveContentToOtherList(&(a_pOther->m_list));
+}
+
+
+template <typename Type>
+void common::ListspecialAndHashtbl<Type>::MoveItemToOtherList(ListspecialAndHashtbl<Type>* a_pOther, Type a_item)
+{
+	m_hash.RemoveEntry(a_item->key, a_item->keyLength);
+	a_item->key = a_pOther->m_hash.AddEntry2(a_item->key, (uint32_t)a_item->keyLength, a_item);
+	m_list.MoveItemToOtherList(&(a_pOther->m_list),a_item);
+}
+
 #endif   // #ifndef __common__impl_listspecialandhashtbl_hpp__

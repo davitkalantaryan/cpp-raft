@@ -35,6 +35,9 @@ public:
 	int   count()const {return m_list.count();}
 	const ListSpecial<Type>& listSpecial()const {return m_list;}
 
+	void  MoveContentToOtherList(ListspecialAndHashtbl* pOther);
+	void  MoveItemToOtherList(ListspecialAndHashtbl* pOther, Type item);
+
 protected:
 	HashTbl<Type>		m_hash;
 	ListSpecial<Type>	m_list;

@@ -163,6 +163,24 @@ bool common::HashTbl<DataType>::FindEntry(const void* a_key, uint32_t a_nKeyLen,
 }
 
 
+template <typename DataType>
+void common::HashTbl<DataType>::MoveContentToEmptyHash(HashTbl<DataType>* a_pOther)
+{
+	//hashFncs::TypeHashFnc		m_fpHashFnc;
+	//HashItem<DataType>**		m_pTable;
+	//uint32_t					m_unRoundedTableSizeMin1;
+	
+	HashItem<DataType>** pTable = m_pTable;
+	uint32_t unRoundedTableSizeMin1 = m_unRoundedTableSizeMin1;
+
+	a_pOther->m_fpHashFnc = m_fpHashFnc;
+	m_pTable = a_pOther->m_pTable;
+	m_unRoundedTableSizeMin1 = a_pOther->m_unRoundedTableSizeMin1;
+	a_pOther->m_pTable=pTable;
+	a_pOther->m_unRoundedTableSizeMin1=unRoundedTableSizeMin1;
+}
+
+
 /*/////////////////////////////////////////////////*/
 template <typename DataType1>
 template <typename DataType2>
