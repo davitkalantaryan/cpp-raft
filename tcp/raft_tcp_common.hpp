@@ -31,6 +31,8 @@ typedef struct NodeIdentifierKey{
 	void set_ip4Address(const std::string& ip4Address);
 	void set_addressAndPort(char* addressAndPort, int32_t defaultPort);
 	bool operator==(const NodeIdentifierKey& aM)const;
+	bool isSame(const char* a_ip4Address, int32_t a_port)const;
+	static void generateKey(const char* a_ip4Address, int32_t a_port, std::string* a_pKey);
 }NodeIdentifierKey;
 
 

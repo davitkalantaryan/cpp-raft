@@ -18,6 +18,20 @@ bool raft::tcp::NodeIdentifierKey::operator==(const NodeIdentifierKey& a_aM)cons
 }
 
 
+bool raft::tcp::NodeIdentifierKey::isSame(const char* a_ip4Address, int32_t a_port)const
+{
+	return (  (strncmp(this->ip4Address, a_ip4Address, MAX_IP4_LEN) == 0) && (this->port == a_port)   );
+}
+
+
+void raft::tcp::NodeIdentifierKey::generateKey(const char* a_ip4Address, int32_t a_port, std::string* a_pKey)
+{
+	a_pKey->resize(MAX_IP4_LEN+4,0);
+	strncpy(const_cast<char*>(a_pKey->data()),a_ip4Address,MAX_IP4_LEN);
+	*((int32_t*)(const_cast<char*>(a_pKey->data()) + MAX_IP4_LEN)) = a_port;
+}
+
+
 void raft::tcp::NodeIdentifierKey::set_ip4Address(const std::string& a_hostName)
 {
 	memset(this->ip4Address, 0, MAX_IP4_LEN);
