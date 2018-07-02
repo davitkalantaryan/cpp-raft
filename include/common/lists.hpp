@@ -27,11 +27,14 @@ public:
 	ListSpecial();
 	virtual ~ListSpecial();
 
-	void  AddData(Type newData);
-	Type  RemoveData(Type dataToRemove);
+	void  AddDataRaw(Type newData);
+	Type  RemoveDataRaw(Type dataToRemove);
 
 	Type  first()const {return m_first;}
 	int   count()const {return m_nCount;}
+
+	void  MoveContentToOtherList(ListSpecial* pOther);
+	void  MoveItemToOtherList(ListSpecial* pOther, Type item);
 
 protected:
 	Type	m_first, m_last;
@@ -58,7 +61,7 @@ private:
 
 
 template <typename Type>
-class List
+class List : public ListSpecial<common::listN::ListItem<Type>* >
 {
 public:
 	virtual ~List();
@@ -66,11 +69,6 @@ public:
 	common::listN::ListItem<Type>* AddData(const Type& newData);
 	common::listN::ListItem<Type>* RemoveData(common::listN::ListItem<Type>* itemToRemove);
 
-	common::listN::ListItem<Type>* first()const {return m_listSp.first();}
-	int   count()const {return m_listSp.count();}
-
-protected:
-	ListSpecial<common::listN::ListItem<Type>*>	m_listSp;
 };
 
 

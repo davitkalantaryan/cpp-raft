@@ -27,7 +27,7 @@ bool common::ListspecialAndHashtbl<Type>::AddData(Type a_newData, const void* a_
 
 	if(m_hash.FindEntry(a_key,(uint32_t)a_keyLen,&dataTmp)){return false;}
 
-	m_list.AddData(a_newData);
+	m_list.AddDataRaw(a_newData);
 	a_newData->key = m_hash.AddEntry2(a_key, (uint32_t)a_keyLen, a_newData);
 	a_newData->keyLength = a_keyLen;
 
@@ -41,7 +41,7 @@ Type common::ListspecialAndHashtbl<Type>::RemoveData(Type a_dataToRemove)
 	if(!m_hash.RemoveEntry(a_dataToRemove->key,(uint32_t)a_dataToRemove->keyLength)){
 		return (Type)0;
 	}
-	return m_list.RemoveData(a_dataToRemove);
+	return m_list.RemoveDataRaw(a_dataToRemove);
 }
 
 
@@ -52,7 +52,7 @@ Type common::ListspecialAndHashtbl<Type>::RemoveData(const void* a_key, size_t a
 	if(!m_hash.RemoveEntry2(a_key, a_keyLength,&dataTmp)){
 		return (Type)0;
 	}
-	return m_list.RemoveData(dataTmp);
+	return m_list.RemoveDataRaw(dataTmp);
 }
 
 

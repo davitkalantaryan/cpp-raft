@@ -35,7 +35,7 @@ common::ListSpecial<Type>::~ListSpecial()
 
 
 template <typename Type>
-void common::ListSpecial<Type>::AddData(Type a_newData)
+void common::ListSpecial<Type>::AddDataRaw(Type a_newData)
 {
 	if(!m_first){a_newData->prev=(Type)0;m_first=a_newData;}
 	else{m_last->next= a_newData;}
@@ -47,7 +47,7 @@ void common::ListSpecial<Type>::AddData(Type a_newData)
 
 
 template <typename Type>
-Type common::ListSpecial<Type>::RemoveData(Type a_dataToRemove)
+Type common::ListSpecial<Type>::RemoveDataRaw(Type a_dataToRemove)
 {
 	if(a_dataToRemove->prev){ a_dataToRemove->prev->next= a_dataToRemove->next;}
 	if(a_dataToRemove->next){ a_dataToRemove->next->prev= a_dataToRemove->prev;}
@@ -55,6 +55,24 @@ Type common::ListSpecial<Type>::RemoveData(Type a_dataToRemove)
 	if(a_dataToRemove == m_last){m_last= ((Type)a_dataToRemove->prev);}
 	--m_nCount;
 	return (Type)a_dataToRemove->next;
+}
+
+
+template <typename Type>
+void common::ListSpecial<Type>::MoveContentToOtherList(ListSpecial<Type>* a_pOther)
+{
+	if(a_pOther->m_last){a_pOther->m_last->next = m_first;}
+	if(m_first){m_first->prev=a_pOther->m_last;}
+	a_pOther->m_nCount += m_nCount;
+	m_nCount = 0;
+}
+
+
+template <typename Type>
+void common::ListSpecial<Type>::MoveItemToOtherList(ListSpecial<Type>* a_pOther,Type a_item)
+{
+	this->RemoveDataRaw(a_item);
+	a_pOther->AddDataRaw(a_item);
 }
 
 
@@ -68,10 +86,9 @@ common::List<Type>::~List()
 template <typename Type>
 common::listN::ListItem<Type>* common::List<Type>::AddData(const Type& a_newData)
 {
-	//common::listN::ListItem<Type>* pNewItem = (common::listN::ListItem<Type>*)malloc(sizeof(common::listN::ListItem<Type>));
 	common::listN::ListItem<Type>* pNewItem = new common::listN::ListItem<Type>(a_newData);
 	if(!pNewItem){return NULL;}
-	m_listSp.AddData(pNewItem);
+	ListSpecial<common::listN::ListItem<Type>* >::AddDataRaw(pNewItem);
 	return pNewItem;
 }
 
@@ -79,7 +96,7 @@ common::listN::ListItem<Type>* common::List<Type>::AddData(const Type& a_newData
 template <typename Type>
 common::listN::ListItem<Type>* common::List<Type>::RemoveData(common::listN::ListItem<Type>* a_itemToRemove)
 {
-	common::listN::ListItem<Type>* pReturn = m_listSp.RemoveData(a_itemToRemove);
+	common::listN::ListItem<Type>* pReturn = ListSpecial<common::listN::ListItem<Type>* >::RemoveDataRaw(a_itemToRemove);
 	delete a_itemToRemove;
 	return pReturn;
 }
