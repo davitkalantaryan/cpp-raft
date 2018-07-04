@@ -628,7 +628,7 @@ void raft::tcp::Server::ReceiveFromRaftSocket(RaftNode2* a_pNode)
 			m_semaAddRemove.post();
 			break;
 		default:
-			DEBUG_APP_WITH_NODE(0, *pNodeKey,"default:");
+			DEBUG_APP_WITH_NODE(0, *pNodeKey,"default: (num=%d)",(int)cRequest);
 			break;
 		}
 	}
