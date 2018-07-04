@@ -37,10 +37,10 @@ common::ListSpecial<Type>::~ListSpecial()
 template <typename Type>
 void common::ListSpecial<Type>::AddDataRaw(Type a_newData)
 {
-	if(!m_first){a_newData->prev=(Type)0;m_first=a_newData;}
-	else{m_last->next= a_newData;}
 	a_newData->prev = m_last;
 	a_newData->next = (Type)0;
+	if(!m_first){m_first=a_newData;}
+	else{m_last->next= a_newData;}
 	m_last = a_newData;
 	++m_nCount;
 }
