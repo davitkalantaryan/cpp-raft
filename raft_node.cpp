@@ -29,13 +29,16 @@ RaftNode2::RaftNode2(void* a_udata) :
 	m_isProblematic = 0;
 	m_isAbleToVote = 1;
 	m_unPingCount = 0;
+	//
+	m_isTimeToPing =0;
+	m_hasData = 0;
 
 	this->key = NULL;
 	this->keyLength = 0;
 }
 
 
-uint32_t RaftNode2::unansweredPingCount()const
+uint64_t RaftNode2::unansweredPingCount()const
 {
 	return m_unPingCount;
 }
@@ -49,7 +52,7 @@ void RaftNode2::pingReceived()
 }
 
 
-uint32_t RaftNode2::makePing(uint32_t a_unCount)
+uint64_t RaftNode2::makePing(uint64_t a_unCount)
 {
 	if((m_unPingCount+ a_unCount)<=g_cunRaftMaxPing){m_unPingCount += a_unCount;}
 	return m_unPingCount;
@@ -62,21 +65,21 @@ void RaftNode2::SetUnableToVote()
 }
 
 
-uint32_t RaftNode2::isAbleToVote()const
+uint64_t RaftNode2::isAbleToVote()const
 {
 	return m_isAbleToVote;
 }
 
 
-uint32_t RaftNode2::isProblematic()const
+uint64_t RaftNode2::isProblematic()const
 {
 	return m_isProblematic;
 }
 
 
-void RaftNode2::setProblematic(uint32_t a_problematic)
+void RaftNode2::setProblematic()
 {
-	m_isProblematic = a_problematic;
+	m_isProblematic = 1;
 }
 
 
@@ -118,7 +121,13 @@ void RaftNode2::set_udata(void* a_udata)
 }
 
 
-void RaftNode2::makeLeader(int a_isLeader)
+void RaftNode2::makeLeader()
 {
-	m_isLeader = a_isLeader;
+	m_isLeader = 1;
+}
+
+
+void RaftNode2::resetLeader()
+{
+	m_isLeader = 0;
 }

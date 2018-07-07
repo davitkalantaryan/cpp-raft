@@ -63,8 +63,7 @@ void common::ListSpecial<Type>::MoveContentToOtherList(ListSpecial<Type>* a_pOth
 {
 	if(a_pOther->m_last){a_pOther->m_last->next = m_first;}
 	else { a_pOther->m_first=m_first;}
-	if(m_first){m_first->prev=a_pOther->m_last;}
-	a_pOther->m_last = m_last;
+	if(m_first){m_first->prev=a_pOther->m_last;a_pOther->m_last = m_last;}
 	a_pOther->m_nCount += m_nCount;
 	m_first = m_last = (Type)0;
 	m_nCount = 0;

@@ -84,8 +84,9 @@ void  common::ListspecialAndHashtbl<Type>::MoveContentToOtherList(ListspecialAnd
 template <typename Type>
 void common::ListspecialAndHashtbl<Type>::MoveItemToOtherList(ListspecialAndHashtbl<Type>* a_pOther, Type a_item)
 {
-	m_hash.RemoveEntry(a_item->key, a_item->keyLength);
-	a_item->key = a_pOther->m_hash.AddEntry2(a_item->key, (uint32_t)a_item->keyLength, a_item);
+	void* pOldKey = a_item->key;
+	a_item->key = a_pOther->m_hash.AddEntry2(pOldKey, (uint32_t)a_item->keyLength, a_item);
+	m_hash.RemoveEntry(pOldKey, a_item->keyLength);
 	m_list.MoveItemToOtherList(&(a_pOther->m_list),a_item);
 }
 
