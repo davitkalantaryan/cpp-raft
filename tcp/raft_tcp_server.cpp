@@ -445,7 +445,7 @@ void raft::tcp::Server::connect_toAnyNode_otherLeaderFound(common::SocketTCP& a_
 	if(nSndRcv!=sizeof(NodeIdentifierKey)){return;}
 	if(isEndianDiffer){SWAP4BYTES(newLeaderKey.port);}
 
-	DEBUG_APP_WITH_NODE(0, newLeaderKey, " [this a correct leader]");
+	DEBUG_APP_WITH_NODE(0, newLeaderKey, " [this is a correct leader]");
 }
 
 
