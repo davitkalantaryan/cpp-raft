@@ -79,6 +79,7 @@ int common::HashTbl<DataType>::AddEntry(const void* a_key, uint32_t a_nKeyLen, c
 		uint32_t unHash(((*m_fpHashFnc)(a_key, a_nKeyLen))&m_unRoundedTableSizeMin1);
 
 		if (!pItem) { return -1; }
+		if(m_pTable[unHash]){m_pTable[unHash]->prev=pItem;}
 		pItem->next = m_pTable[unHash];
 		m_pTable[unHash] = pItem;
 		return 0;
@@ -99,6 +100,7 @@ void* common::HashTbl<DataType>::AddEntry2(const void* a_key, uint32_t a_nKeyLen
 		uint32_t unHash(((*m_fpHashFnc)(a_key, a_nKeyLen))&m_unRoundedTableSizeMin1);
 
 		if (!pItem) { return NULL; }
+		if(m_pTable[unHash]){m_pTable[unHash]->prev=pItem;}
 		pItem->next = m_pTable[unHash];
 		m_pTable[unHash] = pItem;
 		return pItem->key;

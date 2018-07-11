@@ -754,7 +754,6 @@ void raft::tcp::Server::ThreadFunctionWorker()
 	int16_t	snEndian;
 	char vcHostName[MAX_HOSTNAME_LENGTH];
 	char cRequest;
-
 	
 enterLoopPoint:
 	try {
@@ -774,7 +773,7 @@ enterLoopPoint:
 				snEndian = 1;
 				nSndRcv = aClientSock.writeC(&snEndian, 2);																// 2. Send endian				
 				if (nSndRcv != 2) {
-					DEBUG_APPLICATION(1, "Could not receive the endian of the connected pear");
+					DEBUG_APPLICATION(1, "Could not send the endian of the connected pear nSndRcv=%d",nSndRcv);
 					aClientSock.closeC();
 					continue;
 				}
