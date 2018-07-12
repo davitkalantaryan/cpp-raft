@@ -39,11 +39,11 @@ int common::SocketTCP::connectC(const char *a_svrName, int a_port, int a_connect
 	const char *host = NULL;
 #ifdef MAKE_SOCKET_NONBLOCK
 	fd_set rfds;
+	int maxsd = 0;
 #endif
 	struct sockaddr_in addr;
 	unsigned long ha;
 	int rtn = -1;
-	int maxsd = 0;
 	char l_host[MAX_HOSTNAME_LENGTH];
 
 	closeHard();
@@ -118,6 +118,7 @@ int common::SocketTCP::connectC(const char *a_svrName, int a_port, int a_connect
             if (errno == EINTR){/*interrupted by signal*/return _EINTR_ERROR_;}
             return E_SELECT;
         default:
+			rtn = 0;
             break;
         }
 
@@ -125,7 +126,7 @@ int common::SocketTCP::connectC(const char *a_svrName, int a_port, int a_connect
 	}
 #endif  // #ifdef MAKE_SOCKET_NONBLOCK
 
-	return 0;
+	return rtn;
 }
 
 
