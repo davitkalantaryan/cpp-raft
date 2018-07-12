@@ -146,11 +146,11 @@ int common::SocketTCP::readC(void* a_pBuffer, int a_nSize)const
 
 	if(nReturn<0){
 #ifdef _WIN32
-		nReturn = WSAGetLastError();
+		int nError = WSAGetLastError();
 #else
-		nReturn = errno;
+		int nError = errno;
 #endif
-		nReturn = (nReturn>0)?(-nReturn):nReturn;
+		nReturn = (nError>0)?(-nError):(   (nError<0)?nError:nReturn  );
 	}
 
 #if 0
