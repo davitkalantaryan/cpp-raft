@@ -63,20 +63,52 @@ bool ConnectAndGetEndian(common::SocketTCP* a_pSock, const NodeIdentifierKey& a_
 	int nSndRcv;
 	uint16_t unRemEndian;
 
-	if(a_pSock->connectC(a_nodeInfo.ip4Address, a_nodeInfo.port)){return false;}
+	if(a_pSock->connectC(a_nodeInfo.ip4Address, a_nodeInfo.port,1000)){
+		a_pSock->closeC();
+		DEBUG_APPLICATION(2, "Unable to connect");
+		return false;
+	}
 	a_pSock->setTimeout(SOCK_TIMEOUT_MS);
 
 	nSndRcv = a_pSock->readC(&unRemEndian, 2);
-	if(nSndRcv!=2){a_pSock->closeC();return false;}
+	if(nSndRcv!=2){
+		a_pSock->closeC();
+		DEBUG_APPLICATION(2, "Unable to get endian. retCode=%d", nSndRcv);
+		return false;
+	}
 	if(unRemEndian==1){*a_pIsEndianDiffer=0;}
 	else {*a_pIsEndianDiffer = 1;}
 
 	//cRequest = a_connectionCode;
 	nSndRcv = a_pSock->writeC(&a_cRequest,1);
-	if (nSndRcv != 1) { a_pSock->closeC();return false; }
+	if (nSndRcv != 1) { 
+		a_pSock->closeC(); 
+		DEBUG_APPLICATION(1, "Unable to send request");
+		return false; 
+	}
 
 	return true;
 }
 
 
 }}  // namespace raft{namespace tcp{
+
+#include <sys/timeb.h>
+
+
+int printfWithTime(const char* a_cpcFormat, ...)
+{
+	timeb	aCurrentTime;
+	char* pcTimeline;
+	int nRet;
+	va_list aList;
+
+	ftime(&aCurrentTime);
+	pcTimeline = ctime(&(aCurrentTime.time));
+
+	nRet = fprintf(stdout, "[%.19s.%.3hu %.4s] ", pcTimeline, aCurrentTime.millitm, &pcTimeline[20]);
+	va_start(aList, a_cpcFormat);
+	nRet += vfprintf(stdout, a_cpcFormat, aList);
+	va_end(aList);
+	return nRet;
+}

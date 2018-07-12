@@ -231,10 +231,10 @@ int RaftServer::recv_appendentries_response(RaftNode2* a_node, msg_appendentries
 	return 1;
 }
 
-int RaftServer::recv_appendentries(RaftNode2* a_node, MsgAppendEntries2 *ae) {
+int RaftServer::recv_appendentries(bool a_bAsResponce, RaftNode2* a_node, MsgAppendEntries2 *ae) {
 	msg_appendentries_response_t r;
 
-	this->timeout_elapsed = 0;
+	if(a_bAsResponce){this->timeout_elapsed = 0;}
 
 	__log(NULL, "received appendentries from: %p", a_node);
 

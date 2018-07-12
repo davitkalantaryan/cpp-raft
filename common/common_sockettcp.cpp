@@ -37,7 +37,9 @@ common::SocketTCP::~SocketTCP()
 int common::SocketTCP::connectC(const char *a_svrName, int a_port, int a_connectionTimeoutMs)
 {	
 	const char *host = NULL;
+#ifdef MAKE_SOCKET_NONBLOCK
 	fd_set rfds;
+#endif
 	struct sockaddr_in addr;
 	unsigned long ha;
 	int rtn = -1;
@@ -71,6 +73,7 @@ int common::SocketTCP::connectC(const char *a_svrName, int a_port, int a_connect
 
 	memcpy((char *)&addr.sin_addr, (char *)&ha, sizeof(ha));
 
+#ifdef MAKE_SOCKET_NONBLOCK
 #ifdef	_WIN32
 	unsigned long on = 1;
 	ioctlsocket(m_socket, FIONBIO, &on);
@@ -81,10 +84,14 @@ int common::SocketTCP::connectC(const char *a_svrName, int a_port, int a_connect
 		fcntl(m_socket, F_SETFL, status);
 	}
 #endif  /* #ifdef	_WIN32 */
+#else // #ifdef MAKE_SOCKET_NONBLOCK
+	this->setTimeout(a_connectionTimeoutMs);
+#endif  // #ifdef MAKE_SOCKET_NONBLOCK
 
 	int addr_len = sizeof(addr);
 	rtn = ::connect(m_socket, (struct sockaddr *) &addr, addr_len);
 
+#ifdef MAKE_SOCKET_NONBLOCK
 	if (rtn != 0){
         struct timeval  aTimeout2;
         struct timeval* pTimeout;
@@ -116,19 +123,7 @@ int common::SocketTCP::connectC(const char *a_svrName, int a_port, int a_connect
 
         if (!FD_ISSET(m_socket, &rfds)){return E_FATAL;}
 	}
-
-#ifndef MAKE_SOCKET_NONBLOCK
-#ifdef _WIN32
-    on = 0;
-    ioctlsocket(m_socket, FIONBIO, &on);
-#else
-    if ((status = fcntl(m_socket, F_GETFL, 0)) != -1){
-        status &= (~O_NONBLOCK);
-        fcntl(m_socket, F_SETFL, status);
-    }
-#endif
-#endif   // #ifndef MAKE_SOCKET_NONBLOCK
-    this->setTimeout(a_connectionTimeoutMs);
+#endif  // #ifdef MAKE_SOCKET_NONBLOCK
 
 	return 0;
 }
@@ -147,6 +142,15 @@ int common::SocketTCP::readC(void* a_pBuffer, int a_nSize)const
 {
 #if 1
 	int nReturn = recv(m_socket, (char*)a_pBuffer, a_nSize, MSG_WAITALL);
+
+	if(nReturn<0){
+#ifdef _WIN32
+		nReturn = WSAGetLastError();
+#else
+		nReturn = errno;
+#endif
+		nReturn = (nReturn>0)?(-nReturn):nReturn;
+	}
 
 #if 0
 	if(nReturn<0){

@@ -110,6 +110,7 @@ namespace anyNode {enum Type {
 
 namespace follower {enum Type { 
 	newNode = (int)anyNode::last ,
+	resetPing,
 	last
 };}
 
@@ -152,8 +153,14 @@ namespace newLeaderInternal {enum Type {
 
 #define FILE_FROM_PATH(_path)	( strrchr((_path),FILE_DELIMER) ? (strrchr((_path),FILE_DELIMER)+1) : (_path)  )
 
+#ifdef printfWithTime_defined
+int printfWithTime(const char* a_cpcFormat, ...);
+#else
+#define printfWithTime  printf
+#endif
+
 #define DEBUG_APPLICATION_NO_NEW_LINE(_logLevel,...)	\
-	do{ if((_logLevel)<=raft::tcp::g_nLogLevel){printf("fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);printf(__VA_ARGS__);}}while(0)
+	do{ if((_logLevel)<=raft::tcp::g_nLogLevel){printfWithTime("fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);printf(__VA_ARGS__);}}while(0)
 
 #define DEBUG_APPLICATION_NO_ADD_INFO(_logLevel,...)	\
 	do{ if((_logLevel)<=raft::tcp::g_nLogLevel){printf(__VA_ARGS__);}}while(0)

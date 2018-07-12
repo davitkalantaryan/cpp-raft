@@ -9,6 +9,10 @@
 #ifndef __raft_tcp_common_hpp__
 #define __raft_tcp_common_hpp__
 
+#ifndef __printfWithTime_defined
+#define printfWithTime_defined
+#endif
+
 #include <common/common_sockettcp.hpp>
 #include <stdint.h>
 #include <string>

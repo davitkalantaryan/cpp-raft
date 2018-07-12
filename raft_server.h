@@ -114,7 +114,7 @@ public:
 	 * @param node Who sent us the response
 	 * @param ae The appendentries message
 	 * @return 0 on error */
-	int recv_appendentries(RaftNode2* node, MsgAppendEntries2* ae);
+	int recv_appendentries(bool a_bAsResponce,RaftNode2* node, MsgAppendEntries2* ae);
 	/**
 	 * Receive a requestvote message
 	 * @param node Who sent us the message
