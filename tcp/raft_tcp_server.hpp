@@ -107,8 +107,8 @@ protected:
 	void				become_leader() OVERRIDE;
 	void				become_candidate()OVERRIDE;
 
-    void				InterruptRaftRcv2();
-    void				InterruptDataRcv2();
+    void				InterruptRaftRcv();
+    void				InterruptDataRcv();
 
 	NodeIdentifierKey*	CollectAllNodesDataNotThrSafe(int* pnTotalSize, int* a_pnLeaderIndex);
 

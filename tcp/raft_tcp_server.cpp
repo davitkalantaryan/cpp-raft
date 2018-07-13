@@ -222,8 +222,8 @@ void raft::tcp::Server::StopServer()
 	DEBUG_APPLICATION(1, "Stopping server");
 	m_nWork = 0;
 
-    InterruptRaftRcv2();
-    InterruptDataRcv2();
+    InterruptRaftRcv();
+    InterruptDataRcv();
 	m_serverTcp.StopServer();
 
 	m_semaAddRemove.post();
@@ -487,7 +487,7 @@ RaftNode2* raft::tcp::Server::connect_toAnyNode_bridgeToNodeData(common::SocketT
 	a_clientSock.writeC(&g_ccResponceOk, 1);
 	a_clientSock.ResetSocketWithoutClose();
 
-	InterruptDataRcv2();
+	InterruptDataRcv();
 
 	return pNode;
 }
@@ -954,6 +954,8 @@ enterLoopPoint:
 					DEBUG_APPLICATION(1, "Node (add): %s:%d, numOfNodes=%d", aData.nodeKey.ip4Address, (int)aData.nodeKey.port, m_Nodes.count() + 1);
 					AddAdditionalDataToNode(aData.pNode);
 					m_Nodes.AddData(aData.pNode, &aData.nodeKey, sizeof(NodeIdentifierKey));
+					InterruptRaftRcv();
+					InterruptDataRcv();
 					break;
 				case raft::receive::fromNewLeader::oldLeaderDied:
 					pKeyForDelete = (NodeIdentifierKey*)m_pLeaderNode->key;
@@ -983,9 +985,6 @@ enterLoopPoint:
 					break;
 				}
 				aLockGuard.UnsetAndUnlockMutex();						// --> unlocking
-
-				InterruptRaftRcv2();
-				InterruptDataRcv2();
 
 				aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes2);		// --> shared locking
 				switch (aData.action)
@@ -1327,7 +1326,7 @@ returnPoint:
 }
 
 
-void raft::tcp::Server::InterruptRaftRcv2()
+void raft::tcp::Server::InterruptRaftRcv()
 {
 #ifdef _WIN32
     if(m_infoSocketForRcvRaft2>0){closesocket(m_infoSocketForRcvRaft2);}
@@ -1337,7 +1336,7 @@ void raft::tcp::Server::InterruptRaftRcv2()
 }
 
 
-void raft::tcp::Server::InterruptDataRcv2()
+void raft::tcp::Server::InterruptDataRcv()
 {
 #ifdef _WIN32
     if(m_infoSocketForRcvData2>0){closesocket(m_infoSocketForRcvData2);}
