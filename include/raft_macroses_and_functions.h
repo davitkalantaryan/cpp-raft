@@ -154,9 +154,11 @@ namespace newLeaderInternal {enum Type {
 #define FILE_FROM_PATH(_path)	( strrchr((_path),FILE_DELIMER) ? (strrchr((_path),FILE_DELIMER)+1) : (_path)  )
 
 #ifdef printfWithTime_defined
-int printfWithTime(const char* a_cpcFormat, ...);
+int fprintfWithTime(FILE* fpFile, const char* a_cpcFormat, ...);
+#define printfWithTime(_format,...)	fprintfWithTime(stdout,(_format),__VA_ARGS__)
 #else
 #define printfWithTime  printf
+#define fprintfWithTime  fprintf
 #endif
 
 #define DEBUG_APPLICATION_NO_NEW_LINE(_logLevel,...)	\
@@ -171,7 +173,7 @@ int printfWithTime(const char* a_cpcFormat, ...);
 #define DEBUG_APPLICATION(_logLevel,...) do{DEBUG_APPLICATION_NO_NEW_LINE(_logLevel,__VA_ARGS__);DEBUG_APPLICATION_NEW_LINE(_logLevel);}while(0)
 
 #define ERROR_LOGGING2(...)	\
-	do{ fprintf(stderr,"ERROR: fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);fprintf(stderr,__VA_ARGS__);fprintf(stderr,"\n");}while(0)
+	do{ fprintfWithTime(stderr,"ERROR: fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);fprintf(stderr,__VA_ARGS__);fprintf(stderr,"\n");}while(0)
 
 #define HANDLE_MEM_DEF2(_pointer,...)				\
 	do{ \

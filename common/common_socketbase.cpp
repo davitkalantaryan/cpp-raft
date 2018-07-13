@@ -77,8 +77,8 @@ int common::SocketBase::setTimeout(int a_nTimeoutMs)
 #ifdef _WIN32
 	DWORD dwTimeout;
 	if (a_nTimeoutMs >= 0) {dwTimeout = a_nTimeoutMs;}
-	else {dwTimeout = 1000000000;}
-	//else {dwTimeout=INFINITE;}
+	//else {dwTimeout = 1000000000;}
+	else {dwTimeout=2147483647;}
 	pInput = (char*)&dwTimeout;
 	nInputLen = sizeof(DWORD);
 #else
@@ -90,10 +90,13 @@ int common::SocketBase::setTimeout(int a_nTimeoutMs)
 		nInputLen = sizeof(struct timeval);
 	}
 	else {
-		tv.tv_sec = 1000000;
+		//pInput = NULL;
+		//nInputLen = 0;
+
+		tv.tv_sec = 21474836;
 		tv.tv_usec = 1000;
-		pInput = NULL;
-		nInputLen = 0;
+		pInput = (char*)&tv;
+		nInputLen = sizeof(struct timeval);
 	}
 #endif
 

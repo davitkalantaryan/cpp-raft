@@ -68,10 +68,9 @@ bool ConnectAndGetEndian(common::SocketTCP* a_pSock, const NodeIdentifierKey& a_
 		DEBUG_APP_WITH_NODE(2, a_nodeInfo,"Unable to connect");
 		return false;
 	}
-	a_pSock->setTimeout(-1);
+	a_pSock->setTimeout(SOCK_TIMEOUT_MS);
 
 	nSndRcv = a_pSock->readC(&unRemEndian, 2);
-	a_pSock->setTimeout(SOCK_TIMEOUT_MS);
 	if(nSndRcv!=2){
 		a_pSock->closeC();
 		DEBUG_APP_WITH_NODE(2, a_nodeInfo, "Unable to get endian. retCode=%d", nSndRcv);
@@ -97,7 +96,7 @@ bool ConnectAndGetEndian(common::SocketTCP* a_pSock, const NodeIdentifierKey& a_
 #include <sys/timeb.h>
 
 
-int printfWithTime(const char* a_cpcFormat, ...)
+int fprintfWithTime(FILE* a_fpFile, const char* a_cpcFormat, ...)
 {
 	timeb	aCurrentTime;
 	char* pcTimeline;
@@ -107,9 +106,9 @@ int printfWithTime(const char* a_cpcFormat, ...)
 	ftime(&aCurrentTime);
 	pcTimeline = ctime(&(aCurrentTime.time));
 
-	nRet = fprintf(stdout, "[%.19s.%.3hu %.4s] ", pcTimeline, aCurrentTime.millitm, &pcTimeline[20]);
+	nRet = fprintf(a_fpFile, "[%.19s.%.3hu %.4s] ", pcTimeline, aCurrentTime.millitm, &pcTimeline[20]);
 	va_start(aList, a_cpcFormat);
-	nRet += vfprintf(stdout, a_cpcFormat, aList);
+	nRet += vfprintf(a_fpFile, a_cpcFormat, aList);
 	va_end(aList);
 	return nRet;
 }

@@ -38,6 +38,11 @@ RaftNode2::RaftNode2(void* a_udata) :
 }
 
 
+RaftNode2::~RaftNode2()
+{
+}
+
+
 uint64_t RaftNode2::unansweredPingCount()const
 {
 	return m_unPingCount;

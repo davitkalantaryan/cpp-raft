@@ -12,6 +12,7 @@ class RaftNode2 {
 public:
 
 	RaftNode2(void* udata);
+	~RaftNode2();
 	int			is_leader();
 	int			get_next_idx();
 	void		set_next_idx(int nextIdx);
