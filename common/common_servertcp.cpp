@@ -95,6 +95,8 @@ void common::ServerTCP::RunServer(int a_lnTimeout, TypeAccept a_fpAddClient, voi
 			aClientSocket.closeC();
 		}
 
+		if(nError<0){break;}
+
 #ifndef _CD_VERSION__
 #endif
 	}

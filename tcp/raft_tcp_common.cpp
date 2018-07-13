@@ -6,6 +6,7 @@
 #include "raft_tcp_common.hpp"
 #include <memory.h>
 #include "raft_macroses_and_functions.h"
+#include <cpp11+/mutex_cpp11.hpp>
 
 #ifdef _MSC_VER
 #pragma warning(disable:4996)
@@ -98,17 +99,19 @@ bool ConnectAndGetEndian(common::SocketTCP* a_pSock, const NodeIdentifierKey& a_
 
 int fprintfWithTime(FILE* a_fpFile, const char* a_cpcFormat, ...)
 {
+	static STDN::mutex    smutexForCtime;
 	timeb	aCurrentTime;
 	char* pcTimeline;
 	int nRet;
 	va_list aList;
 
+	va_start(aList, a_cpcFormat);
+	smutexForCtime.lock();   //
 	ftime(&aCurrentTime);
 	pcTimeline = ctime(&(aCurrentTime.time));
-
 	nRet = fprintf(a_fpFile, "[%.19s.%.3hu %.4s] ", pcTimeline, aCurrentTime.millitm, &pcTimeline[20]);
-	va_start(aList, a_cpcFormat);
 	nRet += vfprintf(a_fpFile, a_cpcFormat, aList);
+	smutexForCtime.unlock(); //
 	va_end(aList);
 	return nRet;
 }

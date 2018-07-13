@@ -446,7 +446,14 @@ void raft::tcp::Server::connect_toAnyNode_otherLeaderFound(common::SocketTCP& a_
 	if(nSndRcv!=sizeof(NodeIdentifierKey)){return;}
 	if(isEndianDiffer){SWAP4BYTES(newLeaderKey.port);}
 
-	DEBUG_APP_WITH_NODE(0, newLeaderKey, " [this is a correct leader]");
+	if( newLeaderKey==*(NODE_KEY(m_pLeaderNode))  ){
+		a_clientSock.writeC("o", 1);
+	}
+	else {
+		a_clientSock.writeC("e", 1);
+		DEBUG_APP_WITH_NODE(0, newLeaderKey, " [this is a correct leader]");
+		// todo: make steps to connect to real leader
+	}
 }
 
 
@@ -1029,6 +1036,7 @@ void raft::tcp::Server::CheckAllPossibleSeeds(const std::vector<NodeIdentifierKe
 	int nSndRcv;
 	const uint16_t unEndian=1;
 	bool bFound;
+	char cRequest;
 	
     DEBUG_HANGING();
 	common::socketN::GetOwnIp4Address(vcOwnIp4Address,MAX_IP4_LEN);
@@ -1081,8 +1089,11 @@ void raft::tcp::Server::CheckAllPossibleSeeds(const std::vector<NodeIdentifierKe
 
 				nSndRcv = aSocket.writeC(m_pLeaderNode->key,sizeof(NodeIdentifierKey));
 				if (nSndRcv != sizeof(NodeIdentifierKey)) { goto socketClosePoint; }
-				
-				DEBUG_APP_WITH_NODE(0, a_vectPossibleNodes[i]," [possible secondary leader (informed)]");
+
+				nSndRcv = aSocket.readC(&cRequest,1);
+				if ((nSndRcv == 1)&&(cRequest=='e')) {
+					DEBUG_APP_WITH_NODE(0, a_vectPossibleNodes[i], " [possible secondary leader (informed)]");
+				}
 
 			socketClosePoint:
 				aSocket.closeC();
@@ -1139,7 +1150,8 @@ enterLoopPoint:
 			aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes2);
 			this->periodic(m_nPeriodForPeriodic);
 			aShrdLockGuard.UnsetAndUnlockMutex();
-			if (is_follower() && (!m_pLeaderNode->isProblematic())) {
+			if (is_follower() && (m_pLeaderNode->makePing(1)<10)) {
+			//if (is_follower()) {
 				ftime(&aCurrentTime);
 				nTimeDiff = MSEC(aCurrentTime,this->m_lastPingByLeader);
 				if(nTimeDiff>(2*m_nPeriodForPeriodic)){
