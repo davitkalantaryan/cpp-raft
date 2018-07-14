@@ -484,7 +484,7 @@ void raft::tcp::Server::raft_connect_toAnyNode_otherLeaderFound(common::SocketTC
 	}
 	else {
 		a_clientSock.writeC("e", 1);
-		DEBUG_APP_WITH_NODE(0, newLeaderKey, " [this is a correct leader]");
+		DEBUG_APP_WITH_NODE(0, &newLeaderKey, " [this is a correct leader]");
 		// todo: make steps to connect to real leader
 	}
 }

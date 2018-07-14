@@ -47,7 +47,7 @@ bool ConnectAndGetEndian(common::SocketTCP* a_pSock,const NodeIdentifierKey& nod
 
 #define DEBUG_APP_WITH_NODE(_logLevel,_nodeKey,...)	\
 	do{ \
-		DEBUG_APPLICATION_NO_NEW_LINE((_logLevel),"%s:%d  ",(_nodeKey).ip4Address,(int)((_nodeKey).port)); \
+		DEBUG_APPLICATION_NO_NEW_LINE((_logLevel),"%s:%d  ",(_nodeKey)->ip4Address,(int)((_nodeKey)->port)); \
 		DEBUG_APPLICATION_NO_ADD_INFO((_logLevel),__VA_ARGS__); DEBUG_APPLICATION_NO_ADD_INFO((_logLevel),"\n"); \
 	}while(0)
 
