@@ -79,10 +79,10 @@ protected:
 	
 	virtual void		SignalHandler(int sigNum);
 
-	virtual void		prepare_raft_receive_fromNewLeader_oldLeaderDied(std::string* bufferForAdditionalData);
-	virtual void		prepare_raft_receive_fromLeader_newNode(std::string* bufferForAdditionalData);
-	virtual void		prepare_raft_receive_fromLeader_removeNode(std::string* bufferForAdditionalData);
-	virtual void		prepare_raft_connect_toLeader_newNode(std::string* bufferForAdditionalData);
+	virtual void		newLeader_prepareInform_on_oldLeader_died(std::string* bufferForAdditionalData);
+	virtual void		leader_prepareInform_on_newNode(std::string* bufferForAdditionalData);
+	virtual void		leader_prepareInform_on_removeNode(std::string* bufferForAdditionalData);
+	virtual void		newNode_prepareInform_toLeader(std::string* bufferForAdditionalData);
 
 	void				ThreadFunctionListen();
 	void				ThreadFunctionPeriodic();

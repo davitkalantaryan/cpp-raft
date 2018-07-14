@@ -549,7 +549,7 @@ void raft::tcp::Server::HandleSeedClbk(RaftNode2* a_pNode)
 	case RAFT_MSG_REQUESTVOTE:
 	{
 		msg_requestvote_t reqVote(0,0,0,0);
-		DEBUG_APP_WITH_NODE(1,*pNodeKey,"RAFT_MSG_REQUESTVOTE");
+		DEBUG_APP_WITH_NODE(1,pNodeKey,"RAFT_MSG_REQUESTVOTE");
 		nSndRcv = pTools->raftSocket2.readC(&reqVote, sizeof(msg_requestvote_t));
 		if (nSndRcv != sizeof(msg_requestvote_t)) { goto returnPoint; }
 		recv_requestvote(a_pNode, &reqVote);
@@ -558,7 +558,7 @@ void raft::tcp::Server::HandleSeedClbk(RaftNode2* a_pNode)
 	case RAFT_MSG_REQUESTVOTE_RESPONSE:
 	{
 		msg_requestvote_response_t  reqVoteResp;
-		DEBUG_APP_WITH_NODE(1, *pNodeKey,"RAFT_MSG_REQUESTVOTE_RESPONSE");
+		DEBUG_APP_WITH_NODE(1,pNodeKey,"RAFT_MSG_REQUESTVOTE_RESPONSE");
 		nSndRcv = pTools->raftSocket2.readC(&reqVoteResp, sizeof(msg_requestvote_response_t));
 		if (nSndRcv != sizeof(msg_requestvote_response_t)) { goto returnPoint; }
 		a_pNode->pingReceived();
@@ -568,7 +568,7 @@ void raft::tcp::Server::HandleSeedClbk(RaftNode2* a_pNode)
 	case RAFT_MSG_APPENDENTRIES:
 	{
 		MsgAppendEntries2 appEntries;
-		DEBUG_APP_WITH_NODE(3, *pNodeKey,"RAFT_MSG_APPENDENTRIES");
+		DEBUG_APP_WITH_NODE(3,pNodeKey,"RAFT_MSG_APPENDENTRIES");
 		nSndRcv = pTools->raftSocket2.readC(&appEntries, SIZE_OF_INITIAL_RCV_OF_MSG_APP);
 		if (nSndRcv != SIZE_OF_INITIAL_RCV_OF_MSG_APP) { goto returnPoint; }
 		if(appEntries.getNEntries()){
@@ -583,7 +583,7 @@ void raft::tcp::Server::HandleSeedClbk(RaftNode2* a_pNode)
 	case RAFT_MSG_APPENDENTRIES_RESPONSE:
 	{
 		msg_appendentries_response_t aApndResp;
-		DEBUG_APP_WITH_NODE(3, *pNodeKey,"RAFT_MSG_APPENDENTRIES_RESPONSE");
+		DEBUG_APP_WITH_NODE(3,pNodeKey,"RAFT_MSG_APPENDENTRIES_RESPONSE");
 		nSndRcv = pTools->raftSocket2.readC(&aApndResp, sizeof(msg_appendentries_response_t));
 		if (nSndRcv != sizeof(msg_appendentries_response_t)) { goto returnPoint; }
 		a_pNode->pingReceived();
@@ -592,7 +592,7 @@ void raft::tcp::Server::HandleSeedClbk(RaftNode2* a_pNode)
 	}
 	break;
 	default:
-		DEBUG_APP_WITH_NODE(0, *pNodeKey,"raft-receive: default:");
+		DEBUG_APP_WITH_NODE(0,pNodeKey,"raft-receive: default:");
 		goto returnPoint;
 	}
 
@@ -652,7 +652,7 @@ void raft::tcp::Server::raft_receive_fromLeader_removeNode(RaftNode2* a_pNode)
 		goto returnPoint;
 	}
 	if (!is_follower()) {
-		DEBUG_APP_WITH_NODE(0, *(NODE_KEY(a_pNode)), "own node is not follower, but request is for follower");
+		DEBUG_APP_WITH_NODE(0,NODE_KEY(a_pNode),"own node is not follower, but request is for follower");
 		goto returnPoint;
 	}
 
@@ -711,7 +711,7 @@ void raft::tcp::Server::raft_receive_fromLeader_newNode(RaftNode2* a_pNode)
 		goto returnPoint;
 	}
 	if (!is_follower()) {
-		DEBUG_APP_WITH_NODE(0, *(NODE_KEY(a_pNode)), "own node is not follower, but request is for follower");
+		DEBUG_APP_WITH_NODE(0,NODE_KEY(a_pNode), "own node is not follower, but request is for follower");
 		goto returnPoint;
 	}
 	nSndRcv = pTools->raftSocket2.readC(&nodeData.nodeKey, sizeof(NodeIdentifierKey));
@@ -767,26 +767,26 @@ void raft::tcp::Server::ReceiveFromRaftSocket(RaftNode2* a_pNode)
 		break;
 	case raft::receive::fromFollower::resetPing:
 		a_pNode->pingReceived();
-		DEBUG_APP_WITH_NODE(2, *pNodeKey, "raft::receive::fromFollower::resetPing");
+		DEBUG_APP_WITH_NODE(2,pNodeKey, "raft::receive::fromFollower::resetPing");
 		break;
 	case raft::receive::fromAnyNode2::clbkCmd:
 		HandleSeedClbk(a_pNode);
-		DEBUG_APP_WITH_NODE(2, *pNodeKey, "raft::receive::anyNode::clbkCmd");
+		DEBUG_APP_WITH_NODE(2,pNodeKey, "raft::receive::anyNode::clbkCmd");
 		break;
 	case raft::receive::fromLeader2::newNode:
 		raft_receive_fromLeader_newNode(a_pNode);
-		DEBUG_APP_WITH_NODE(1, *pNodeKey, "raft::receive::fromLeader::newNode");
+		DEBUG_APP_WITH_NODE(1,pNodeKey, "raft::receive::fromLeader::newNode");
 		break;
 	case raft::receive::fromLeader2::removeNode:
 		raft_receive_fromLeader_removeNode(a_pNode);
-		DEBUG_APP_WITH_NODE(1, *pNodeKey, "raft::receive::fromLeader::removeNode");
+		DEBUG_APP_WITH_NODE(1,pNodeKey, "raft::receive::fromLeader::removeNode");
 		break;
 	case raft::receive::fromNewLeader2::oldLeaderDied:
 		raft_receive_fromNewLeader_oldLeaderDied(a_pNode);
-		DEBUG_APP_WITH_NODE(1, *pNodeKey, "raft::receive::fromNewLeader2::oldLeaderDied");
+		DEBUG_APP_WITH_NODE(1,pNodeKey, "raft::receive::fromNewLeader2::oldLeaderDied");
 		break;
 	default:
-		DEBUG_APP_WITH_NODE(0, *pNodeKey, "default: (num=%d)", (int)cRequest);
+		DEBUG_APP_WITH_NODE(0,pNodeKey, "default: (num=%d)", (int)cRequest);
 		break;
 	}
 }
@@ -983,6 +983,25 @@ void raft::tcp::Server::HandleNewConnection(char,common::SocketTCP&, const socka
 	// this function should be overritten
 }
 
+void raft::tcp::Server::newLeader_prepareInform_on_oldLeader_died(std::string*)
+{
+}
+
+
+void raft::tcp::Server::leader_prepareInform_on_newNode(std::string*)
+{
+}
+
+
+void raft::tcp::Server::leader_prepareInform_on_removeNode(std::string* a_bufferForAdditionalData)
+{
+}
+
+
+void raft::tcp::Server::newNode_prepareInform_toLeader(std::string* a_bufferForAdditionalData)
+{
+}
+
 
 void raft::tcp::Server::ThreadFunctionLockedAction()
 {
@@ -1026,7 +1045,7 @@ enterLoopPoint:
 					pKeyToInform = (NodeIdentifierKey*)m_pLeaderNode->key;
 					keyForInform = *pKeyToInform;
 					clbkData = NULL;
-					prepare_raft_receive_fromNewLeader_oldLeaderDied(&strAdditionalData);
+					newLeader_prepareInform_on_oldLeader_died(&strAdditionalData);
 					nAdditionalDataLen = (int)strAdditionalData.size();
 					break;
 				case raft::internal2::leader::newNode:
@@ -1037,7 +1056,7 @@ enterLoopPoint:
 					pKeyToInform = &aData.nodeKey;
 					keyForInform = *pKeyToInform;
 					clbkData = NULL;
-					prepare_raft_receive_fromLeader_newNode(&strAdditionalData);
+					leader_prepareInform_on_newNode(&strAdditionalData);
 					nAdditionalDataLen = (int)strAdditionalData.size();
 					break;
 				case raft::internal2::leader::removeNode:
@@ -1048,7 +1067,7 @@ enterLoopPoint:
 					pKeyToInform = (NodeIdentifierKey*)aData.pNode->key;
 					keyForInform = *pKeyToInform;
 					clbkData = GET_CLBK_DATA(aData.pNode);
-					prepare_raft_receive_fromLeader_removeNode(&strAdditionalData);
+					leader_prepareInform_on_removeNode(&strAdditionalData);
 					nAdditionalDataLen = (int)strAdditionalData.size();
 					break;
 				default:
@@ -1118,7 +1137,7 @@ enterLoopPoint:
 					break;
 				case raft::internal2::newLeader::becomeLeader:
 					pKeyForDelete = (NodeIdentifierKey*)m_pLeaderNode->key;
-					DEBUG_APP_WITH_NODE(0, *pKeyForDelete, "old leader died");
+					DEBUG_APP_WITH_NODE(0,pKeyForDelete, "old leader died");
 					this->RemoveNode2(m_pLeaderNode);
 					DEBUG_APPLICATION(0, "This node will be the leader (numberOfNodes=%d)", m_Nodes.count());
 					m_pLeaderNode = m_thisNode;
@@ -1191,12 +1210,12 @@ void raft::tcp::Server::CheckAllPossibleSeeds(const std::vector<NodeIdentifierKe
 	try {
 
 		for(i=0;i<cnSize;++i){
-			DEBUG_APP_WITH_NODE(2, a_vectPossibleNodes[i], "trying to connect");
+			DEBUG_APP_WITH_NODE(2, &a_vectPossibleNodes[i], "trying to connect");
 			if(  (strncmp(vcOwnIp4Address,a_vectPossibleNodes[i].ip4Address,MAX_IP4_LEN)==0)&&(m_nPortOwn==a_vectPossibleNodes[i].port) ){nThisIndex=i;continue;}
 			else {
 				cpcPosibleSeedIp = common::socketN::GetIp4AddressFromHostName(a_vectPossibleNodes[i].ip4Address);
 				if (cpcPosibleSeedIp) {
-					DEBUG_APP_WITH_NODE(3, a_vectPossibleNodes[i],"cpcPosibleSeedIp=%s, m_nPortOwn=%d", cpcPosibleSeedIp, m_nPortOwn);
+					DEBUG_APP_WITH_NODE(3,&a_vectPossibleNodes[i],"cpcPosibleSeedIp=%s, m_nPortOwn=%d", cpcPosibleSeedIp, m_nPortOwn);
 					if(strcmp(cpcPosibleSeedIp,"127.0.0.1")==0){
 						if(m_nPortOwn== a_vectPossibleNodes[i].port){nThisIndex = i; continue;}
 					}
@@ -1238,7 +1257,7 @@ void raft::tcp::Server::CheckAllPossibleSeeds(const std::vector<NodeIdentifierKe
 
 				nSndRcv = aSocket.readC(&cRequest,1);
 				if ((nSndRcv == 1)&&(cRequest=='e')) {
-					DEBUG_APP_WITH_NODE(0, a_vectPossibleNodes[i], " [possible secondary leader (informed)]");
+					DEBUG_APP_WITH_NODE(0,&a_vectPossibleNodes[i], " [possible secondary leader (informed)]");
 				}
 
 			socketClosePoint:
@@ -1366,7 +1385,7 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindLeaderThrdSafe(const Nod
 	aSocket.closeC();
 
 	/*******************************************************************************************************************************************/
-	DEBUG_APP_WITH_NODE(1, leaderNodeKey,"connect to leader");
+	DEBUG_APP_WITH_NODE(1,&leaderNodeKey,"connect to leader");
 	if(!ConnectAndGetEndian(&aSocket, leaderNodeKey,raft::connect::toLeader2::newNode,&isEndianDiffer)){goto returnPoint;}	// 1. connect, getEndian and sendRequest
 	
 	snEndian2 = 1;
@@ -1406,7 +1425,7 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindLeaderThrdSafe(const Nod
 	if(isEndianDiffer){for(i=0;i<numberOfNodes;++i){SWAP4BYTES(pNodesInfo[i].port);}}									// 6. swap if needed
 
 	//
-	prepare_raft_connect_toLeader_newNode(&strAddInfo);
+	newNode_prepareInform_toLeader(&strAddInfo);
 	nAddInfo = (int)strAddInfo.size();
 	nSndRcv = aSocket.writeC(&nAddInfo, 4);																// 5. receive all nodes info
 	if (nSndRcv != 4) { goto returnPoint; }
@@ -1583,7 +1602,7 @@ int raft::tcp::Server::SendClbkFunction(void *a_cb_ctx, void *udata, RaftNode2* 
 	}
 
 	if(unPingCount>MAX_NUMBER_OF_PINGS){
-		DEBUG_APP_WITH_NODE(1, *pNodeKey,"pingCount=%d", unPingCount);
+		DEBUG_APP_WITH_NODE(1,pNodeKey,"pingCount=%d", unPingCount);
 		goto returnPoint;
 	}
 

@@ -31,7 +31,7 @@ int raft::tcp::Client::ReceiveAllNodes(const char* a_nodeIp, int a_port, std::ve
 	aNodeKey.port = a_port;
 
 	try {  // we put into try block because std::vector::resize can throw exception
-		if (!ConnectAndGetEndian(&aSocket, aNodeKey, raft::connect::fromClient::allNodesInfo, &isEndianDiffer)) { goto returnPoint; }
+		if (!ConnectAndGetEndian(&aSocket, aNodeKey, raft::connect::fromClient2::allNodesInfo, &isEndianDiffer)) { goto returnPoint; }
 
 		nSndRcv = aSocket.readC(&nl, 8);
 		if (nSndRcv != 8) { goto returnPoint; }
