@@ -28,10 +28,9 @@ struct SAddRemData {
 	char action;
 	union {
 		struct { RaftNode2 *pNode; NodeIdentifierKey nodeKey; char* additionalData; int addDataLen; };
-		void* forUser;
 		struct {
-			char* leaderBuf;
-			int   leaderBufSize;
+			char* leaderBuf2;
+			int   leaderBufSize2;
 		}lb;
 	}; 
 	SAddRemData() :pNode(NULL),additionalData(NULL),addDataLen(0){}
@@ -89,7 +88,7 @@ protected:
 	void				ThreadFunctionPeriodic();
 	void				ThreadFunctionRcvRaftInfo();
 	void				ThreadFunctionRcvData();
-	void				ThreadFunctionAddRemoveNode();
+	void				ThreadFunctionLockedAction();
 	void				ThreadFunctionWorker();
 
     void				FunctionForMultiRcv(volatile int* a_pnSocketForInfo, void (Server::*a_fpRcvFnc)(RaftNode2*), bool isRaft);
@@ -137,7 +136,7 @@ protected:
 	std::thread										m_threadPeriodic;
 	std::thread										m_threadRcvRaftInfo;
 	std::thread										m_threadRcvData;
-	std::thread										m_threadAddRemoveNode;
+	std::thread										m_threadLockedActions;
 	std::vector<std::thread*>						m_vectThreadsWorkers;
 private:
     STDN::shared_mutex                              m_shrdMutexForNodes2;

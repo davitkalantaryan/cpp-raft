@@ -207,7 +207,7 @@ int raft::tcp::Server::RunServerOnOtherThreads(const std::vector<NodeIdentifierK
 	m_threadPeriodic = std::thread(&Server::ThreadFunctionPeriodic, this);
 	m_threadRcvRaftInfo = std::thread(&Server::ThreadFunctionRcvRaftInfo, this);
 	m_threadRcvData = std::thread(&Server::ThreadFunctionRcvData, this);
-	m_threadAddRemoveNode = std::thread(&Server::ThreadFunctionAddRemoveNode, this);
+	m_threadLockedActions = std::thread(&Server::ThreadFunctionLockedAction, this);
 	for(int i(0);i<a_nWorkersCount;++i){
 		pWorker = new std::thread(&Server::ThreadFunctionWorker, this);
 		m_vectThreadsWorkers.push_back(pWorker);
@@ -248,7 +248,7 @@ void raft::tcp::Server::StopServer()
 
     DEBUG_APPLICATION(2," ");
 
-    m_threadAddRemoveNode.join();
+    m_threadLockedActions.join();
     DEBUG_APPLICATION(2," ");
 	m_threadRcvData.join();
     DEBUG_APPLICATION(2," ");
@@ -984,7 +984,7 @@ void raft::tcp::Server::HandleNewConnection(char,common::SocketTCP&, const socka
 }
 
 
-void raft::tcp::Server::ThreadFunctionAddRemoveNode()
+void raft::tcp::Server::ThreadFunctionLockedAction()
 {
 	PREPARE_SEND_SOCKET_GUARD();
 	void* clbkData;
