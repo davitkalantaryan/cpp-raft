@@ -38,7 +38,7 @@ struct SAddRemData {
 
 typedef struct NodeTools {
 	void*	clbkData;
-	common::SocketTCP dataSocket, raftSocket2;
+	common::SocketTCP dataSocket, raftSocket;
 	uint32_t isEndianDiffer : 1, okCount : 3;
 	/*-----------------------------------------*/
 	NodeTools() { clbkData = NULL; isEndianDiffer = okCount = 0; }

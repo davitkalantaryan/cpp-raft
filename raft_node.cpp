@@ -29,6 +29,7 @@ RaftNode2::RaftNode2(void* a_udata) :
 	m_isProblematic = 0;
 	m_isAbleToVote = 1;
 	m_unPingCount = 0;
+	m_isUsable = 0;
 	//
 	m_isTimeToPing =0;
 	m_hasData = 0;

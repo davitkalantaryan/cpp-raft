@@ -29,6 +29,8 @@ public:
 	uint64_t	makePing(uint64_t a_unCount);
 	void		SetUnableToVote();
 	uint64_t	isAbleToVote()const;
+	uint64_t	isUsable()const {return m_isUsable;}
+	void		setUsable() {m_isUsable=1;}
  
 public:
 	RaftNode2 * prev, *next;
@@ -42,6 +44,7 @@ private:
 	uint64_t	m_isProblematic : 1;
 	uint64_t	m_isAbleToVote : 1;
 	uint64_t	m_unPingCount : BITS_OF_PING_COUNT;
+	uint64_t	m_isUsable : 1;
 	// for future use
 public:
 	uint64_t	m_isTimeToPing : 1;
