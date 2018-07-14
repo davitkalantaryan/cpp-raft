@@ -75,26 +75,26 @@ namespace error{ enum Type {
 }
 
 namespace connect{
-namespace toAnyNode {enum Type { 
-	newNode = (int)response::last,
-	raftBridge,
+namespace toAnyNode2 {enum Type { 
+	leaderInfoRequest = (int)response::last,
 	dataBridge,
 	otherLeaderFound,
 	last
 };}
 
-namespace toLeader {enum Type { 
-	newNode = (int)toAnyNode::last,
+namespace toLeader2 {enum Type { 
+	newNode = (int)toAnyNode2::last,
 	last
 };}
 
-namespace toFollower {enum Type { 
-	newNode = (int)toLeader::last,  // this option most probably will not be necessary (renamed to newNode)
+namespace toFollower2 {enum Type { 
+	newNode = (int)toLeader2::last,  // this option most probably will not be necessary (renamed to newNode)
+	raftBridge,
 	last
 };}
 
-namespace fromClient {enum Type { 
-	allNodesInfo = (int)toFollower::last,
+namespace fromClient2 {enum Type { 
+	allNodesInfo = (int)toFollower2::last,
 	last
 };}
 
@@ -103,45 +103,54 @@ namespace fromClient {enum Type {
 
 namespace receive{
 
-namespace anyNode {enum Type { 
-	clbkCmd = (int)connect::fromClient::last,
-	last
-};}
-
-namespace follower {enum Type { 
-	newNode = (int)anyNode::last ,
-	resetPing,
+namespace fromAnyNode2 {enum Type { 
+	clbkCmd = (int)connect::fromClient2::last,
 	last
 };}
 
 
-namespace fromLeader {enum Type { 
-	newNode = (int)follower::last,
+namespace fromFollower {enum Type { 
+	resetPing = (int)fromAnyNode2::last,
+	last
+};}
+
+
+namespace fromLeader2 {enum Type { 
+	newNode = (int)fromFollower::last,
 	removeNode,
-	oldLeaderDied,
 	last
 };}
 
 
-namespace fromNewLeader {enum Type { 
-	oldLeaderDied = (int)fromLeader::last,
+namespace fromNewLeader2 {enum Type { 
+	oldLeaderDied = (int)fromLeader2::last,
 	last
 };}
 
 
 }  // namespace receive{
 
+namespace internal2{
 
-namespace leaderInternal {enum Type { 
-	newNode = (int)receive::fromNewLeader::last,
+namespace leader {enum Type { 
+	newNode = (int)receive::fromNewLeader2::last,
 	removeNode,
 	last
 };}
 
-namespace newLeaderInternal {enum Type { 
-	becomeLeader = (int)leaderInternal::last,
+namespace newLeader {enum Type { 
+	becomeLeader = (int)leader::last,
 	last
 };}
+
+namespace follower {enum Type { 
+	newNodeFromLeader = (int)newLeader::last,
+	removeNodeRequestFromLeader,
+	oldLeaderDied,
+	last
+};}
+
+}  // namespace internal2{
 
 } // namespace raft{ 
 

@@ -27,14 +27,14 @@ struct SWorkerData { workRequest::Type reqType;int sockDescriptor;sockaddr_in re
 struct SAddRemData {
 	char action;
 	union {
-		struct {RaftNode2 *pNode; NodeIdentifierKey nodeKey;};
+		struct { RaftNode2 *pNode; NodeIdentifierKey nodeKey; char* additionalData; int addDataLen; };
 		void* forUser;
 		struct {
 			char* leaderBuf;
 			int   leaderBufSize;
 		}lb;
 	}; 
-	SAddRemData() :pNode(NULL){}
+	SAddRemData() :pNode(NULL),additionalData(NULL),addDataLen(0){}
 };
 
 typedef struct NodeTools {
@@ -72,10 +72,18 @@ protected:
 	virtual void		AddAdditionalDataToNode(RaftNode2* newNode);
 	virtual void		CleanNodeData(RaftNode2*) OVERRIDE;
 	virtual void		HandleNewConnection(char code,common::SocketTCP& clientSock, const sockaddr_in* remoteAddr, RaftNode2* pNode);
-	virtual void		StateChangedBeforeNoLock(const SAddRemData& changeData);
-	virtual void		StateChangedLocked(const SAddRemData& changeData);
-	virtual void		StateChangedAfter(char state, raft::tcp::NodeIdentifierKey key, void* clbkData);
+	
+	virtual void		StateChangedBeforeLock(const SAddRemData& changeData);
+	virtual void		StateChangedLockedPre(const SAddRemData& changeData);
+	virtual void		StateChangedLockedPost(const SAddRemData& changeData);
+	virtual void		StateChangedAfterLock(const SAddRemData& changeData);
+	
 	virtual void		SignalHandler(int sigNum);
+
+	virtual void		prepare_raft_receive_fromNewLeader_oldLeaderDied(std::string* bufferForAdditionalData);
+	virtual void		prepare_raft_receive_fromLeader_newNode(std::string* bufferForAdditionalData);
+	virtual void		prepare_raft_receive_fromLeader_removeNode(std::string* bufferForAdditionalData);
+	virtual void		prepare_raft_connect_toLeader_newNode(std::string* bufferForAdditionalData);
 
 	void				ThreadFunctionListen();
 	void				ThreadFunctionPeriodic();
@@ -91,13 +99,19 @@ protected:
 	NodeIdentifierKey*	TryFindLeaderThrdSafe(const NodeIdentifierKey& nodeInfo);
 	void				AddOwnNode();
 
+	// family of receive functions
+	void				raft_receive_fromLeader_newNode(RaftNode2* a_pNode);
+	void				raft_receive_fromLeader_removeNode(RaftNode2* a_pNode);
+	void				raft_receive_fromNewLeader_oldLeaderDied(RaftNode2* a_pNode);
+
 	// utils
-	void				connect_toAnyNode_newNode(common::SocketTCP& sock);
-	void				connect_toLeader_newNode(common::SocketTCP& sock, const sockaddr_in*remoteAddr);
-	RaftNode2*			connect_toAnyNode_bridgeToNodeRaft(common::SocketTCP& sock, const sockaddr_in*remoteAddr);
-	RaftNode2*			connect_toAnyNode_bridgeToNodeData(common::SocketTCP& sock, const sockaddr_in* remoteAddr);
-	void				connect_fromClient_allNodesInfo(common::SocketTCP& sock);
-	void				connect_toAnyNode_otherLeaderFound(common::SocketTCP& sock);
+	RaftNode2*			raft_connect_toFollower_raftBridge(common::SocketTCP& sock, const sockaddr_in*remoteAddr);
+	RaftNode2*			raft_connect_toAnyNode_dataBridge(common::SocketTCP& sock, const sockaddr_in* remoteAddr);
+
+	void				raft_connect_toAnyNode_leaderInfoRequest(common::SocketTCP& sock);
+	void				raft_connect_toLeader_newNode(common::SocketTCP& sock, const sockaddr_in*remoteAddr);
+	void				raft_connect_fromClient_allNodesInfo(common::SocketTCP& sock);
+	void				raft_connect_toAnyNode_otherLeaderFound(common::SocketTCP& sock);
 
 	void				CheckAllPossibleSeeds(const std::vector<NodeIdentifierKey>& vectPossibleNodes);
 
