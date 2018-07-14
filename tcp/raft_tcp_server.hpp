@@ -100,6 +100,7 @@ protected:
 	void				AddOwnNode();
 
 	// family of receive functions
+	bool				raft_receive_fromLeader_newNode_private(common::SocketTCP& a_socket, int a_isEndianDiffer,SAddRemData*	a_pNodeData);
 	void				raft_receive_fromLeader_newNode(RaftNode2* a_pNode);
 	void				raft_receive_fromLeader_removeNode(RaftNode2* a_pNode);
 	void				raft_receive_fromNewLeader_oldLeaderDied(RaftNode2* a_pNode);
