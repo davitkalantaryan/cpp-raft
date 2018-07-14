@@ -359,11 +359,12 @@ void raft::tcp::Server::raft_connect_toLeader_newNode(common::SocketTCP& a_clien
 
 	nSndRcv = a_clientSock.readC(&addNodeData.addDataLen, 4);
 	if (nSndRcv != 4) { goto returnPoint; }
+	if (nEndianDiffer) { SWAP4BYTES(addNodeData.addDataLen); }
 	if(addNodeData.addDataLen>0){
 		addNodeData.additionalData = (char*)malloc(addNodeData.addDataLen);
 		HANDLE_MEM_DEF2(addNodeData.additionalData," ");
 		nSndRcv = a_clientSock.readC(addNodeData.additionalData,addNodeData.addDataLen);
-		if (nSndRcv != 4) { goto returnPoint; }
+		if (nSndRcv != addNodeData.addDataLen) { goto returnPoint; }
 	}
 
 	// start process adding and informing other nodes
@@ -983,13 +984,19 @@ void raft::tcp::Server::HandleNewConnection(char,common::SocketTCP&, const socka
 	// this function should be overritten
 }
 
+
+void raft::tcp::Server::FollowerApplyAdditionalDataFromLeader(const char* , int )
+{
+}
+
 void raft::tcp::Server::newLeader_prepareInform_on_oldLeader_died(std::string*)
 {
 }
 
 
-void raft::tcp::Server::leader_prepareInform_on_newNode(std::string*)
+void raft::tcp::Server::leader_prepareInform_on_newNode(std::string*, bool* a_pbSendBack)
 {
+	*a_pbSendBack = false;
 }
 
 
@@ -1006,7 +1013,6 @@ void raft::tcp::Server::newNode_prepareInform_toLeader(std::string* a_bufferForA
 void raft::tcp::Server::ThreadFunctionLockedAction()
 {
 	PREPARE_SEND_SOCKET_GUARD();
-	void* clbkData;
 	RaftNode2* pSkipNode(NULL);
 	RaftNode2* pNextNode;
 	NodeTools* pNodeTools;
@@ -1022,7 +1028,7 @@ void raft::tcp::Server::ThreadFunctionLockedAction()
 	int nSndRcv, nIter, nAdditionalDataLen;
 	uint32_t unOkCount;
 	char cRequest;
-	bool bInformFollowers, bWaitDone;
+	bool bInformFollowers, bWaitDone, bSendBack;
 	
 enterLoopPoint:
 	try {
@@ -1033,92 +1039,26 @@ enterLoopPoint:
 
 				aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes2);    // --> shared locking
 				StateChangedBeforeLock(aData);
-				nAdditionalDataLen = 0;
-
-				switch (aData.action)
-				{
-				case raft::internal2::newLeader::becomeLeader:
-					cRequest = raft::receive::fromNewLeader2::oldLeaderDied;
-					bInformFollowers = true;
-					bWaitDone = false;
-					pSkipNode = m_pLeaderNode;
-					pKeyToInform = (NodeIdentifierKey*)m_pLeaderNode->key;
-					keyForInform = *pKeyToInform;
-					clbkData = NULL;
-					newLeader_prepareInform_on_oldLeader_died(&strAdditionalData);
-					nAdditionalDataLen = (int)strAdditionalData.size();
-					break;
-				case raft::internal2::leader::newNode:
-					cRequest = raft::receive::fromLeader2::newNode;
-					bInformFollowers = true;
-					bWaitDone = true;
-					pSkipNode = NULL;
-					pKeyToInform = &aData.nodeKey;
-					keyForInform = *pKeyToInform;
-					clbkData = NULL;
-					leader_prepareInform_on_newNode(&strAdditionalData);
-					nAdditionalDataLen = (int)strAdditionalData.size();
-					break;
-				case raft::internal2::leader::removeNode:
-					cRequest = raft::receive::fromLeader2::removeNode;
-					bInformFollowers = true;
-					bWaitDone = false;
-					pSkipNode = aData.pNode;
-					pKeyToInform = (NodeIdentifierKey*)aData.pNode->key;
-					keyForInform = *pKeyToInform;
-					clbkData = GET_CLBK_DATA(aData.pNode);
-					leader_prepareInform_on_removeNode(&strAdditionalData);
-					nAdditionalDataLen = (int)strAdditionalData.size();
-					break;
-				default:
-					bInformFollowers = false;
-					keyForInform = aData.nodeKey; clbkData = NULL;
-					break;
-				}  // switch (aData.action)
-
-				if (bInformFollowers) {
-					pNextNode = m_Nodes.first();
-					while (pNextNode) {
-						if ((pNextNode != m_thisNode) && (pNextNode != pSkipNode) && !pNextNode->isProblematic()) {
-							pNodeTools = (NodeTools*)pNextNode->get_udata();
-							unOkCount = pNodeTools->okCount;
-							LOCK_RAFT_SEND_MUTEX(pNextNode);
-							nSndRcv = pNodeTools->raftSocket2.writeC(&cRequest, 1);
-							if (nSndRcv != 1) {pNextNode->setProblematic(); goto nextNodePoint; }
-							nSndRcv = pNodeTools->raftSocket2.writeC(pKeyToInform, sizeof(NodeIdentifierKey));
-							if (nSndRcv != sizeof(NodeIdentifierKey)) { pNextNode->setProblematic(); goto nextNodePoint; }
-							nSndRcv = pNodeTools->raftSocket2.writeC(&nAdditionalDataLen,4);
-							if (nSndRcv != 4) { pNextNode->setProblematic(); goto nextNodePoint; }
-							if(nAdditionalDataLen>0){
-								nSndRcv = pNodeTools->raftSocket2.writeC(strAdditionalData.data(),nAdditionalDataLen);
-								if (nSndRcv != nAdditionalDataLen) { pNextNode->setProblematic(); goto nextNodePoint; }
-							}
-							UNLOCK_SEND_SOCKET_MUTEX2();						
-
-							if (bWaitDone) { // wait untill done
-								nIter = 0;
-								while ((unOkCount == pNodeTools->okCount) && (nIter<MAX_ITER_OK_COUNT)) { Sleep(1); ++nIter; }
-							}
-						nextNodePoint:
-							UNLOCK_SEND_SOCKET_MUTEX2();
-						}
-						pNextNode = pNextNode->next;
-					}  // while (pNextNode) {
-
-				} // if(bInformFollowers){
-
 				aShrdLockGuard.UnsetAndUnlockMutex();    // --> shared unlocking
 
 				aLockGuard.SetAndLockMutex(&m_shrdMutexForNodes2);   // --> locking
 				StateChangedLockedPre(aData);
 				switch (aData.action)
 				{
-				case raft::internal2::leader::newNode: case raft::internal2::follower::newNodeFromLeader:
+				case raft::internal2::leader::newNode:
 					AddAdditionalDataToNode(aData.pNode);
+					pNodeTools = (NodeTools*)aData.pNode->get_udata();
+					pNodeTools->raftSocket2.writeC(&g_ccResponceOk, 1);
 					m_Nodes.AddData(aData.pNode, &aData.nodeKey, sizeof(NodeIdentifierKey));
-					InterruptRaftRcv();
-					InterruptDataRcv();
 					DEBUG_APPLICATION(1, "Node (add): %s:%d, numOfNodes=%d", aData.nodeKey.ip4Address, (int)aData.nodeKey.port, m_Nodes.count() + 1);
+					break;
+				case raft::internal2::follower::newNodeFromLeader:
+					if(aData.pNode!=m_thisNode){
+						AddAdditionalDataToNode(aData.pNode);
+						m_Nodes.AddData(aData.pNode, &aData.nodeKey, sizeof(NodeIdentifierKey));
+						DEBUG_APPLICATION(1, "Node (add): %s:%d, numOfNodes=%d", aData.nodeKey.ip4Address, (int)aData.nodeKey.port, m_Nodes.count() + 1);
+					}
+					FollowerApplyAdditionalDataFromLeader(aData.additionalData,aData.addDataLen);
 					break;
 				case raft::internal2::follower::oldLeaderDied:
 					pKeyForDelete = (NodeIdentifierKey*)m_pLeaderNode->key;
@@ -1148,22 +1088,98 @@ enterLoopPoint:
 					break;
 				}
 				StateChangedLockedPost(aData);
-				aLockGuard.UnsetAndUnlockMutex();							// --> unlocking
+				aLockGuard.UnsetAndUnlockMutex();							// --> unlocking (after this point we have parallel stream)
 
-				aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes2);		// --> shared locking
+
+				bSendBack = false;
+				nAdditionalDataLen = 0;
+	
+				aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes2);    // --> shared locking
+
+				switch (aData.action)
+				{
+				case raft::internal2::newLeader::becomeLeader:
+					cRequest = raft::receive::fromNewLeader2::oldLeaderDied;
+					bInformFollowers = true;
+					bWaitDone = false;
+					pSkipNode = m_pLeaderNode;
+					pKeyToInform = (NodeIdentifierKey*)m_pLeaderNode->key;
+					keyForInform = *pKeyToInform;
+					newLeader_prepareInform_on_oldLeader_died(&strAdditionalData);
+					nAdditionalDataLen = (int)strAdditionalData.size();
+					break;
+				case raft::internal2::leader::newNode:
+					cRequest = raft::receive::fromLeader2::newNode;
+					bInformFollowers = true;
+					bWaitDone = true;
+					pSkipNode = NULL;
+					pKeyToInform = &aData.nodeKey;
+					keyForInform = *pKeyToInform;
+					leader_prepareInform_on_newNode(&strAdditionalData, &bSendBack);
+					nAdditionalDataLen = (int)strAdditionalData.size();
+					break;
+				case raft::internal2::leader::removeNode:
+					cRequest = raft::receive::fromLeader2::removeNode;
+					bInformFollowers = true;
+					bWaitDone = false;
+					pSkipNode = aData.pNode;
+					pKeyToInform = (NodeIdentifierKey*)aData.pNode->key;
+					keyForInform = *pKeyToInform;
+					leader_prepareInform_on_removeNode(&strAdditionalData);
+					nAdditionalDataLen = (int)strAdditionalData.size();
+					break;
+				default:
+					bInformFollowers = false;
+					keyForInform = aData.nodeKey;
+					break;
+				}  // switch (aData.action)
+
+				if(bSendBack){pSkipNode=NULL;}
+
+				if (bInformFollowers) {
+					pNextNode = m_Nodes.first();
+					while (pNextNode) {
+						if ((pNextNode != m_thisNode) && (pNextNode != pSkipNode) && (!pNextNode->isProblematic())) {
+							pNodeTools = (NodeTools*)pNextNode->get_udata();
+							unOkCount = pNodeTools->okCount;
+							LOCK_RAFT_SEND_MUTEX(pNextNode);
+							nSndRcv = pNodeTools->raftSocket2.writeC(&cRequest, 1);
+							if (nSndRcv != 1) { pNextNode->setProblematic(); goto nextNodePoint; }
+							nSndRcv = pNodeTools->raftSocket2.writeC(pKeyToInform, sizeof(NodeIdentifierKey));
+							if (nSndRcv != sizeof(NodeIdentifierKey)) { pNextNode->setProblematic(); goto nextNodePoint; }
+							nSndRcv = pNodeTools->raftSocket2.writeC(&nAdditionalDataLen, 4);
+							if (nSndRcv != 4) { pNextNode->setProblematic(); goto nextNodePoint; }
+							if (nAdditionalDataLen>0) {
+								nSndRcv = pNodeTools->raftSocket2.writeC(strAdditionalData.data(), nAdditionalDataLen);
+								if (nSndRcv != nAdditionalDataLen) { pNextNode->setProblematic(); goto nextNodePoint; }
+							}
+							UNLOCK_SEND_SOCKET_MUTEX2();
+
+							if (bWaitDone) { // wait untill done
+								nIter = 0;
+								while ((unOkCount == pNodeTools->okCount) && (nIter<MAX_ITER_OK_COUNT)) { Sleep(1); ++nIter; }
+							}  // if ((pNextNode2 != m_thisNode) && (pNextNode2 != pSkipNode) && !pNextNode2->isProblematic()) {
+						nextNodePoint:
+							UNLOCK_SEND_SOCKET_MUTEX2();
+						}
+						pNextNode = pNextNode->next;
+					}  // while (pNextNode) {
+
+				} // if(bInformFollowers){
+
 				switch (aData.action)
 				{
 				case raft::internal2::leader::newNode:
-					pNodeTools = (NodeTools*)aData.pNode->get_udata();
-					s_mutexForRaftSend.lock();
-					pNodeTools->raftSocket2.writeC(&g_ccResponceOk, 1);
-					s_mutexForRaftSend.unlock();
+					InterruptRaftRcv();
+					InterruptDataRcv();
 					break;
 				case raft::internal2::follower::newNodeFromLeader:
 					pNodeToolsLeader = (NodeTools*)m_pLeaderNode->get_udata();
 					s_mutexForRaftSend.lock();
 					pNodeToolsLeader->raftSocket2.writeC(&g_ccResponceOk, 1);
 					s_mutexForRaftSend.unlock();
+					InterruptRaftRcv();
+					InterruptDataRcv();
 					break;
 				default:
 					break;
@@ -1369,8 +1385,8 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindLeaderThrdSafe(const Nod
 	RaftNode2* pNewNode;
 	NodeIdentifierKey leaderNodeKey;
 	common::SocketTCP aSocket;
-	std::string strAddInfo;
-    int i,nSndRcv, nBytesToReceive,numberOfNodes, nAddInfo;
+	std::string strAddInfo, strAddInfoFromLeader;
+    int i,nSndRcv, nBytesToReceive,numberOfNodes, nAddInfo, nAdditionalDataLen;
 	uint32_t  isEndianDiffer;
 	uint16_t snEndian2;
 	char cRequest;
@@ -1434,10 +1450,22 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindLeaderThrdSafe(const Nod
 		if (nSndRcv != nAddInfo) { goto returnPoint; }
 	}
 
+	//
+	nSndRcv = aSocket.readC(&nAdditionalDataLen, 4);
+	if (nSndRcv != 4) { goto returnPoint; }
+	if (nAdditionalDataLen>0) {
+		strAddInfoFromLeader.resize(nAdditionalDataLen);
+		nSndRcv = aSocket.readC(const_cast<char*>(strAddInfoFromLeader.data()), nAdditionalDataLen);
+		if (nSndRcv != nAdditionalDataLen) { goto returnPoint; }
+	}
+	cRequest = response::ok;
+	nSndRcv = aSocket.writeC(&cRequest, 1);
+	if (nSndRcv != 1) { goto returnPoint; }
+	//
+
 	nSndRcv = aSocket.readC(&cRequest, 1);																				// 7. wait untill other nodes are ready
 	if ((nSndRcv != 1) || (cRequest != response::ok)) { goto returnPoint; }
 	bOk = true;  // whith leader everything is Ok
-
 
 	for(i=0;i<numberOfNodes;++i){
 		pTools = new NodeTools;
@@ -1499,7 +1527,7 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindLeaderThrdSafe(const Nod
 	}
 
 returnPoint:
-	if((!bOk)&&pNodesInfo){free(pNodesInfo);pNodesInfo=NULL;}
+	if(!bOk){free(pNodesInfo); pNodesInfo = NULL;}
 	return pNodesInfo;
 
 }

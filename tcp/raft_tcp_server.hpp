@@ -79,8 +79,9 @@ protected:
 	
 	virtual void		SignalHandler(int sigNum);
 
+	virtual void		FollowerApplyAdditionalDataFromLeader(const char* a_pAddData, int a_nDataLen);
 	virtual void		newLeader_prepareInform_on_oldLeader_died(std::string* bufferForAdditionalData);
-	virtual void		leader_prepareInform_on_newNode(std::string* bufferForAdditionalData);
+	virtual void		leader_prepareInform_on_newNode(std::string* bufferForAdditionalData, bool* a_pbSendBack);
 	virtual void		leader_prepareInform_on_removeNode(std::string* bufferForAdditionalData);
 	virtual void		newNode_prepareInform_toLeader(std::string* bufferForAdditionalData);
 
