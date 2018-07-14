@@ -165,6 +165,7 @@ public:
 #endif
 
 	timeb											m_lastPingByLeader;
+	uint64_t										m_isInited : 1;
 };
 
 }} // namespace raft { namespace tcp{

@@ -75,6 +75,7 @@ raft::tcp::Server::Server()
 	m_nWork = 0;
     m_infoSocketForRcvRaft2 = -1;
     m_infoSocketForRcvData2 = -1;
+	m_isInited = 0;
 
 	aClbks.send     = &raft::tcp::Server::SendClbkFunction;
 	aClbks.log      = &raft::tcp::Server::LogClbkFunction;
@@ -287,7 +288,7 @@ void raft::tcp::Server::AddClient(common::SocketTCP& a_clientSock, const sockadd
 void raft::tcp::Server::raft_connect_toAnyNode_leaderInfoRequest(common::SocketTCP& a_clientSock)
 {
 	if(m_pLeaderNode){
-		NodeIdentifierKey* pLeaderKey = (NodeIdentifierKey*)m_pLeaderNode->key;
+		NodeIdentifierKey* pLeaderKey = NODE_KEY(m_pLeaderNode);
 		a_clientSock.writeC(pLeaderKey, sizeof(NodeIdentifierKey));
 	}
 	else{
@@ -439,7 +440,7 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::CollectAllNodesDataNotThrSafe(i
 	// collect info
 	pNode = m_Nodes.first();
 	while (pNode) {
-		pExistingNodeKey = (NodeIdentifierKey*)pNode->key;
+		pExistingNodeKey = NODE_KEY(pNode);
 		pAllNodesInfo[i].set_ip4Address(pExistingNodeKey->ip4Address);
 		pAllNodesInfo[i].port = pExistingNodeKey->port;
 		if(a_pnLeaderIndex && pNode->is_leader()){*a_pnLeaderIndex = i;}
@@ -543,7 +544,7 @@ void raft::tcp::Server::ThreadFunctionListen()
 void raft::tcp::Server::HandleSeedClbk(RaftNode2* a_pNode)
 {
 	NodeTools* pTools = GET_NODE_TOOLS(a_pNode);
-	NodeIdentifierKey* pNodeKey = (NodeIdentifierKey*)a_pNode->key;
+	NodeIdentifierKey* pNodeKey = NODE_KEY(a_pNode);
 	int nSndRcv, nToReceive;
 	int msg_type;
 	bool bProblematic(true);
@@ -706,6 +707,8 @@ returnPoint:
 
 void raft::tcp::Server::raft_receive_fromLeader_newNode(RaftNode2* a_pNode)
 {
+	PREPARE_SEND_SOCKET_GUARD();
+	RaftNode2* pNewNode = NULL;
 	NodeTools* pNewNodeTools=NULL;
 	NodeTools *pTools = GET_NODE_TOOLS(a_pNode);
 	SAddRemData	 nodeData;
@@ -721,13 +724,20 @@ void raft::tcp::Server::raft_receive_fromLeader_newNode(RaftNode2* a_pNode)
 		DEBUG_APP_WITH_NODE(0,NODE_KEY(a_pNode), "own node is not follower, but request is for follower");
 		goto returnPoint;
 	}
+
 	nSndRcv = pTools->raftSocket.readC(&nodeData.nodeKey, sizeof(NodeIdentifierKey));
 	if (nSndRcv != sizeof(NodeIdentifierKey)) { goto returnPoint; }
 	if (pTools->isEndianDiffer) { SWAP4BYTES(nodeData.nodeKey.port); }
-	pNewNodeTools = new NodeTools;
-	HANDLE_MEM_DEF2(pNewNodeTools, " ");
-	nodeData.pNode = new RaftNode2(pNewNodeTools);
-	HANDLE_MEM_DEF2(nodeData.pNode, " ");
+
+	if(nodeData.nodeKey==*NODE_KEY(m_thisNode)){
+		nodeData.pNode = m_thisNode;
+	}
+	else{
+		pNewNodeTools = new NodeTools;
+		HANDLE_MEM_DEF2(pNewNodeTools, " ");
+		pNewNode=nodeData.pNode = new RaftNode2(pNewNodeTools);
+		HANDLE_MEM_DEF2(nodeData.pNode, " ");
+	}
 
 	nSndRcv = pTools->raftSocket.readC(&nodeData.addDataLen,4);
 	if (nSndRcv != 4) { goto returnPoint; }
@@ -745,12 +755,18 @@ void raft::tcp::Server::raft_receive_fromLeader_newNode(RaftNode2* a_pNode)
 	m_fifoAddDel.AddElement(nodeData);
 	m_semaAddRemove.post();
 
+	if (!m_isInited) {
+		LOCK_RAFT_SEND_MUTEX(a_pNode);
+		GET_NODE_TOOLS(a_pNode)->raftSocket.writeC(&g_ccResponceOk, 1);
+		UNLOCK_SEND_SOCKET_MUTEX2();
+		m_isInited = 1;
+	}
 	bProblematic = false;
 returnPoint:
 	if(bProblematic){
 		a_pNode->setProblematic();
 		free(nodeData.additionalData);
-		delete nodeData.pNode;
+		delete pNewNode;
 		delete pNewNodeTools;
 		ERROR_LOGGING2("is not able to get new data from leader node (%s:%d) ", NODE_KEY(a_pNode)->ip4Address, (int)NODE_KEY(a_pNode)->port);
 	}
@@ -760,7 +776,7 @@ returnPoint:
 void raft::tcp::Server::ReceiveFromRaftSocket(RaftNode2* a_pNode)
 {
 	NodeTools *pTools = GET_NODE_TOOLS(a_pNode);
-	NodeIdentifierKey* pNodeKey = (NodeIdentifierKey*)a_pNode->key;
+	NodeIdentifierKey* pNodeKey = NODE_KEY(a_pNode);
 	int nSndRcv;
 	char cRequest;
 
@@ -1033,7 +1049,7 @@ void raft::tcp::Server::ThreadFunctionLockedAction()
 	std::string  strAdditionalData;
 	int nSndRcv, nIter, nAdditionalDataLen;
 	uint32_t unOkCount;
-	char cRequest;
+	char cRequestOut, cRequestIn;
 	bool bInformFollowers, bWaitDone, bSendBack;
 	
 enterLoopPoint:
@@ -1052,20 +1068,21 @@ enterLoopPoint:
 				switch (aData.action)
 				{
 				case raft::internal2::leader::newNode:
+					AddAdditionalDataToNode(aData.pNode);
 					m_Nodes.AddData(aData.pNode, &aData.nodeKey, sizeof(NodeIdentifierKey));
-					DEBUG_APPLICATION(1, "Node (add): %s:%d, numOfNodes=%d", aData.nodeKey.ip4Address, (int)aData.nodeKey.port, m_Nodes.count() + 1);
+					DEBUG_APPLICATION(1, "Node (add): %s:%d, numOfNodes=%d", aData.nodeKey.ip4Address, (int)aData.nodeKey.port, m_Nodes.count());
 					break;
 				case raft::internal2::follower::newNodeFromLeader:
 					if(aData.pNode!=m_thisNode){
 						AddAdditionalDataToNode(aData.pNode);
 						m_Nodes.AddData(aData.pNode, &aData.nodeKey, sizeof(NodeIdentifierKey));
-						DEBUG_APPLICATION(1, "Node (add): %s:%d, numOfNodes=%d", aData.nodeKey.ip4Address, (int)aData.nodeKey.port, m_Nodes.count() + 1);
+						DEBUG_APPLICATION(1, "Node (add): %s:%d, numOfNodes=%d", aData.nodeKey.ip4Address, (int)aData.nodeKey.port, m_Nodes.count());
 					}
 					FollowerApplyAdditionalDataFromLeader(aData.additionalData,aData.addDataLen);
 					break;
 				case raft::internal2::follower::oldLeaderDied:
-					pKeyForDelete = (NodeIdentifierKey*)m_pLeaderNode->key;
-					pKeyForNewLeader = (NodeIdentifierKey*)aData.pNode->key;
+					pKeyForDelete = NODE_KEY(m_pLeaderNode);
+					pKeyForNewLeader = NODE_KEY(aData.pNode);
 					DEBUG_APPLICATION(1, "old leader (%s:%d) will be deleted", pKeyForDelete->ip4Address, (int)pKeyForDelete->port);
 					DEBUG_APPLICATION(1, "New leader is  %s:%d. NodesCount=%d", pKeyForNewLeader->ip4Address, (int)pKeyForNewLeader->port, m_Nodes.count() - 1);
 					this->RemoveNode2(m_pLeaderNode);
@@ -1074,12 +1091,13 @@ enterLoopPoint:
 					this->become_follower();
 					break;
 				case raft::internal2::leader::removeNode: case raft::internal2::follower::removeNodeRequestFromLeader:
-					pKeyForDelete = (NodeIdentifierKey*)aData.pNode->key;
+					pKeyForDelete = NODE_KEY(aData.pNode);
+					keyForInform = *pKeyToInform;
 					DEBUG_APPLICATION(1, "Node (del): %s:%d, numOfNodes=%d", pKeyForDelete->ip4Address, (int)pKeyForDelete->port, m_Nodes.count() - 1);
 					this->RemoveNode2(aData.pNode);
 					break;
 				case raft::internal2::newLeader::becomeLeader:
-					pKeyForDelete = (NodeIdentifierKey*)m_pLeaderNode->key;
+					pKeyForDelete = NODE_KEY(m_pLeaderNode);
 					DEBUG_APP_WITH_NODE(0,pKeyForDelete, "old leader died");
 					this->RemoveNode2(m_pLeaderNode);
 					DEBUG_APPLICATION(0, "This node will be the leader (numberOfNodes=%d)", m_Nodes.count());
@@ -1102,17 +1120,17 @@ enterLoopPoint:
 				switch (aData.action)
 				{
 				case raft::internal2::newLeader::becomeLeader:
-					cRequest = raft::receive::fromNewLeader2::oldLeaderDied;
+					cRequestOut = raft::receive::fromNewLeader2::oldLeaderDied;
 					bInformFollowers = true;
 					bWaitDone = false;
 					pSkipNode = m_pLeaderNode;
-					pKeyToInform = (NodeIdentifierKey*)m_pLeaderNode->key;
+					pKeyToInform = NODE_KEY(m_pLeaderNode);
 					keyForInform = *pKeyToInform;
 					newLeader_prepareInform_on_oldLeader_died(&strAdditionalData);
 					nAdditionalDataLen = (int)strAdditionalData.size();
 					break;
 				case raft::internal2::leader::newNode:
-					cRequest = raft::receive::fromLeader2::newNode;
+					cRequestOut = raft::receive::fromLeader2::newNode;
 					bInformFollowers = true;
 					bWaitDone = true;
 					pSkipNode = NULL;
@@ -1121,17 +1139,15 @@ enterLoopPoint:
 					leader_prepareInform_on_newNode(&strAdditionalData, &bSendBack);
 					nAdditionalDataLen = (int)strAdditionalData.size();
 
-					AddAdditionalDataToNode(aData.pNode);
 					pNodeTools = GET_NODE_TOOLS(aData.pNode);
-					pNodeTools->raftSocket.readC(&cRequest, 1);
+					pNodeTools->raftSocket.readC(&cRequestIn, 1);
 					break;
 				case raft::internal2::leader::removeNode:
-					cRequest = raft::receive::fromLeader2::removeNode;
+					cRequestOut = raft::receive::fromLeader2::removeNode;
 					bInformFollowers = true;
 					bWaitDone = false;
 					pSkipNode = aData.pNode;
-					pKeyToInform = (NodeIdentifierKey*)aData.pNode->key;
-					keyForInform = *pKeyToInform;
+					pKeyToInform = NODE_KEY(aData.pNode);
 					leader_prepareInform_on_removeNode(&strAdditionalData);
 					nAdditionalDataLen = (int)strAdditionalData.size();
 					break;
@@ -1141,7 +1157,9 @@ enterLoopPoint:
 					break;
 				}  // switch (aData.action)
 
-				if(bSendBack){pSkipNode=NULL;}
+				if(bSendBack){
+					pSkipNode=NULL;
+				}
 
 				if (bInformFollowers) {
 					pNextNode = m_Nodes.first();
@@ -1150,7 +1168,7 @@ enterLoopPoint:
 							pNodeTools = GET_NODE_TOOLS(pNextNode);
 							unOkCount = pNodeTools->okCount;
 							LOCK_RAFT_SEND_MUTEX(pNextNode);
-							nSndRcv = pNodeTools->raftSocket.writeC(&cRequest, 1);
+							nSndRcv = pNodeTools->raftSocket.writeC(&cRequestOut, 1);
 							if (nSndRcv != 1) { pNextNode->setProblematic(); goto nextNodePoint; }
 							nSndRcv = pNodeTools->raftSocket.writeC(pKeyToInform, sizeof(NodeIdentifierKey));
 							if (nSndRcv != sizeof(NodeIdentifierKey)) { pNextNode->setProblematic(); goto nextNodePoint; }
@@ -1301,7 +1319,7 @@ void raft::tcp::Server::CheckAllPossibleSeeds(const std::vector<NodeIdentifierKe
 		DEBUG_APPLICATION(1, "NumberOfNodes=%d", m_Nodes.count());
 		pNode = m_Nodes.first();
 		while(pNode){
-			pNodeKey = (NodeIdentifierKey*)pNode->key;
+			pNodeKey = NODE_KEY(pNode);
 			DEBUG_APPLICATION_NO_NEW_LINE(1,"%s:%d ",pNodeKey->ip4Address,(int)pNodeKey->port);
 			if(pNode==m_thisNode){ DEBUG_APPLICATION_NO_ADD_INFO(1,"(this) ");}
 			if(pNode==m_pLeaderNode){ DEBUG_APPLICATION_NO_ADD_INFO(1,"(leader) ");}
@@ -1466,6 +1484,8 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindLeaderThrdSafe(const Nod
 		pNewNode = new RaftNode2(pTools);
 		HANDLE_MEM_DEF2(pNewNode, " ");
 		AddAdditionalDataToNode(pNewNode);
+		pTools->okCount = 1;
+		pNewNode->setUsable();
 		m_Nodes.AddData(pNewNode, &pNodesInfo[i], sizeof(NodeIdentifierKey));
 		if(leaderNodeKey== pNodesInfo[i]){
 			pNewNode->makeLeader();
@@ -1519,6 +1539,9 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindLeaderThrdSafe(const Nod
 
 	nSndRcv = GET_NODE_TOOLS(m_pLeaderNode)->raftSocket.writeC(&g_ccResponceOk, 1);
 	if (nSndRcv != 1) { goto returnPoint; }
+
+	InterruptRaftRcv();
+	InterruptDataRcv();
 
 returnPoint:
 	if(!bOk){free(pNodesInfo); pNodesInfo = NULL;}
@@ -1592,13 +1615,13 @@ int raft::tcp::Server::SendClbkFunction(void *a_cb_ctx, void *udata, RaftNode2* 
 	// typedef struct { common::SocketTCP socket, socketToFollower; int isEndianDiffer; }NodeTools;
 	Server* pServer = (Server*)a_cb_ctx;
 	NodeTools* pTools = GET_NODE_TOOLS(a_node);
-	NodeIdentifierKey* pNodeKey = (NodeIdentifierKey*)a_node->key;
+	NodeIdentifierKey* pNodeKey = NODE_KEY(a_node);
 	int nSndRcv;
 	uint32_t unPingCount=0;
 	char cRequest=raft::receive::fromAnyNode2::clbkCmd;
 	bool bProblematic(true);
 
-	if(!a_node->isUsable()){return 0;}
+	if((!a_node->isUsable()) ||(!GET_NODE_TOOLS(a_node)->okCount)){return 0;}
 
 	switch (a_msg_type)
 	{
