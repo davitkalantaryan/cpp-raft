@@ -22,32 +22,52 @@
 #define Sleep(_x) (  ((_x)>100000) ? sleep((_x)/1000) : usleep(1000*(_x))  )
 #endif
 
-#define MAX_IP4_LEN				24
-#define SOCK_TIMEOUT_MS			100000
+#define MAX_IP4_LEN2				24
+#define SOCK_TIMEOUT_MS				100000
+#define NODE_KEY_DATA_LEN(_key)		(MAX_IP4_LEN2+4)
+#define STRING_START_OFFSET			4
 
 namespace raft {namespace tcp {
 
 extern const char g_ccResponceOk;
 
-typedef struct NodeIdentifierKey{ 
-	char ip4Address[MAX_IP4_LEN]; int32_t port;
-	/*----------------------------------------------*/
-	void set_ip4Address(const std::string& ip4Address);
-	void set_addressAndPort(char* addressAndPort, int32_t defaultPort);
-	bool operator==(const NodeIdentifierKey& aM)const;
-	bool isSame(const char* a_ip4Address, int32_t a_port)const;
-	static void generateKey(const char* a_ip4Address, int32_t a_port, std::string* a_pKey);
-}NodeIdentifierKey;
+class NodeIdentifierKey2
+{ 
+public:
+	NodeIdentifierKey2();
+	NodeIdentifierKey2(NodeIdentifierKey2&& tmpKey);
+	NodeIdentifierKey2& operator=(NodeIdentifierKey2&& a_rightSide);
+	void set_ip4addressAndPort(const std::string& ip4Address, int32_t defaultPort);
+	//bool isSameNode2(const std::string& a_ip4Address, int32_t a_port)const;
+	bool isSameNode1(const char* otherKey, size_t a_unKeyLen)const;
+	const std::string& key()const;
+	const char* ip4Address()const;
+	int32_t port()const;
+	char* data();
+	const char* data()const;
+	void swapPort();
+	
+	static void generateKey2(const std::string& a_ip4Address, int32_t a_port, std::string* a_pKey);
+	static const char* hostNameFromKey(const void* key);
+	static int32_t portFromKey(const void* key);
+
+private:
+	//char ip4Address[MAX_IP4_LEN]; int32_t port;
+	std::string		m_portAndIpV4;
+};
 
 
-bool ConnectAndGetEndian(common::SocketTCP* a_pSock,const NodeIdentifierKey& nodeInfo, char cRequest, uint32_t* pIsEndianDiffer);
+bool ConnectAndGetEndian(common::SocketTCP* a_pSock,const NodeIdentifierKey2& nodeInfo, char cRequest, uint32_t* pIsEndianDiffer);
 
 }}  // namespace raft {namespace tcp {
 
 
-#define DEBUG_APP_WITH_NODE(_logLevel,_nodeKey,...)	\
+#define HOST_NAME_FROM_KEY(_nodeKey)	((_nodeKey)+STRING_START_OFFSET)
+#define PORT_FROM_KEY(_nodeKey)			(  *((int32_t*)(_nodeKey))  )
+
+#define DEBUG_APP_WITH_KEY(_logLevel,_nodeKey,...)	\
 	do{ \
-		DEBUG_APPLICATION_NO_NEW_LINE((_logLevel),"%s:%d  ",(_nodeKey)->ip4Address,(int)((_nodeKey)->port)); \
+		DEBUG_APPLICATION_NO_NEW_LINE((_logLevel),"%s:%d  ",HOST_NAME_FROM_KEY(_nodeKey),PORT_FROM_KEY(_nodeKey)); \
 		DEBUG_APPLICATION_NO_ADD_INFO((_logLevel),__VA_ARGS__); DEBUG_APPLICATION_NO_ADD_INFO((_logLevel),"\n"); \
 	}while(0)
 

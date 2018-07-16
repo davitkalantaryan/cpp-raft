@@ -134,7 +134,7 @@ common::FifoFast_base<Type>::~FifoFast_base()
 
 
 template <class Type>
-bool common::FifoFast_base<Type>::AddElement(const Type& a_ptNew)
+bool common::FifoFast_base<Type>::AddElement1(const Type& a_ptNew)
 {
 	bool bRet(true);
 	SListStr<Type>* pNewEntr;
@@ -157,12 +157,36 @@ bool common::FifoFast_base<Type>::AddElement(const Type& a_ptNew)
 	return bRet;
 }
 
+
+#ifdef __CPP11_DEFINED__
+template <class Type>
+bool common::FifoFast_base<Type>::AddElement2(Type& a_ptNew)
+{
+	bool bRet(true);
+	SListStr<Type>* pNewEntr;
+
+	m_Mutex.lock();
+	if (m_nNumOfElemets<m_cnMaxSize){
+		pNewEntr = LIKELY(m_nIndexInCashPlus1) ? m_ppCashedEntries[--m_nIndexInCashPlus1] : new SListStr < Type >(a_ptNew);
+		pNewEntr->value = a_ptNew; pNewEntr->next = NULL;
+
+		if (!m_nNumOfElemets++) { m_pLast = m_pFirst = pNewEntr; }
+		else { m_pLast->next = pNewEntr; m_pLast = pNewEntr; }
+	}
+	else{bRet = false;}
+	m_Mutex.unlock();
+
+	return bRet;
+}
+#endif  // #ifdef __CPP11_DEFINED__
+
+
 template <class Type>
 bool common::FifoFast_base<Type>::Extract(Type*const& a_ptBuf)
 {
 	bool bRet(true);
-
-        m_Mutex.lock();
+	
+	m_Mutex.lock();
 	if (m_nNumOfElemets)
 	{
         *a_ptBuf = m_pFirst->value;
@@ -180,11 +204,8 @@ bool common::FifoFast_base<Type>::Extract(Type*const& a_ptBuf)
 
 		--m_nNumOfElemets;
 	}
-	else
-	{
-		bRet = false;
-	}
-        m_Mutex.unlock();
+	else{bRet = false;}
+	m_Mutex.unlock();
 	return bRet;
 }
 
@@ -193,9 +214,9 @@ template <class Type>
 int common::FifoFast_base<Type>::size()const
 {
 	int nRet;
-        m_Mutex.lock();
+	m_Mutex.lock();
 	nRet = m_nNumOfElemets;
-        m_Mutex.unlock();
+	m_Mutex.unlock();
 	return nRet;
 }
 //////////////////////////////////////////////////////////////

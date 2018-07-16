@@ -48,7 +48,10 @@ public:
     FifoFast_base(int maxSize, int cashSize, SListStr<Type>**ppCashedEntries);
 	virtual ~FifoFast_base();
 
-	bool	AddElement(const Type& a_ptNew);
+	bool	AddElement1(const Type& a_ptNew);
+#ifdef __CPP11_DEFINED__
+	bool	AddElement2(Type& a_ptNew);
+#endif
 	bool	Extract(Type*const& a_ptBuf);
 	int		size()const;
 
