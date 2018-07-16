@@ -363,8 +363,7 @@ bool raft::tcp::Server::raft_connect_toLeader_newNode(common::SocketTCP& a_clien
 
 	bOk = true;
 returnPoint:
-	if (bOk) {a_clientSock.ResetSocketWithoutClose();}
-	else { 
+	if (!bOk) {
 		delete pNewNodeTool;
 		delete a_clbkData->pNode;
 		free(pAllNodesInfo);
@@ -374,7 +373,7 @@ returnPoint:
 }
 
 
-RaftNode2* raft::tcp::Server::raft_connect_toFollower_raftBridge(common::SocketTCP& a_clientSock, const sockaddr_in* a_remoteAddr)
+bool raft::tcp::Server::raft_connect_toFollower_raftBridge(common::SocketTCP& a_clientSock, const sockaddr_in* a_remoteAddr)
 {
 	// this socket should remain 
 	RaftNode2* pNode;
@@ -387,21 +386,21 @@ RaftNode2* raft::tcp::Server::raft_connect_toFollower_raftBridge(common::SocketT
 
 	if(is_leader()){
 		ERROR_LOGGING2(" ");
-		return NULL;
+		return false;
 	}
 
 	aRemHost.set_ip4Address2(a_remoteAddr);	// let us specify host IP
 
 	nSndRcv = a_clientSock.readC(&unRemEndian,2);							// endian
-	if(nSndRcv!=2){return NULL;}
+	if(nSndRcv!=2){return false;}
 	if(unRemEndian!=1){nEndianDiffer=1;}
 
 	nSndRcv = a_clientSock.readC(&aRemHost.port,4);							// port
-	if(nSndRcv!=4){return NULL;}
+	if(nSndRcv!=4){return false;}
 	if(nEndianDiffer){SWAP4BYTES(aRemHost.port);}
 
 	if(!m_Nodes.FindEntry(&aRemHost,sizeof(NodeIdentifierKey),&pNode)){
-		return NULL;
+		return false;
 	}
 	
 	pNodeTools = GET_NODE_TOOLS(pNode);
@@ -412,7 +411,7 @@ RaftNode2* raft::tcp::Server::raft_connect_toFollower_raftBridge(common::SocketT
 	a_clientSock.ResetSocketWithoutClose();
 	pNode->setUsable();
 
-	return pNode;
+	return true;
 }
 
 
@@ -486,7 +485,7 @@ void raft::tcp::Server::raft_connect_toAnyNode_otherLeaderFound(common::SocketTC
 }
 
 
-RaftNode2* raft::tcp::Server::raft_connect_toAnyNode_dataBridge(common::SocketTCP& a_clientSock, const sockaddr_in* a_remoteAddr)
+bool raft::tcp::Server::raft_connect_toAnyNode_dataBridge(common::SocketTCP& a_clientSock, const sockaddr_in* a_remoteAddr)
 {
 	// this socket should remain 
 	RaftNode2* pNode;
@@ -653,7 +652,7 @@ bool raft::tcp::Server::raft_receive_fromLeader_newNode_private(common::SocketTC
 	if (nSndRcv != sizeof(NodeIdentifierKey)) { goto returnPoint; }
 	if (a_isEndianDiffer) { SWAP4BYTES(nodeData->port); }
 
-	if(*(nodeData.operator->())==*NODE_KEY(m_thisNode)){
+	if( (!m_thisNode) || (*(nodeData.operator->())==*NODE_KEY(m_thisNode))){
 		nodeData.pNode = m_thisNode;
 	}
 	else{
@@ -884,7 +883,6 @@ void raft::tcp::Server::ThreadFunctionRcvRaftInfo()
 
 void raft::tcp::Server::ThreadFunctionWorker()
 {
-	RaftNode2* pNode;
 	common::SocketTCP aClientSock;
 	SWorkerData dataFromProducer;
 	common::NewSharedLockGuard<STDN::shared_mutex> aShrdLockGuard;
@@ -893,7 +891,7 @@ void raft::tcp::Server::ThreadFunctionWorker()
 	int16_t	snEndian;
 	char vcHostName[MAX_HOSTNAME_LENGTH];
 	char cRequest;
-	bool bActivateLocked;
+	bool bActivateLocked, bKeepSocket;
 	
 enterLoopPoint:
 	try {
@@ -902,7 +900,6 @@ enterLoopPoint:
 
 			while (m_fifoWorker.Extract(&dataFromProducer) && m_nWork) {
 
-				pNode = NULL;
 				DEBUG_APPLICATION(1,
 					"conntion from %s(%s)",
 					common::socketN::GetHostName(&dataFromProducer.remAddress, vcHostName, MAX_HOSTNAME_LENGTH),
@@ -926,6 +923,7 @@ enterLoopPoint:
 				}
 				bActivateLocked = false;
 				isEndianDiffer = 0;
+				bKeepSocket = false;
 
 				aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes2);					// --> shared lock
 				switch (cRequest)
@@ -935,15 +933,15 @@ enterLoopPoint:
 					DEBUG_APPLICATION(1, "raft::connect::toAnyNode::newNode");
 					break;
 				case raft::connect::toLeader2::newNode:
-					bActivateLocked=raft_connect_toLeader_newNode(aClientSock, &dataFromProducer.remAddress,&addNodeData,&isEndianDiffer);
+					bKeepSocket=bActivateLocked=raft_connect_toLeader_newNode(aClientSock, &dataFromProducer.remAddress,&addNodeData,&isEndianDiffer);
 					DEBUG_APPLICATION(1, "raft::connect::toLeader::newNode");
 					break;
 				case raft::connect::toFollower2::raftBridge:
-					pNode= raft_connect_toFollower_raftBridge(aClientSock, &dataFromProducer.remAddress);
+					bKeepSocket = raft_connect_toFollower_raftBridge(aClientSock, &dataFromProducer.remAddress);
 					DEBUG_APPLICATION(1, "raft::connect::toFollower2::raftBridge");
 					break;
 				case raft::connect::toAnyNode2::dataBridge:
-					pNode= raft_connect_toAnyNode_dataBridge(aClientSock, &dataFromProducer.remAddress);
+					bKeepSocket = raft_connect_toAnyNode_dataBridge(aClientSock, &dataFromProducer.remAddress);
 					DEBUG_APPLICATION(1, "raft::connect::toAnyNode2::dataBridge");
 					break;
 				case raft::connect::fromClient2::allNodesInfo:
@@ -955,7 +953,7 @@ enterLoopPoint:
 					DEBUG_APPLICATION(1, "raft::connect::toAnyNode::otherLeaderFound");
 					break;
 				default:
-					bActivateLocked=HandleDefaultConnection(cRequest, aClientSock, &dataFromProducer.remAddress, pNode, &addNodeData);
+					bActivateLocked=HandleDefaultConnection(cRequest, aClientSock, &dataFromProducer.remAddress, &addNodeData);
 					break;
 				}
 
@@ -966,6 +964,8 @@ enterLoopPoint:
 						m_semaAddRemove.post();
 					}
 				}
+
+				if (bKeepSocket) {aClientSock.ResetSocketWithoutClose();}
 
 				aShrdLockGuard.UnsetAndUnlockMutex();								// --> shared unlock
 				aClientSock.closeC();
@@ -978,7 +978,7 @@ enterLoopPoint:
 }
 
 
-bool raft::tcp::Server::HandleDefaultConnection(char,common::SocketTCP&, const sockaddr_in*, RaftNode2*, SAddRemData*)
+bool raft::tcp::Server::HandleDefaultConnection(char,common::SocketTCP&, const sockaddr_in*, SAddRemData*)
 {
 	// this function should be overritten
 	return false;
@@ -1382,6 +1382,7 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindLeaderThrdSafe(const Nod
 	NodeIdentifierKey *pNodesInfo = NULL;
 	NodeTools* pTools;
 	RaftNode2* pNewNode;
+	SAddRemData aDtaFromRem;
 	NodeIdentifierKey leaderNodeKey;
 	common::SocketTCP aSocket;
 	std::string strAddInfo;
@@ -1451,10 +1452,19 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindLeaderThrdSafe(const Nod
 		if (nSndRcv != nAddInfo) { goto returnPoint; }
 	}
 
-	nSndRcv = aSocket.readC(&cRequest, 1);																// 5. receive all nodes info
+	nSndRcv = aSocket.readC(&cRequest, 1);
 	if ((nSndRcv != 1)||(cRequest!= raft::receive::fromLeader2::newNode)) { goto returnPoint; }
 
+	if(!raft_receive_fromLeader_newNode_private(aSocket,isEndianDiffer,&aDtaFromRem)){
+		goto returnPoint;
+	}
+
+	if (!ReceiveExtraData(aSocket, isEndianDiffer, &aDtaFromRem.extraData)) {
+		goto returnPoint;
+	}
+
 	bOk = true;  // whith leader everything is Ok
+	Sleep(10);
 
 	for(i=0;i<numberOfNodes;++i){
 		pTools = new NodeTools;
