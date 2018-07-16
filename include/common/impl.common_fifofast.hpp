@@ -16,6 +16,10 @@
 #else
 #endif  // #ifndef __COMMON_FIFOFAST_HPP__
 
+#ifdef __CPP11_DEFINED_
+#include <utility>
+#endif
+
 
 //////////////////////////////////////////////////////////////
 ////////// class SimpleStack
@@ -134,7 +138,7 @@ common::FifoFast_base<Type>::~FifoFast_base()
 
 
 template <class Type>
-bool common::FifoFast_base<Type>::AddElement(const Type& a_ptNew)
+bool common::FifoFast_base<Type>::AddElement1(const Type& a_ptNew)
 {
 	bool bRet(true);
 	SListStr<Type>* pNewEntr;
@@ -156,6 +160,74 @@ bool common::FifoFast_base<Type>::AddElement(const Type& a_ptNew)
 
 	return bRet;
 }
+
+
+//#ifdef __CPP11_DEFINED_
+#if 1
+template <class Type>
+bool common::FifoFast_base<Type>::AddElement2(Type&& a_ptNew)
+{
+	bool bRet(true);
+	SListStr<Type>* pNewEntr;
+
+	m_Mutex.lock();
+	if (m_nNumOfElemets<m_cnMaxSize)
+	{
+		if(LIKELY(m_nIndexInCashPlus1)){
+			pNewEntr = m_ppCashedEntries[--m_nIndexInCashPlus1];
+			pNewEntr->value = std::move(a_ptNew);
+		}
+		else {
+			pNewEntr = new SListStr < Type >(std::move(a_ptNew));
+			if(!pNewEntr){bRet=false;goto mutexUnlock;}
+		}
+		pNewEntr->next = NULL;
+
+		if (!m_nNumOfElemets++) { m_pLast = m_pFirst = pNewEntr; }
+		else { m_pLast->next = pNewEntr; m_pLast = pNewEntr; }
+	}
+	else
+	{
+		bRet = false;
+	}
+	mutexUnlock:
+	m_Mutex.unlock();
+
+	return bRet;
+}
+
+template <class Type>
+bool common::FifoFast_base<Type>::ExtractMv(Type*const& a_ptBuf)
+{
+	bool bRet(true);
+
+	m_Mutex.lock();
+	if (m_nNumOfElemets)
+	{
+		*a_ptBuf = std::move(m_pFirst->value);
+		if (LIKELY(m_nNumOfElemets <= m_cnCashSize))
+		{
+			m_ppCashedEntries[m_nIndexInCashPlus1++] = m_pFirst;
+			m_pFirst = m_pFirst->next;
+		}
+		else
+		{
+			SListStr<Type>* pForDelete = m_pFirst;
+			m_pFirst = m_pFirst->next;
+			delete pForDelete;
+		}
+
+		--m_nNumOfElemets;
+	}
+	else
+	{
+		bRet = false;
+	}
+	m_Mutex.unlock();
+	return bRet;
+}
+#endif  // #ifdef __CPP11_DEFINED_
+
 
 template <class Type>
 bool common::FifoFast_base<Type>::Extract(Type*const& a_ptBuf)

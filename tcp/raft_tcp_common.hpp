@@ -30,9 +30,10 @@ namespace raft {namespace tcp {
 extern const char g_ccResponceOk;
 
 typedef struct NodeIdentifierKey{ 
-	char ip4Address[MAX_IP4_LEN]; int32_t port;
+	int32_t port;  char ip4Address[MAX_IP4_LEN];
 	/*----------------------------------------------*/
-	void set_ip4Address(const std::string& ip4Address);
+	void set_ip4Address1(const std::string& ip4Address);
+	void set_ip4Address2(const sockaddr_in*remoteAddr);
 	void set_addressAndPort(char* addressAndPort, int32_t defaultPort);
 	bool operator==(const NodeIdentifierKey& aM)const;
 	bool isSame(const char* a_ip4Address, int32_t a_port)const;

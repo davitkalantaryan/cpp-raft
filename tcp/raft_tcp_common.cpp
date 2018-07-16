@@ -21,7 +21,7 @@ bool raft::tcp::NodeIdentifierKey::operator==(const NodeIdentifierKey& a_aM)cons
 
 bool raft::tcp::NodeIdentifierKey::isSame(const char* a_ip4Address, int32_t a_port)const
 {
-	return (  (strncmp(this->ip4Address, a_ip4Address, MAX_IP4_LEN) == 0) && (this->port == a_port)   );
+	return ((this->port == a_port) && (strncmp(this->ip4Address, a_ip4Address, MAX_IP4_LEN) == 0)   );
 }
 
 
@@ -33,10 +33,23 @@ void raft::tcp::NodeIdentifierKey::generateKey(const char* a_ip4Address, int32_t
 }
 
 
-void raft::tcp::NodeIdentifierKey::set_ip4Address(const std::string& a_hostName)
+void raft::tcp::NodeIdentifierKey::set_ip4Address1(const std::string& a_hostName)
 {
 	memset(this->ip4Address, 0, MAX_IP4_LEN);
 	strncpy(this->ip4Address, a_hostName.c_str(), MAX_IP4_LEN);
+}
+
+
+void raft::tcp::NodeIdentifierKey::set_ip4Address2(const sockaddr_in* a_remoteAddr)
+{
+	if (strcmp(common::socketN::GetIPAddress(a_remoteAddr), "127.0.0.1") == 0) {
+		memset(this->ip4Address, 0, MAX_IP4_LEN);
+		common::socketN::GetOwnIp4Address(this->ip4Address, MAX_IP4_LEN);
+	}
+	else{
+		this->set_ip4Address1(common::socketN::GetIPAddress(a_remoteAddr));
+	}
+
 }
 
 
