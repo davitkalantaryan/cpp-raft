@@ -717,9 +717,12 @@ void raft::tcp::Server::ReceiveFromRaftSocket(RaftNode2* a_pNode)
 	switch (cRequest)
 	{
 	case raft::response::ok:
+		a_pNode->setUsable();
+		a_pNode->pingReceived();
 		++pTools->okCount;
 		break;
 	case raft::receive::fromFollower::resetPing:
+		a_pNode->setUsable();
 		a_pNode->pingReceived();
 		DEBUG_APP_WITH_NODE(2,pNodeKey, "raft::receive::fromFollower::resetPing");
 		break;
@@ -1314,14 +1317,24 @@ void raft::tcp::Server::CheckAllPossibleSeeds(const std::vector<NodeIdentifierKe
 void raft::tcp::Server::ThreadFunctionPeriodic()
 {
 	PREPARE_SEND_SOCKET_GUARD();
+	RaftNode2* pNode;
 	timeb	aCurrentTime;
 	int nTimeDiff;
 	const char cRequest = raft::receive::fromFollower::resetPing;
 	common::NewSharedLockGuard<STDN::shared_mutex> aShrdLockGuard;
 	int nIteration(0), nSndRcv;
+	char cRequestReg;
 	
 enterLoopPoint:
 	try {
+		cRequestReg = raft::response::ok;
+		pNode = m_Nodes.first();
+		while(pNode){
+			LOCK_RAFT_SEND_MUTEX(m_pLeaderNode);
+			GET_NODE_TOOLS(pNode)->raftSocket.writeC(&cRequestReg, 1);
+			UNLOCK_SEND_SOCKET_MUTEX2();
+			pNode = pNode->next;
+		}
 		
 		while (m_nWork) {
 			if(is_leader() && (nIteration++ % 100)==0){
