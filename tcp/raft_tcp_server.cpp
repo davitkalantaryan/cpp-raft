@@ -230,7 +230,7 @@ int raft::tcp::Server::RunServerOnOtherThreads(const std::vector<NodeIdentifierK
 
 void raft::tcp::Server::StopServer()
 {
-	size_t i,unWorkersCount;
+	size_t i,nThreadsCount;
 
 	if (m_nWork == 0) {return;}
 	DEBUG_APPLICATION(1, "Stopping server");
@@ -242,12 +242,18 @@ void raft::tcp::Server::StopServer()
 
 	m_semaAddRemove.post();
 
-	unWorkersCount = m_vectThreadsWorkers.size();
+	nThreadsCount = m_vectThreadsOtherPeriodic.size();
+	for (i = 0; i<nThreadsCount; ++i) {
+		m_vectThreadsOtherPeriodic[i]->join();
+		delete m_vectThreadsOtherPeriodic[i];
+	}
+	m_vectThreadsOtherPeriodic.clear();
 
-	for(i=0;i<unWorkersCount;++i){
+	nThreadsCount = m_vectThreadsWorkers.size();
+	for(i=0;i<nThreadsCount;++i){
 		m_semaWorker.post();
 	}
-	for(i=0;i<unWorkersCount;++i){
+	for(i=0;i<nThreadsCount;++i){
 		m_vectThreadsWorkers[i]->join();
 		delete m_vectThreadsWorkers[i];
 	}

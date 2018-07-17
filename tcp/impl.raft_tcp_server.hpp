@@ -16,7 +16,7 @@ void raft::tcp::Server::ThreadFunctionOtherPeriodic(void (Type::*a_fpClbk)(int),
 {
 	common::NewSharedLockGuard<STDN::shared_mutex> aShrdLockGuard;
 
-	if(a_nPeriod>m_nPeriodForPeriodic){ a_nPeriod =m_nPeriodForPeriodic;}
+	if(a_nPeriod<m_nPeriodForPeriodic){ a_nPeriod =m_nPeriodForPeriodic;}
 
 
 enterLoopPoint:
