@@ -7,6 +7,8 @@
 #error do not include this file directly
 #include "raft_tcp_server.hpp"
 #endif
+#include "common/newlockguards.hpp"
+#include "cpp11+/thread_cpp11.hpp"
 
 
 template <typename Type>
@@ -16,9 +18,9 @@ void raft::tcp::Server::ThreadFunctionOtherPeriodic(void (Type::*a_fpClbk)(int),
 
 	if(a_nPeriod>m_nPeriodForPeriodic){ a_nPeriod =m_nPeriodForPeriodic;}
 
+
 enterLoopPoint:
 	try {
-		enterLoopPoint:
 		while (m_nWork) {
 
 			aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes2);
