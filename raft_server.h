@@ -243,9 +243,9 @@ public:
 	}
 
 protected:	
-	void RemoveNode2(RaftNode2* node);
-	void ClearAllNodes();
-	virtual void CleanNodeData(RaftNode2* pNode);
+	void RemoveNode2(RaftNode2* node, void* pUser);
+	void ClearAllNodes(void* a_pUser);
+	virtual void CleanNodeData(RaftNode2* pNode, void* pUser);
 
 };
 

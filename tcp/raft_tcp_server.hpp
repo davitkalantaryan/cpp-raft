@@ -1,7 +1,7 @@
 
 
-#ifndef __common_raft_server2_hpp__
-#define __common_raft_server2_hpp__
+#ifndef __common_raft_tcp_server_hpp__
+#define __common_raft_tcp_server_hpp__
 
 #include <common/common_servertcp.hpp>
 #include <raft_server.h>
@@ -68,8 +68,8 @@ public:
 
 protected:
 	virtual void		ReceiveFromDataSocket(RaftNode2* anyNode);
-	virtual void		AddAdditionalDataToNode(RaftNode2* newNode);
-	virtual void		CleanNodeData(RaftNode2*) OVERRIDE;
+	virtual void		AddAdditionalDataToNode(RaftNode2* newNode, SAddRemData* a_changeData);
+	virtual void		CleanNodeData(RaftNode2*, void* a_changeData) OVERRIDE;
 	virtual bool		HandleDefaultConnection(char code,common::SocketTCP& clientSock, const sockaddr_in* remoteAddr, SAddRemData* a_changeData);
 	
 	virtual bool		newNode_prepareInfo_forLeader(std::string* a_pBufferForInfo);
@@ -91,6 +91,11 @@ protected:
 	void				ThreadFunctionRcvData();
 	void				ThreadFunctionLockedAction();
 	void				ThreadFunctionWorker();
+	template <typename Type>
+	void				ThreadFunctionOtherPeriodic(void (Type::*a_fpClbk)(int), int a_nPeriod, Type* a_pObj, int a_nIndex);
+
+	template <typename Type>
+	void				StartOtherPriodic(void (Type::*a_fpClbk)(int), int a_nPeriod, Type* a_pObj);
 
     void				FunctionForMultiRcv(volatile int* a_pnSocketForInfo, void (Server::*a_fpRcvFnc)(RaftNode2*), bool isRaft);
 
@@ -140,6 +145,7 @@ protected:
 	std::thread										m_threadRcvData;
 	std::thread										m_threadLockedActions;
 	std::vector<std::thread*>						m_vectThreadsWorkers;
+	std::vector<std::thread*>						m_vectThreadsOtherPeriodic;
 private:
     STDN::shared_mutex                              m_shrdMutexForNodes2;
 protected:
@@ -171,5 +177,7 @@ public:
 
 }} // namespace raft { namespace tcp{
 
-#endif  // #ifndef __common_raft_server2_hpp__
+#include "impl.raft_tcp_server.hpp"
+
+#endif  // #ifndef __common_raft_tcp_server_hpp__
 

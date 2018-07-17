@@ -60,31 +60,31 @@ void RaftServer::set_callbacks(raft_cbs_t *funcs, void *cb_ctx) {
 
 RaftServer::~RaftServer() 
 {
-	ClearAllNodes();
+	ClearAllNodes(NULL);
 	//delete this->log;
 }
 
 
-void RaftServer::CleanNodeData(RaftNode2* )
+void RaftServer::CleanNodeData(RaftNode2*, void* )
 {
 }
 
 
-void RaftServer::RemoveNode2(RaftNode2* a_node)
+void RaftServer::RemoveNode2(RaftNode2* a_node, void* a_pUser)
 {
 	m_Nodes.RemoveData(a_node);
-	CleanNodeData(a_node);
+	CleanNodeData(a_node, a_pUser);
 	delete a_node;
 }
 
 
-void RaftServer::ClearAllNodes()
+void RaftServer::ClearAllNodes(void* a_pUser)
 {
 	RaftNode2 *pNextNode, *pToDelete = m_Nodes.first();
 
 	while(pToDelete){
 		pNextNode = m_Nodes.RemoveData(pToDelete);
-		CleanNodeData(pToDelete);
+		CleanNodeData(pToDelete, a_pUser);
 		delete pToDelete;
 		pToDelete = pNextNode;
 	}
