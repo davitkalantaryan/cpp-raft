@@ -192,6 +192,8 @@ int fprintfWithTime(FILE* fpFile, const char* a_cpcFormat, ...);
 		} \
 	}while(0)
 
+#define HANDLE_MKDIR_BY_NODES(_result,...)	do{if((_result)){ERROR_LOGGING2(__VA_ARGS__);exit((_result));}}while(0)
+
 
 #if 0
 #define DEBUG_HANGING(...)  \
