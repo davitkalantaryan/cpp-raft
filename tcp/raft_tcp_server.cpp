@@ -177,16 +177,11 @@ void raft::tcp::Server::ReceiveFromDataSocket(RaftNode2*) // this should be over
 }
 
 
-int raft::tcp::Server::RunServerOnOtherThreads(const std::vector<NodeIdentifierKey>& a_vectPossibleNodes, int a_nWorkersCount, int a_nRaftPort)
+void raft::tcp::Server::FindClusterAndInit(const std::vector<NodeIdentifierKey>& a_vectPossibleNodes, SAddRemData* a_pDtaFromRem,int a_nRaftPort)
 {
-    DEBUG_HANGING();
-	std::thread* pWorker;
-
 #ifndef _WIN32
 	m_starterThread = pthread_self();
 #endif  // #ifdef HANDLE_SIG_ACTIONS
-
-	if (m_nWork) {return -1;}
 
 	if(a_nRaftPort>0){m_nPortOwn = a_nRaftPort;} // otherwise child class inited m_nPortOwn
 	if(m_nPeriodForPeriodic<MIN_REP_RATE_MS){ m_nPeriodForPeriodic = DEF_REP_RATE_MS;}
@@ -194,8 +189,24 @@ int raft::tcp::Server::RunServerOnOtherThreads(const std::vector<NodeIdentifierK
 	if(this->election_timeout < (TIMEOUTS_RATIO_MIN*this->request_timeout)) { this->election_timeout =(TIMEOUTS_RATIO_MIN*this->request_timeout);}
 	this->timeout_elapsed = 0;
 
-	CheckAllPossibleSeeds(a_vectPossibleNodes);
+	CheckAllPossibleSeeds(a_vectPossibleNodes,a_pDtaFromRem);
+}
 
+
+int raft::tcp::Server::RunServerOnOtherThreads2(const std::vector<NodeIdentifierKey>& a_vectPossibleNodes, int a_nWorkersCount, int a_nRaftPort)
+{
+	SAddRemData remData;
+	FindClusterAndInit(a_vectPossibleNodes,&remData,a_nRaftPort);
+	RunAllThreadPrivate(a_nWorkersCount);
+	return 0;
+}
+
+
+void raft::tcp::Server::RunAllThreadPrivate(int a_nWorkersCount)
+{
+	std::thread* pWorker;
+
+	if (m_nWork) {return;}
 	m_nWork = 1;
 
 #if !defined(_WIN32) || defined(_WLAC_USED)
@@ -224,7 +235,6 @@ int raft::tcp::Server::RunServerOnOtherThreads(const std::vector<NodeIdentifierK
 	sigaction(SIGINT, &oldAction, NULL_ACTION);
 #endif
 
-	return 0;
 }
 
 
@@ -1208,7 +1218,7 @@ enterLoopPoint:
 }
 
 
-void raft::tcp::Server::CheckAllPossibleSeeds(const std::vector<NodeIdentifierKey>& a_vectPossibleNodes)
+void raft::tcp::Server::CheckAllPossibleSeeds(const std::vector<NodeIdentifierKey>& a_vectPossibleNodes, SAddRemData* a_pDtaFromRem)
 {
 	const char* cpcPosibleSeedIp;
 	RaftNode2* pNode;
@@ -1247,7 +1257,7 @@ void raft::tcp::Server::CheckAllPossibleSeeds(const std::vector<NodeIdentifierKe
 				}
 			}
             DEBUG_HANGING();
-			pNodesFromLeader=TryFindLeaderThrdSafe(a_vectPossibleNodes[i]);
+			pNodesFromLeader=TryFindLeaderThrdSafe(a_vectPossibleNodes[i], a_pDtaFromRem);
 			if(pNodesFromLeader){nNodesCount=m_Nodes.count();nSuccsessIndex=i;break;}
             DEBUG_HANGING();
 		}
@@ -1311,6 +1321,10 @@ void raft::tcp::Server::CheckAllPossibleSeeds(const std::vector<NodeIdentifierKe
 	}
 
 	free(pNodesFromLeader);
+
+	if(is_follower()){
+		//
+	}
 }
 
 
@@ -1394,12 +1408,12 @@ void raft::tcp::Server::AddOwnNode()
 
 
 // const NodeIdentifierKey& nodeInfo, std::vector<NodeIdentifierKey>* pExisting
-raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindLeaderThrdSafe(const NodeIdentifierKey& a_nodeInfo)
+raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindLeaderThrdSafe(const NodeIdentifierKey& a_nodeInfo, SAddRemData* a_pDtaFromRem)
 {
 	NodeIdentifierKey *pNodesInfo = NULL;
 	NodeTools* pTools;
 	RaftNode2* pNewNode;
-	SAddRemData aDtaFromRem;
+	SAddRemData& aDtaFromRem = *a_pDtaFromRem;
 	NodeIdentifierKey leaderNodeKey;
 	common::SocketTCP aSocket;
 	std::string strAddInfo;

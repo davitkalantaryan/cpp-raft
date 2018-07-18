@@ -72,8 +72,8 @@ void RaftServer::CleanNodeData(RaftNode2*, void* )
 
 void RaftServer::RemoveNode2(RaftNode2* a_node, void* a_pUser)
 {
-	m_Nodes.RemoveData(a_node);
 	CleanNodeData(a_node, a_pUser);
+	m_Nodes.RemoveData(a_node);
 	delete a_node;
 }
 

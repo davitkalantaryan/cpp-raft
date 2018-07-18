@@ -60,7 +60,7 @@ public:
 	Server();
 	virtual ~Server();
 
-	int					RunServerOnOtherThreads(const std::vector<NodeIdentifierKey>& vectPossibleNodes, int workersCount, int raftPort=-1);
+	int					RunServerOnOtherThreads2(const std::vector<NodeIdentifierKey>& vectPossibleNodes, int workersCount, int raftPort=-1);
 	void				StopServer();
 
 	static void			Initialize();
@@ -101,7 +101,7 @@ protected:
 
 	void				AddClient(common::SocketTCP& clientSock, const sockaddr_in*remoteAddr);
 
-	NodeIdentifierKey*	TryFindLeaderThrdSafe(const NodeIdentifierKey& nodeInfo);
+	NodeIdentifierKey*	TryFindLeaderThrdSafe(const NodeIdentifierKey& nodeInfo, SAddRemData* a_pDtaFromRem);
 	void				AddOwnNode();
 
 	// family of receive functions
@@ -118,7 +118,7 @@ protected:
 	void				raft_connect_fromClient_allNodesInfo(common::SocketTCP& sock);
 	void				raft_connect_toAnyNode_otherLeaderFound(common::SocketTCP& sock);
 
-	void				CheckAllPossibleSeeds(const std::vector<NodeIdentifierKey>& vectPossibleNodes);
+	void				CheckAllPossibleSeeds(const std::vector<NodeIdentifierKey>& vectPossibleNodes, SAddRemData* a_pDtaFromRem);
 
 	void				HandleSeedClbk(RaftNode2* anyNode);
 	void				ReceiveFromRaftSocket(RaftNode2* followerNode);
@@ -131,6 +131,8 @@ protected:
 	bool				ReceiveExtraData(common::SocketTCP& a_sockt, int a_isEndianDiffer, std::string* a_pBufForData);
 
 	NodeIdentifierKey*	CollectAllNodesDataNotThrSafe(int* pnTotalSize, int* a_pnLeaderIndex);
+	void				FindClusterAndInit(const std::vector<NodeIdentifierKey>& vectPossibleNodes, SAddRemData* a_pDtaFromRem, int raftPort=-1);
+	void				RunAllThreadPrivate(int workersCount);
 
 	static int	SendClbkFunction(void *cb_ctx, void *udata, RaftNode2* node, int msg_type, const unsigned char *send_data, int d_len);
 	static void LogClbkFunction(void *cb_ctx, void *src, const char *buf, ...);
