@@ -48,7 +48,9 @@ protected: // in order to make usable variables by inherites
 	//std::vector<int> votes_for_me;
 	//std::vector<RaftNode2> nodes;
 	
+private:
 	common::ListspecialAndHashtbl<RaftNode2*>	m_Nodes;
+protected:
 	
 	int							m_nLeaderCommit;
 
@@ -242,10 +244,18 @@ public:
 		return d_state;
 	}
 
-protected:	
-	void RemoveNode2(RaftNode2* node, void* pUser);
-	void ClearAllNodes(void* a_pUser);
-	virtual void CleanNodeData(RaftNode2* pNode, void* pUser);
+public:
+	const common::ListspecialAndHashtbl<RaftNode2*>& allNodes()const {return m_Nodes;}
+	bool			FindNode(const void* a_key, size_t a_keyLength, RaftNode2** a_ppNode)const;
+	RaftNode2*		firstNode()const;
+	int				nodesCount()const;
+	void			ClearAllNodes(void* a_pUser);
+	void			RemoveNode1(const void* a_pKey, size_t a_keySize, void* pUser);
+	void			RemoveNode2(RaftNode2* node, void* pUser);
+	RaftNode2*		AddNode(const void* a_pKey, size_t a_keySize, void* a_pUser);
+protected:
+	virtual void	CleanNodeData(RaftNode2* pNode, void* pUser);
+	virtual void	AddAdditionalDataToNode2(RaftNode2* newNode, void* a_changeData);
 
 };
 

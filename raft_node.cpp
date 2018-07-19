@@ -18,10 +18,11 @@ int			m_keyLen;
 
 const uint32_t	g_cunRaftMaxPing = (1 << BITS_OF_PING_COUNT)-1;
 
-RaftNode2::RaftNode2(void* a_udata) :
+RaftNode2::RaftNode2() 
+	:
 	prev(NULL),
 	next(NULL),
-	m_d_udata(a_udata),
+	m_d_udata(NULL),
 	next_idx(0),
 	m_votes_for_me(0)
 {
@@ -33,6 +34,8 @@ RaftNode2::RaftNode2(void* a_udata) :
 	//
 	m_isTimeToPing =0;
 	m_hasData = 0;
+	m_waitForOk = 0;
+	m_okCount = 0;
 
 	this->key = NULL;
 	this->keyLength = 0;
@@ -80,6 +83,12 @@ uint64_t RaftNode2::isAbleToVote()const
 uint64_t RaftNode2::isProblematic()const
 {
 	return m_isProblematic;
+}
+
+
+bool RaftNode2::firstOkDone()
+{
+	return (  (++m_waitForOk == 0) || m_okCount  || m_isProblematic ) ;
 }
 
 

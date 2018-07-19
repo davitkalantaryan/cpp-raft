@@ -25,23 +25,28 @@ namespace raft { namespace tcp{
 namespace workRequest{enum Type{none,handleConnection};}
 struct SWorkerData { workRequest::Type reqType;int sockDescriptor;sockaddr_in remAddress; };
 struct SAddRemData {
-	char			action;
-	RaftNode2*		pNode; 
-	std::string		strNodeKey; 
-	std::string		extraData;
-	void*			pForUser;
+	char				action;
+	NodeIdentifierKey*	pNodeKey;
+	std::string			extraData;
+	void*				pForUser;
+	RaftNode2*			informNode2;
+	int					socketNum;
+	uint32_t			isEndianDiffer;
+	bool				bApplyData;
 	SAddRemData();
 	SAddRemData(SAddRemData&& a_rightSide);
 	SAddRemData& operator=(SAddRemData&&);
+	~SAddRemData();
 	NodeIdentifierKey* operator->();
+    const NodeIdentifierKey* nodeKey()const;
 };
 
 typedef struct NodeTools {
 	void*	clbkData;
 	common::SocketTCP dataSocket, raftSocket;
-	uint32_t isEndianDiffer : 1, okCount : 3;
+	uint32_t isEndianDiffer : 1;
 	/*-----------------------------------------*/
-	NodeTools() { clbkData = NULL; isEndianDiffer = okCount = 0; }
+	NodeTools() { clbkData = NULL; isEndianDiffer = 0; }
 }NodeTools;
 
 #define GET_NODE_TOOLS(_node)	((raft::tcp::NodeTools*)((_node)->get_udata()))
@@ -67,8 +72,11 @@ public:
 	static void			Cleanup();
 
 protected:
+	virtual void		become_leader() OVERRIDE;
+	virtual void		become_candidate()OVERRIDE;
+	virtual void		AddAdditionalDataToNode2(RaftNode2* newNode, void* a_changeData)OVERRIDE;
+
 	virtual void		ReceiveFromDataSocket(RaftNode2* anyNode);
-	virtual void		AddAdditionalDataToNode(RaftNode2* newNode, SAddRemData* a_changeData);
 	virtual void		CleanNodeData(RaftNode2*, void* a_changeData) OVERRIDE;
 	virtual bool		HandleDefaultConnection(char code,common::SocketTCP& clientSock, const sockaddr_in* remoteAddr, SAddRemData* a_changeData);
 	
@@ -105,7 +113,7 @@ protected:
 	void				AddOwnNode();
 
 	// family of receive functions
-	bool				raft_receive_fromLeader_newNode_private(common::SocketTCP& a_socket, int a_isEndianDiffer,SAddRemData*	a_pNodeData);
+	bool				raft_receive_fromLeader_newNode_private(common::SocketTCP& a_socket,SAddRemData*	a_pNodeData);
 	bool				raft_receive_fromLeader_newNode(RaftNode2* a_pNode, SAddRemData* a_pClbkData);
 	bool				raft_receive_fromLeader_removeNode(RaftNode2* a_pNode, SAddRemData* a_pClbkData);
 
@@ -122,9 +130,6 @@ protected:
 
 	void				HandleSeedClbk(RaftNode2* anyNode);
 	void				ReceiveFromRaftSocket(RaftNode2* followerNode);
-
-	void				become_leader() OVERRIDE;
-	void				become_candidate()OVERRIDE;
 
     void				InterruptRaftRcv();
     void				InterruptDataRcv();

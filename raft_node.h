@@ -9,9 +9,10 @@ extern const uint32_t	g_cunRaftMaxPing/* = (1 << BITS_OF_PING_COUNT) - 1*/;
 
 class RaftNode2 {
 
+	RaftNode2(const RaftNode2&) {}
+	RaftNode2(RaftNode2&&) {}
 public:
-
-	RaftNode2(void* udata);
+	RaftNode2();
 	~RaftNode2();
 	int			is_leader();
 	int			get_next_idx();
@@ -31,6 +32,9 @@ public:
 	uint64_t	isAbleToVote()const;
 	uint64_t	isUsable()const {return m_isUsable;}
 	void		setUsable() {m_isUsable=1;}
+	uint64_t	okCount()const {return m_okCount;}
+	void		incrementOkCount() {++m_okCount;}
+	bool		firstOkDone();
  
 public:
 	RaftNode2 * prev, *next;
@@ -45,6 +49,8 @@ private:
 	uint64_t	m_isAbleToVote : 1;
 	uint64_t	m_unPingCount : BITS_OF_PING_COUNT;
 	uint64_t	m_isUsable : 1;
+	uint64_t	m_waitForOk : 3;
+	uint64_t	m_okCount : 10;
 	// for future use
 public:
 	uint64_t	m_isTimeToPing : 1;

@@ -47,6 +47,7 @@ RaftServer::RaftServer() :
         current_term(0),log(new RaftLogger()),commit_idx(0),last_applied_idx(0),current_idx(1), timeout_elapsed(0), election_timeout(
                 1000), request_timeout(200), cb_ctx(NULL)
 {
+    this->m_voted_for = this->m_thisNode = NULL;
 	d_state.set(RAFT_STATE_FOLLOWER);
 	
 	m_voted_for = NULL;
@@ -70,11 +71,62 @@ void RaftServer::CleanNodeData(RaftNode2*, void* )
 }
 
 
+void RaftServer::AddAdditionalDataToNode2(RaftNode2*, void*)
+{
+}
+
+
+void RaftServer::RemoveNode1(const void* a_pKey, size_t a_keySize, void* a_pUser)
+{
+	RaftNode2* pNode;
+	if (m_Nodes.FindEntry(a_pKey, a_keySize, &pNode)) {
+		CleanNodeData(pNode, a_pUser);
+		if (m_Nodes.RemoveData(pNode)) { delete pNode; } // here checking can be skipped
+	}
+}
+
+
 void RaftServer::RemoveNode2(RaftNode2* a_node, void* a_pUser)
 {
-	CleanNodeData(a_node, a_pUser);
-	m_Nodes.RemoveData(a_node);
-	delete a_node;
+	RaftNode2* pNode;
+	if (m_Nodes.FindEntry(a_node->key,a_node->keyLength, &pNode)) {
+		CleanNodeData(a_node, a_pUser);
+		if (m_Nodes.RemoveData(a_node)) { delete a_node; } // here checking can be skipped
+	}
+}
+
+
+RaftNode2* RaftServer::AddNode(const void* a_pKey, size_t a_keySize, void* a_pUser)
+{
+	RaftNode2* pNewNode=NULL;
+
+	if (!m_Nodes.FindEntry(a_pKey, a_keySize, &pNewNode)) {
+		pNewNode = new RaftNode2;
+		HANDLE_MEM_DEF2(pNewNode, "Unable to create new node");
+		m_Nodes.AddData(pNewNode, a_pKey, a_keySize);
+		this->AddAdditionalDataToNode2(pNewNode, a_pUser);
+		return pNewNode;
+	}
+
+	return NULL;
+}
+
+
+bool RaftServer::FindNode(const void* a_key, size_t a_keyLength, RaftNode2** a_ppNode)const
+{
+	return m_Nodes.FindEntry(a_key, a_keyLength, a_ppNode);
+}
+
+
+RaftNode2* RaftServer::firstNode()const
+{
+	return m_Nodes.first();
+}
+
+
+int RaftServer::nodesCount()const
+{
+	return m_Nodes.count();
 }
 
 
