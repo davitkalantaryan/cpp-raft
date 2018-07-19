@@ -34,8 +34,7 @@ RaftNode2::RaftNode2()
 	//
 	m_isTimeToPing =0;
 	m_hasData = 0;
-	m_waitForOk = 0;
-	m_okCount = 0;
+	m_okCount2 = 0;
 
 	this->key = NULL;
 	this->keyLength = 0;
@@ -83,12 +82,6 @@ uint64_t RaftNode2::isAbleToVote()const
 uint64_t RaftNode2::isProblematic()const
 {
 	return m_isProblematic;
-}
-
-
-bool RaftNode2::firstOkDone()
-{
-	return (  (++m_waitForOk == 0) || m_okCount  || m_isProblematic ) ;
 }
 
 

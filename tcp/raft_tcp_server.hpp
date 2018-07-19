@@ -118,11 +118,11 @@ protected:
 	bool				raft_receive_fromLeader_removeNode(RaftNode2* a_pNode, SAddRemData* a_pClbkData);
 
 	// utils
-	bool				raft_connect_toFollower_raftBridge(common::SocketTCP& sock, const sockaddr_in*remoteAddr);
-	bool				raft_connect_toAnyNode_dataBridge(common::SocketTCP& sock, const sockaddr_in* remoteAddr);
+	void				raft_connect_toFollower_raftBridge(common::SocketTCP& sock, const sockaddr_in*remoteAddr);
+	void				raft_connect_toAnyNode_dataBridge(common::SocketTCP& sock, const sockaddr_in* remoteAddr);
 
 	void				raft_connect_toAnyNode_leaderInfoRequest(common::SocketTCP& sock);
-	bool				raft_connect_toLeader_newNode(common::SocketTCP& sock, const sockaddr_in*remoteAddr, SAddRemData* a_clbkData, int* a_isEndianDiffer);
+	bool				raft_connect_toLeader_newNode(common::SocketTCP& sock, const sockaddr_in*remoteAddr, SAddRemData* a_clbkData);
 	void				raft_connect_fromClient_allNodesInfo(common::SocketTCP& sock);
 	void				raft_connect_toAnyNode_otherLeaderFound(common::SocketTCP& sock);
 

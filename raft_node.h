@@ -32,9 +32,8 @@ public:
 	uint64_t	isAbleToVote()const;
 	uint64_t	isUsable()const {return m_isUsable;}
 	void		setUsable() {m_isUsable=1;}
-	uint64_t	okCount()const {return m_okCount;}
-	void		incrementOkCount() {++m_okCount;}
-	bool		firstOkDone();
+	uint64_t	okCount2()const {return m_okCount2;}
+	void		incrementOkCount() {++m_okCount2;}
  
 public:
 	RaftNode2 * prev, *next;
@@ -49,8 +48,7 @@ private:
 	uint64_t	m_isAbleToVote : 1;
 	uint64_t	m_unPingCount : BITS_OF_PING_COUNT;
 	uint64_t	m_isUsable : 1;
-	uint64_t	m_waitForOk : 3;
-	uint64_t	m_okCount : 10;
+	uint64_t	m_okCount2 : 10;
 	// for future use
 public:
 	uint64_t	m_isTimeToPing : 1;
