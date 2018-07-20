@@ -6,6 +6,8 @@
 #include "raft.h"
 #include "raft_node.h"
 
+#define INITIAL_PING_COUNT	(-25)
+
 #if 0
 RaftNode2 * prev, *next;
 void*		m_d_udata;
@@ -16,7 +18,7 @@ int			m_votes_for_me;
 int			m_keyLen;
 #endif
 
-const uint32_t	g_cunRaftMaxPing = (1 << BITS_OF_PING_COUNT)-1;
+const int64_t	g_cnRaftMaxPing = (1 << BITS_OF_PING_COUNT)-1;
 
 RaftNode2::RaftNode2() 
 	:
@@ -29,7 +31,7 @@ RaftNode2::RaftNode2()
 	m_isLeader = 0;
 	m_isProblematic = 0;
 	m_isAbleToVote = 1;
-	m_unPingCount = 0;
+	m_nPingCount = INITIAL_PING_COUNT;
 	m_isUsable = 0;
 	//
 	m_isTimeToPing =0;
@@ -46,24 +48,25 @@ RaftNode2::~RaftNode2()
 }
 
 
-uint64_t RaftNode2::unansweredPingCount()const
+int64_t RaftNode2::pingCount()const
 {
-	return m_unPingCount;
+	return m_nPingCount;
 }
 
 
 void RaftNode2::pingReceived()
 {
 	m_isProblematic = 0;
-	m_unPingCount = 0;
+	m_nPingCount = 0;
 	m_isAbleToVote = 1;
+	m_isUsable = 1;
 }
 
 
-uint64_t RaftNode2::makePing(uint64_t a_unCount)
+int64_t RaftNode2::makePing()
 {
-	if((m_unPingCount+ a_unCount)<=g_cunRaftMaxPing){m_unPingCount += a_unCount;}
-	return m_unPingCount;
+	m_nPingCount=(m_nPingCount<g_cnRaftMaxPing)?(m_nPingCount+1): g_cnRaftMaxPing;
+	return m_nPingCount;
 }
 
 

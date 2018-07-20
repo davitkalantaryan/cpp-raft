@@ -564,9 +564,11 @@ void raft::tcp::Server::HandleSeedClbk(RaftNode2* a_pNode)
 	{
 		msg_requestvote_t reqVote(0,0,0,0);
 		DEBUG_APP_WITH_NODE(1,pNodeKey,"RAFT_MSG_REQUESTVOTE");
-		nSndRcv = pTools->raftSocket.readC(&reqVote, sizeof(msg_requestvote_t));
-		if (nSndRcv != sizeof(msg_requestvote_t)) { goto returnPoint; }
-		recv_requestvote(a_pNode, &reqVote);
+		if ((this->election_timeout/2) <= this->timeout_elapsed){
+			nSndRcv = pTools->raftSocket.readC(&reqVote, sizeof(msg_requestvote_t));
+			if (nSndRcv != sizeof(msg_requestvote_t)) { goto returnPoint; }
+			recv_requestvote(a_pNode, &reqVote);
+		}
 	}
 	break;
 	case RAFT_MSG_REQUESTVOTE_RESPONSE:
@@ -1346,9 +1348,7 @@ enterLoopPoint:
 			}
 			aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes2);
 			this->periodic(m_nPeriodForPeriodic);
-			aShrdLockGuard.UnsetAndUnlockMutex();
-			if (is_follower() && (m_pLeaderNode->makePing(1)<10)) {
-			//if (is_follower()) {
+			if (is_follower() && (m_pLeaderNode->makePing()<10)) {
 				ftime(&aCurrentTime);
 				nTimeDiff = MSEC(aCurrentTime,this->m_lastPingByLeader);
 				if(nTimeDiff>(2*m_nPeriodForPeriodic)){
@@ -1361,6 +1361,7 @@ enterLoopPoint:
 					}
 				}  // if(nTimeDiff>(2*m_nPeriodForPeriodic)){
 			}  // if (is_follower() && (!m_pLeaderNode->isProblematic())) {
+			aShrdLockGuard.UnsetAndUnlockMutex();
 			Sleep(m_nPeriodForPeriodic);
 		}
 	}
@@ -1622,25 +1623,24 @@ int raft::tcp::Server::SendClbkFunction(void *a_cb_ctx, void *udata, RaftNode2* 
 	NodeTools* pTools = GET_NODE_TOOLS(a_node);
 	NodeIdentifierKey* pNodeKey = NODE_KEY(a_node);
 	int nSndRcv;
-	uint32_t unPingCount=0;
+	int64_t nPingCount;
 	char cRequest=raft::receive::fromAnyNode2::clbkCmd;
 	bool bProblematic(true);
+
+	nPingCount = a_node->makePing();
+	if(nPingCount<0){return 0;}
 
 	switch (a_msg_type)
 	{
 	case RAFT_MSG_APPENDENTRIES:
-		unPingCount = (int)a_node->makePing(1);
-		if((unPingCount>MAX_UNANSWERED_PINGS)&& pServer->is_leader()){
+		if((nPingCount>MAX_UNANSWERED_PINGS)&& pServer->is_leader()){
 			SAddRemData remData;
 			remData.action = raft::internal2::leader::removeNode;
 			remData.informNode2 = a_node;
 			pServer->m_fifoAddDel.AddElement2(std::move(remData));
 			pServer->m_semaAddRemove.post();
 		}
-		if(a_node->isUsable()){
-			a_node->makePing(1);
-			if (a_node->isProblematic()) { a_node->makePing(1); }  // make extra ping
-		}
+		if (a_node->isProblematic()) { a_node->makePing(); }  // make extra ping
 		break;
 	case RAFT_MSG_REQUESTVOTE:
 		if(a_node->isProblematic()){a_node->makePing(4);}  // make extra ping

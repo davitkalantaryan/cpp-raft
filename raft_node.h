@@ -5,7 +5,7 @@
 
 #define BITS_OF_PING_COUNT	10
 
-extern const uint32_t	g_cunRaftMaxPing/* = (1 << BITS_OF_PING_COUNT) - 1*/;
+extern const int64_t	g_cnRaftMaxPing/* = (1 << BITS_OF_PING_COUNT) - 1*/;
 
 class RaftNode2 {
 
@@ -25,12 +25,11 @@ public:
 	int			GetVotesForMe()const;
 	uint64_t	isProblematic()const;
 	void		setProblematic();
-	uint64_t	unansweredPingCount()const;
+	int64_t		pingCount()const;
 	void		pingReceived();
-	uint64_t	makePing(uint64_t a_unCount);
+	int64_t		makePing();
 	void		SetUnableToVote();
 	uint64_t	isAbleToVote()const;
-	uint64_t	isUsable()const {return m_isUsable;}
 	void		setUsable() {m_isUsable=1;}
 	uint64_t	okCount2()const {return m_okCount2;}
 	void		incrementOkCount() {++m_okCount2;}
@@ -46,8 +45,7 @@ private:
 	uint64_t	m_isLeader : 1;
 	uint64_t	m_isProblematic : 1;
 	uint64_t	m_isAbleToVote : 1;
-	uint64_t	m_unPingCount : BITS_OF_PING_COUNT;
-	uint64_t	m_isUsable : 1;
+	int64_t		m_nPingCount : BITS_OF_PING_COUNT;
 	uint64_t	m_okCount2 : 10;
 	// for future use
 public:
