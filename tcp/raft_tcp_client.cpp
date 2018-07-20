@@ -27,7 +27,7 @@ int raft::tcp::Client::ReceiveAllNodes(const char* a_nodeIp, int a_port, std::ve
 	uint32_t isEndianDiffer;
 	int nReturn(-1);
 
-	aNodeKey.set_ip4Address(a_nodeIp);
+	aNodeKey.set_ip4Address1(a_nodeIp);
 	aNodeKey.port = a_port;
 
 	try {  // we put into try block because std::vector::resize can throw exception
