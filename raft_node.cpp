@@ -18,7 +18,7 @@ int			m_votes_for_me;
 int			m_keyLen;
 #endif
 
-const int64_t	g_cnRaftMaxPing = (1 << BITS_OF_PING_COUNT)-1;
+const int64_t	g_cnRaftMaxPing = (int64_t)((1 << BITS_OF_PING_COUNT)-4);
 
 RaftNode2::RaftNode2() 
 	:
@@ -32,7 +32,6 @@ RaftNode2::RaftNode2()
 	m_isProblematic = 0;
 	m_isAbleToVote = 1;
 	m_nPingCount = INITIAL_PING_COUNT;
-	m_isUsable = 0;
 	//
 	m_isTimeToPing =0;
 	m_hasData = 0;
@@ -59,13 +58,13 @@ void RaftNode2::pingReceived()
 	m_isProblematic = 0;
 	m_nPingCount = 0;
 	m_isAbleToVote = 1;
-	m_isUsable = 1;
 }
 
 
 int64_t RaftNode2::makePing()
 {
-	m_nPingCount=(m_nPingCount<g_cnRaftMaxPing)?(m_nPingCount+1): g_cnRaftMaxPing;
+	int64_t nPingCount(m_nPingCount);
+	m_nPingCount=(nPingCount<g_cnRaftMaxPing)?(nPingCount+1): g_cnRaftMaxPing;
 	return m_nPingCount;
 }
 

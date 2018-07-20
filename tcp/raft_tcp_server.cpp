@@ -534,7 +534,6 @@ void raft::tcp::Server::raft_connect_toAnyNode_dataBridge(common::SocketTCP& a_c
 	pNodeTools->dataSocket.SetNewSocketDescriptor(a_clientSock);
 	a_clientSock.ResetSocketWithoutClose();
 
-	pNode->setUsable();
 	InterruptRaftRcv();
 	InterruptDataRcv();
 }
@@ -714,12 +713,10 @@ void raft::tcp::Server::ReceiveFromRaftSocket(RaftNode2* a_pNode)
 	switch (cRequest)
 	{
 	case raft::response::ok:
-		a_pNode->setUsable();
 		a_pNode->pingReceived();
 		a_pNode->incrementOkCount();
 		break;
 	case raft::receive::fromFollower::resetPing:
-		a_pNode->setUsable();
 		a_pNode->pingReceived();
 		DEBUG_APP_WITH_NODE(2,pNodeKey, "raft::receive::fromFollower::resetPing");
 		break;
@@ -1334,6 +1331,7 @@ void raft::tcp::Server::ThreadFunctionPeriodic()
 enterLoopPoint:
 	try {
 		cRequestReg = raft::response::ok;
+		aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes2);
 		pNode = firstNode();
 		while(pNode){
 			LOCK_RAFT_SEND_MUTEX(m_pLeaderNode);
@@ -1341,6 +1339,7 @@ enterLoopPoint:
 			UNLOCK_SEND_SOCKET_MUTEX2();
 			pNode = pNode->next;
 		}
+		aShrdLockGuard.UnsetAndUnlockMutex();
 		
 		while (m_nWork) {
 			if(is_leader() && (nIteration++ % 100)==0){
@@ -1360,6 +1359,7 @@ enterLoopPoint:
 						m_pLeaderNode->setProblematic();
 					}
 				}  // if(nTimeDiff>(2*m_nPeriodForPeriodic)){
+				if(m_pLeaderNode->isProblematic()){m_pLeaderNode->makePing();}
 			}  // if (is_follower() && (!m_pLeaderNode->isProblematic())) {
 			aShrdLockGuard.UnsetAndUnlockMutex();
 			Sleep(m_nPeriodForPeriodic);
@@ -1474,7 +1474,7 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindLeaderThrdSafe(const Nod
 	aSocketLeaderRaft.readC(&cRequest, 1);
 
 	bOk = true;  // whith leader everything is Ok
-	Sleep(10);
+	Sleep(1);
 
 	for(i=0;i<numberOfNodes;++i){
 
@@ -1539,7 +1539,7 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindLeaderThrdSafe(const Nod
 		if (((nSndRcv != 1) || (cRequest != response::ok)) && (pNode != m_pLeaderNode) ) { pNode->setProblematic(); goto nextNodePoint; }
 
 	nextNodePoint:
-		pNode->setUsable();
+		pNode->pingReceived();
 		pNode->incrementOkCount();
 		pNode = pNode->next;
 	}
@@ -1625,7 +1625,7 @@ int raft::tcp::Server::SendClbkFunction(void *a_cb_ctx, void *udata, RaftNode2* 
 	int nSndRcv;
 	int64_t nPingCount;
 	char cRequest=raft::receive::fromAnyNode2::clbkCmd;
-	bool bProblematic(true);
+	bool bProblematic(false);
 
 	nPingCount = a_node->makePing();
 	if(nPingCount<0){return 0;}
@@ -1640,12 +1640,9 @@ int raft::tcp::Server::SendClbkFunction(void *a_cb_ctx, void *udata, RaftNode2* 
 			pServer->m_fifoAddDel.AddElement2(std::move(remData));
 			pServer->m_semaAddRemove.post();
 		}
-		if (a_node->isProblematic()) { a_node->makePing(); }  // make extra ping
 		break;
 	case RAFT_MSG_REQUESTVOTE:
-		if(a_node->isProblematic()){a_node->makePing(4);}  // make extra ping
-		unPingCount = (int)a_node->makePing(1);
-		if((unPingCount>MAX_UNANSWERED_PINGS)&& pServer->is_candidate()){
+		if((nPingCount>MAX_UNANSWERED_PINGS)&& pServer->is_candidate()){
 			a_node->SetUnableToVote();
 			pServer->become_candidate();
 		}
@@ -1654,11 +1651,14 @@ int raft::tcp::Server::SendClbkFunction(void *a_cb_ctx, void *udata, RaftNode2* 
 		break;
 	}
 
-	if(unPingCount>MAX_NUMBER_OF_PINGS){
-		DEBUG_APP_WITH_NODE(1,pNodeKey,"pingCount=%d", unPingCount);
+	if (a_node->isProblematic()) { nPingCount=a_node->makePing(); }  // make extra ping
+
+	if(nPingCount>MAX_NUMBER_OF_PINGS){
+		DEBUG_APP_WITH_NODE(1,pNodeKey,"pingCount=%d", (int)nPingCount);
 		goto returnPoint;
 	}
 
+	bProblematic = true;
 	LOCK_RAFT_SEND_MUTEX(a_node);
 	nSndRcv=pTools->raftSocket.writeC(&cRequest,1);
 	if(nSndRcv!=1){goto returnPoint;}

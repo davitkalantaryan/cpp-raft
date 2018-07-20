@@ -30,7 +30,6 @@ public:
 	int64_t		makePing();
 	void		SetUnableToVote();
 	uint64_t	isAbleToVote()const;
-	void		setUsable() {m_isUsable=1;}
 	uint64_t	okCount2()const {return m_okCount2;}
 	void		incrementOkCount() {++m_okCount2;}
  
