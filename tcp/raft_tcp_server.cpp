@@ -32,7 +32,8 @@
 #define MIN_REP_RATE_MS					5		// les than this rep rate is not possible
 #define DEF_REP_RATE_MS					2000	// [ms] default rep rate is 2 seconds
 #define	TIMEOUTS_RATIO_MIN				11		// this is minimum ratio for follower between time of leader wait and rep. rate (to start election)
-#define MAX_NUMBER_OF_PINGS				2		// maximum number of pings that really will be done by leader
+#define MAX_NUMBER_OF_PINGS				3		// maximum number of pings that really will be done by leader
+#define MIN_PINGS_TO_DISPLAY			5		// maximum number of pings that really will be done by leader
 #define MAX_UNANSWERED_PINGS			22		// number of virtual pings, after this leader will remove follower
 #define MAX_ITER_OK_COUNT				1000	// used for syncronization
 
@@ -1653,8 +1654,11 @@ int raft::tcp::Server::SendClbkFunction(void *a_cb_ctx, void *udata, RaftNode2* 
 
 	if (a_node->isProblematic()) { nPingCount=a_node->makePing(); }  // make extra ping
 
-	if(nPingCount>MAX_NUMBER_OF_PINGS){
-		DEBUG_APP_WITH_NODE(1,pNodeKey,"pingCount=%d", (int)nPingCount);
+	if (nPingCount>MIN_PINGS_TO_DISPLAY) {
+		DEBUG_APP_WITH_NODE(1, pNodeKey, "pingCount=%d", (int)nPingCount);
+	}
+
+	if((nPingCount>MAX_NUMBER_OF_PINGS)||(a_node->isProblematic())){
 		goto returnPoint;
 	}
 
