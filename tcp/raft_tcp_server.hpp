@@ -74,10 +74,10 @@ public:
 protected:
 	virtual void		become_leader() OVERRIDE;
 	virtual void		become_candidate()OVERRIDE;
-	virtual void		AddAdditionalDataToNode2(RaftNode2* newNode, void* a_changeData)OVERRIDE;
+	virtual void		AddAdditionalDataToNode(RaftNode2* newNode, const std::string* a_pDataFromAdder)OVERRIDE;
 
 	virtual void		ReceiveFromDataSocket(RaftNode2* anyNode);
-	virtual void		CleanNodeData(RaftNode2*, void* a_changeData) OVERRIDE;
+	virtual void		CleanNodeData(RaftNode2*, const std::string* a_pDataFromLeader) OVERRIDE;
 	virtual bool		HandleDefaultConnection(char code,common::SocketTCP& clientSock, const sockaddr_in* remoteAddr, SAddRemData* a_changeData);
 	
 	virtual bool		newNode_prepareInfo_forLeader(std::string* a_pBufferForInfo);
@@ -93,6 +93,7 @@ protected:
 	//virtual void		leader_prepareInform_on_removeNode(std::string* bufferForAdditionalData);
 	//virtual void		newNode_prepareInform_toLeader(std::string* bufferForAdditionalData);
 
+	void				ThreadFunctionFindOtherChains();
 	void				ThreadFunctionListen();
 	void				ThreadFunctionPeriodic();
 	void				ThreadFunctionRcvRaftInfo();
@@ -109,7 +110,7 @@ protected:
 
 	void				AddClient(common::SocketTCP& clientSock, const sockaddr_in*remoteAddr);
 
-	NodeIdentifierKey*	TryFindLeaderThrdSafe(const NodeIdentifierKey& nodeInfo, SAddRemData* a_pDtaFromRem);
+	NodeIdentifierKey*	TryFindClusterThredSafe(const NodeIdentifierKey& nodeInfo, const std::string& a_additionalDataForCluster);
 	void				AddOwnNode();
 
 	// family of receive functions
@@ -126,7 +127,7 @@ protected:
 	void				raft_connect_fromClient_allNodesInfo(common::SocketTCP& sock);
 	void				raft_connect_toAnyNode_otherLeaderFound(common::SocketTCP& sock);
 
-	void				CheckAllPossibleSeeds(const std::vector<NodeIdentifierKey>& vectPossibleNodes, SAddRemData* a_pDtaFromRem);
+	void				CheckAllPossibleSeeds(const std::vector<NodeIdentifierKey>& vectPossibleNodes, const std::string& a_additionalDataForCluster);
 
 	void				HandleSeedClbk(RaftNode2* anyNode);
 	void				ReceiveFromRaftSocket(RaftNode2* followerNode);
@@ -136,7 +137,7 @@ protected:
 	bool				ReceiveExtraData(common::SocketTCP& a_sockt, int a_isEndianDiffer, std::string* a_pBufForData);
 
 	NodeIdentifierKey*	CollectAllNodesDataNotThrSafe(int* pnTotalSize, int* a_pnLeaderIndex);
-	void				FindClusterAndInit(const std::vector<NodeIdentifierKey>& vectPossibleNodes, SAddRemData* a_pDtaFromRem, int raftPort=-1);
+	void				FindClusterAndInit(const std::vector<NodeIdentifierKey>& vectPossibleNodes, const std::string& a_additionalDataForCluster, int raftPort=-1);
 	void				RunAllThreadPrivate(int workersCount);
 
 	static int	SendClbkFunction(void *cb_ctx, void *udata, RaftNode2* node, int msg_type, const unsigned char *send_data, int d_len);
@@ -180,6 +181,7 @@ public:
 
 	timeb											m_lastPingByLeader;
 	uint64_t										m_isInited : 1;
+	std::vector<NodeIdentifierKey>					m_allPossibleNodes;
 };
 
 }} // namespace raft { namespace tcp{

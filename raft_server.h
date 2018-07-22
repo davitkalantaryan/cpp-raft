@@ -10,6 +10,7 @@
 #include <vector>
 #include <memory>
 #include <common/listspecialandhashtbl.hpp>
+#include <string>
 
 class RaftLogger;
 class RaftNode2;
@@ -249,13 +250,13 @@ public:
 	bool			FindNode(const void* a_key, size_t a_keyLength, RaftNode2** a_ppNode)const;
 	RaftNode2*		firstNode()const;
 	int				nodesCount()const;
-	void			ClearAllNodes(void* a_pUser);
-	void			RemoveNode1(const void* a_pKey, size_t a_keySize, void* pUser);
-	void			RemoveNode2(RaftNode2* node, void* pUser);
-	RaftNode2*		AddNode(const void* a_pKey, size_t a_keySize, void* a_pUser);
+	void			ClearAllNodes(const std::string* a_pDataFromLeader);  // this will be called during destructing
+	void			RemoveNode1(const void* a_pKey, size_t a_keySize, const std::string* a_pDataFromLeader);
+	void			RemoveNode2(RaftNode2* node, const std::string* a_pDataFromLeader);
+	RaftNode2*		AddNode(const void* a_pKey, size_t a_keySize, const std::string* a_pDataFromAdder);
 protected:
-	virtual void	CleanNodeData(RaftNode2* pNode, void* pUser);
-	virtual void	AddAdditionalDataToNode2(RaftNode2* newNode, void* a_changeData);
+	virtual void	CleanNodeData(RaftNode2* pNode, const std::string* a_pDataFromLeader);
+	virtual void	AddAdditionalDataToNode(RaftNode2* newNode, const std::string* a_dataFromAdder);
 
 };
 

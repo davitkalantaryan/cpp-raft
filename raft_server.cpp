@@ -66,37 +66,37 @@ RaftServer::~RaftServer()
 }
 
 
-void RaftServer::CleanNodeData(RaftNode2*, void* )
+void RaftServer::CleanNodeData(RaftNode2*, const std::string* )
 {
 }
 
 
-void RaftServer::AddAdditionalDataToNode2(RaftNode2*, void*)
+void RaftServer::AddAdditionalDataToNode(RaftNode2*, const std::string* )
 {
 }
 
 
-void RaftServer::RemoveNode1(const void* a_pKey, size_t a_keySize, void* a_pUser)
+void RaftServer::RemoveNode1(const void* a_pKey, size_t a_keySize, const std::string* a_pDataFromLeader)
 {
 	RaftNode2* pNode;
 	if (m_Nodes.FindEntry(a_pKey, a_keySize, &pNode)) {
-		CleanNodeData(pNode, a_pUser);
+		CleanNodeData(pNode, a_pDataFromLeader);
 		if (m_Nodes.RemoveData(pNode)) { delete pNode; } // here checking can be skipped
 	}
 }
 
 
-void RaftServer::RemoveNode2(RaftNode2* a_node, void* a_pUser)
+void RaftServer::RemoveNode2(RaftNode2* a_node, const std::string* a_pDataFromLeader)
 {
 	RaftNode2* pNode;
 	if (m_Nodes.FindEntry(a_node->key,a_node->keyLength, &pNode)) {
-		CleanNodeData(a_node, a_pUser);
+		CleanNodeData(a_node, a_pDataFromLeader);
 		if (m_Nodes.RemoveData(a_node)) { delete a_node; } // here checking can be skipped
 	}
 }
 
 
-RaftNode2* RaftServer::AddNode(const void* a_pKey, size_t a_keySize, void* a_pUser)
+RaftNode2* RaftServer::AddNode(const void* a_pKey, size_t a_keySize, const std::string* a_pDataFromAdder)
 {
 	RaftNode2* pNewNode=NULL;
 
@@ -104,7 +104,7 @@ RaftNode2* RaftServer::AddNode(const void* a_pKey, size_t a_keySize, void* a_pUs
 		pNewNode = new RaftNode2;
 		HANDLE_MEM_DEF2(pNewNode, "Unable to create new node");
 		m_Nodes.AddData(pNewNode, a_pKey, a_keySize);
-		this->AddAdditionalDataToNode2(pNewNode, a_pUser);
+		this->AddAdditionalDataToNode(pNewNode,a_pDataFromAdder);
 		return pNewNode;
 	}
 
@@ -130,13 +130,13 @@ int RaftServer::nodesCount()const
 }
 
 
-void RaftServer::ClearAllNodes(void* a_pUser)
+void RaftServer::ClearAllNodes(const std::string* a_pDataFromLeader)
 {
 	RaftNode2 *pNextNode, *pToDelete = m_Nodes.first();
 
 	while(pToDelete){
 		pNextNode = m_Nodes.RemoveData(pToDelete);
-		CleanNodeData(pToDelete, a_pUser);
+		CleanNodeData(pToDelete, a_pDataFromLeader);
 		delete pToDelete;
 		pToDelete = pNextNode;
 	}
