@@ -76,20 +76,19 @@ namespace error{ enum Type {
 
 namespace connect{
 namespace toAnyNode2 {enum Type { 
-	leaderInfoRequest = (int)response::last,
-	dataBridge,
+	newNode = (int)response::last,
+	permanentBridge,
 	otherLeaderFound,
 	last
 };}
 
 namespace toLeader2 {enum Type { 
-	newNode = (int)toAnyNode2::last,
+	init = (int)toAnyNode2::last,
 	last
 };}
 
 namespace toFollower2 {enum Type { 
-	newNode = (int)toLeader2::last,  // this option most probably will not be necessary (renamed to newNode)
-	raftBridge,
+	init = (int)toLeader2::last,  // this option most probably will not be necessary (renamed to newNode)
 	last
 };}
 
@@ -116,14 +115,19 @@ namespace fromFollower {enum Type {
 
 
 namespace fromLeader2 {enum Type { 
-	newNode = (int)fromFollower::last,
-	removeNode,
+	removeNode = (int)fromFollower::last,
+	last
+};}
+
+
+namespace fromAdder {enum Type { 
+	newNode = (int)fromLeader2::last,
 	last
 };}
 
 
 namespace fromNewLeader2 {enum Type { 
-	oldLeaderDied = (int)fromLeader2::last,
+	oldLeaderDied = (int)fromAdder::last,
 	last
 };}
 
@@ -133,8 +137,7 @@ namespace fromNewLeader2 {enum Type {
 namespace internal2{
 
 namespace leader {enum Type { 
-	newNode = (int)receive::fromNewLeader2::last,
-	removeNode,
+	removeNode = (int)receive::fromNewLeader2::last,
 	last
 };}
 
@@ -183,6 +186,10 @@ int fprintfWithTime(FILE* fpFile, const char* a_cpcFormat, ...);
 
 #define ERROR_LOGGING2(...)	\
 	do{ fprintfWithTime(stderr,"ERROR: fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);fprintf(stderr,__VA_ARGS__);fprintf(stderr,"\n");}while(0)
+
+
+#define POSSIBLE_BUG(...)	\
+	do{ fprintfWithTime(stderr,"ERROR: possible bug fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);fprintf(stderr,__VA_ARGS__);fprintf(stderr,"\n");}while(0)
 
 #define HANDLE_MEM_DEF2(_pointer,...)				\
 	do{ \

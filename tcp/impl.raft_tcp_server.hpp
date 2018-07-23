@@ -26,7 +26,7 @@ enterLoopPoint:
 			aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes2);
 			(a_pObj->*a_fpClbk)(a_nIndex);
 			aShrdLockGuard.UnsetAndUnlockMutex();
-			Sleep(a_nPeriod);
+			SleepMs(a_nPeriod);
 		}
 	}
 	catch (...) {

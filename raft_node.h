@@ -2,8 +2,12 @@
 #define INCLUDED_RAFT_NODE_H
 
 #include <stdint.h>
+#include <sys/timeb.h>
 
-#define BITS_OF_PING_COUNT	10
+#define BITS_OF_OK_COUNT	10
+
+#define MSEC(_finish, _start)	( (int64_t)( (_finish).millitm - (_start).millitm ) + \
+							(int64_t)( (_finish).time - (_start).time ) * 1000 )
 
 extern const int64_t	g_cnRaftMaxPing/* = (1 << BITS_OF_PING_COUNT) - 1*/;
 
@@ -14,24 +18,24 @@ class RaftNode2 {
 public:
 	RaftNode2();
 	~RaftNode2();
-	int			is_leader();
-	int			get_next_idx();
-	void		set_next_idx(int nextIdx);
-	void*		get_udata();
-	void		set_udata(void* a_udata);
-	void		makeLeader();
-	void		resetLeader();
-	void		SetVotesForMe(int vote);
-	int			GetVotesForMe()const;
-	uint64_t	isProblematic()const;
-	void		setProblematic();
-	int64_t		pingCount()const;
-	void		pingReceived();
-	int64_t		makePing();
-	void		SetUnableToVote();
-	uint64_t	isAbleToVote()const;
-	uint64_t	okCount2()const {return m_okCount2;}
-	void		incrementOkCount() {++m_okCount2;}
+	int				is_leader();
+	int				get_next_idx();
+	void			set_next_idx(int nextIdx);
+	void*			get_udata();
+	void			set_udata(void* a_udata);
+	void			makeLeader();
+	void			resetLeader();
+	void			setVotesForMe(int vote);
+	int				getVotesForMe()const;
+	void			pingReceived();
+	void			setUnableToVote();
+	uint64_t		isAbleToVote()const;
+	int64_t			okCount()const {return m_okCount;}
+	void			incrementOkCount() {++m_okCount;}
+	void			lock();
+	void			unlock();
+	uint64_t		isLocked()const;
+	const timeb&	lastSeen()const {return m_lastSeen;}
  
 public:
 	RaftNode2 * prev, *next;
@@ -42,10 +46,11 @@ private:
 	int			next_idx;
 	int			m_votes_for_me;
 	uint64_t	m_isLeader : 1;
-	uint64_t	m_isProblematic : 1;
 	uint64_t	m_isAbleToVote : 1;
-	int64_t		m_nPingCount : BITS_OF_PING_COUNT;
-	uint64_t	m_okCount2 : 10;
+	uint64_t	m_isLocked : 1;
+	int64_t		m_okCount : BITS_OF_OK_COUNT;
+	timeb		m_lastSeen;
+
 	// for future use
 public:
 	uint64_t	m_isTimeToPing : 1;

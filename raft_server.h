@@ -51,6 +51,7 @@ protected: // in order to make usable variables by inherites
 	
 private:
 	common::ListspecialAndHashtbl<RaftNode2*>	m_Nodes;
+	common::ListSpecial<RaftNode2*>				m_removedNodes;
 protected:
 	
 	int							m_nLeaderCommit;
@@ -250,13 +251,13 @@ public:
 	bool			FindNode(const void* a_key, size_t a_keyLength, RaftNode2** a_ppNode)const;
 	RaftNode2*		firstNode()const;
 	int				nodesCount()const;
-	void			ClearAllNodes(const std::string* a_pDataFromLeader);  // this will be called during destructing
-	void			RemoveNode1(const void* a_pKey, size_t a_keySize, const std::string* a_pDataFromLeader);
-	void			RemoveNode2(RaftNode2* node, const std::string* a_pDataFromLeader);
-	RaftNode2*		AddNode(const void* a_pKey, size_t a_keySize, const std::string* a_pDataFromAdder);
+	void			ClearAllNodes(std::string* a_pDataFromLeader);  // this will be called during destructing
+	void			RemoveNode1(const void* a_pKey, size_t a_keySize, std::string* a_pDataFromLeader);
+	void			RemoveNode2(RaftNode2* node, std::string* a_pDataFromLeader);
+	RaftNode2*		AddNode(const void* a_pKey, size_t a_keySize, std::string* a_pDataFromAdder, bool isAdder);
 protected:
-	virtual void	CleanNodeData(RaftNode2* pNode, const std::string* a_pDataFromLeader);
-	virtual void	AddAdditionalDataToNode(RaftNode2* newNode, const std::string* a_dataFromAdder);
+	virtual void	CleanNodeData(RaftNode2* pNode, std::string* a_pDataFromLeader);
+	virtual void	AddAdditionalDataToNode(RaftNode2* newNode, std::string* a_dataFromAdderAndToOtherNodes, bool isAdder);
 
 };
 

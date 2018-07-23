@@ -66,37 +66,48 @@ RaftServer::~RaftServer()
 }
 
 
-void RaftServer::CleanNodeData(RaftNode2*, const std::string* )
+void RaftServer::CleanNodeData(RaftNode2*, std::string* )
 {
 }
 
 
-void RaftServer::AddAdditionalDataToNode(RaftNode2*, const std::string* )
+void RaftServer::AddAdditionalDataToNode(RaftNode2*, std::string*, bool)
 {
 }
 
 
-void RaftServer::RemoveNode1(const void* a_pKey, size_t a_keySize, const std::string* a_pDataFromLeader)
+void RaftServer::RemoveNode1(const void* a_pKey, size_t a_keySize, std::string* a_pDataFromLeader)
 {
-	RaftNode2* pNode;
+	RaftNode2 *pNode, *pNodeNext;
 	if (m_Nodes.FindEntry(a_pKey, a_keySize, &pNode)) {
 		CleanNodeData(pNode, a_pDataFromLeader);
-		if (m_Nodes.RemoveData(pNode)) { delete pNode; } // here checking can be skipped
+		m_Nodes.RemoveData(pNode);
+
+		if (!pNode->isLocked()) { delete pNode; }
+		else {
+			m_removedNodes.AddDataRaw(pNode);
+		}
+	}
+
+	pNode = m_removedNodes.first();
+	while (pNode) {
+		pNodeNext = pNode->next;
+		if (!pNode->isLocked()) {
+			m_removedNodes.RemoveDataRaw(pNode);
+			delete pNode;
+		}
+		pNode = pNodeNext;
 	}
 }
 
 
-void RaftServer::RemoveNode2(RaftNode2* a_node, const std::string* a_pDataFromLeader)
+void RaftServer::RemoveNode2(RaftNode2* a_pNode, std::string* a_pDataFromLeader)
 {
-	RaftNode2* pNode;
-	if (m_Nodes.FindEntry(a_node->key,a_node->keyLength, &pNode)) {
-		CleanNodeData(a_node, a_pDataFromLeader);
-		if (m_Nodes.RemoveData(a_node)) { delete a_node; } // here checking can be skipped
-	}
+	RemoveNode1(a_pNode->key, a_pNode->keyLength,a_pDataFromLeader);
 }
 
 
-RaftNode2* RaftServer::AddNode(const void* a_pKey, size_t a_keySize, const std::string* a_pDataFromAdder)
+RaftNode2* RaftServer::AddNode(const void* a_pKey, size_t a_keySize, std::string* a_pDataFromAdder, bool a_bAdder)
 {
 	RaftNode2* pNewNode=NULL;
 
@@ -104,7 +115,7 @@ RaftNode2* RaftServer::AddNode(const void* a_pKey, size_t a_keySize, const std::
 		pNewNode = new RaftNode2;
 		HANDLE_MEM_DEF2(pNewNode, "Unable to create new node");
 		m_Nodes.AddData(pNewNode, a_pKey, a_keySize);
-		this->AddAdditionalDataToNode(pNewNode,a_pDataFromAdder);
+		this->AddAdditionalDataToNode(pNewNode,a_pDataFromAdder, a_bAdder);
 		return pNewNode;
 	}
 
@@ -130,7 +141,7 @@ int RaftServer::nodesCount()const
 }
 
 
-void RaftServer::ClearAllNodes(const std::string* a_pDataFromLeader)
+void RaftServer::ClearAllNodes(std::string* a_pDataFromLeader)
 {
 	RaftNode2 *pNextNode, *pToDelete = m_Nodes.first();
 
@@ -407,14 +418,14 @@ void RaftServer::recv_requestvote_response(RaftNode2* a_node, msg_requestvote_re
 		return;
 
 	if (1 == r->vote_granted) {
-		a_node->SetVotesForMe(1);
+		a_node->setVotesForMe(1);
 		if (raft_votes_is_majority(m_Nodes.count()-1, get_nvotes_for_me())){ // -1 because old leader is not normal, but still counted
 			DEBUG_APPLICATION(0,"starting to became leader");
 			become_leader();
 		}
 	}
 	else{
-		a_node->SetVotesForMe(0);
+		a_node->setVotesForMe(0);
 	}
 }
 
@@ -524,7 +535,7 @@ int RaftServer::get_nvotes_for_me()
 
 	while(pNode){
 		if(pNode==m_thisNode){ pNode= pNode->next; continue;}
-		if (1 == pNode->GetVotesForMe()) {
+		if (1 == pNode->getVotesForMe()) {
 				votes += 1;
 		}
 		pNode = pNode->next;

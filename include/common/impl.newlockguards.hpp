@@ -31,7 +31,7 @@ common::NewLockGuard<TypeMutex>::~NewLockGuard()
 template <typename TypeMutex>
 void common::NewLockGuard<TypeMutex>::SetAndLockMutex(TypeMutex* a_pMutex)
 {
-	a_pMutex->lock();
+	if(a_pMutex){a_pMutex->lock();}
 	m_pMutex = a_pMutex;
 }
 

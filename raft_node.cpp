@@ -18,7 +18,6 @@ int			m_votes_for_me;
 int			m_keyLen;
 #endif
 
-const int64_t	g_cnRaftMaxPing = (int64_t)((1 << BITS_OF_PING_COUNT)-4);
 
 RaftNode2::RaftNode2() 
 	:
@@ -29,13 +28,13 @@ RaftNode2::RaftNode2()
 	m_votes_for_me(0)
 {
 	m_isLeader = 0;
-	m_isProblematic = 0;
 	m_isAbleToVote = 1;
-	m_nPingCount = INITIAL_PING_COUNT;
+	m_okCount = INITIAL_PING_COUNT;
 	//
 	m_isTimeToPing =0;
 	m_hasData = 0;
-	m_okCount2 = 0;
+	m_isLocked = 0;
+	ftime(&this->m_lastSeen);
 
 	this->key = NULL;
 	this->keyLength = 0;
@@ -47,29 +46,33 @@ RaftNode2::~RaftNode2()
 }
 
 
-int64_t RaftNode2::pingCount()const
+void RaftNode2::lock()
 {
-	return m_nPingCount;
+	m_isLocked = 1;
+}
+
+
+void RaftNode2::unlock()
+{
+	m_isLocked = 0;
+}
+
+
+uint64_t RaftNode2::isLocked()const
+{
+	return m_isLocked;
 }
 
 
 void RaftNode2::pingReceived()
 {
-	m_isProblematic = 0;
-	m_nPingCount = 0;
+	if(m_okCount<0){m_okCount=0;}
 	m_isAbleToVote = 1;
+	ftime(&this->m_lastSeen);
 }
 
 
-int64_t RaftNode2::makePing()
-{
-	int64_t nPingCount(m_nPingCount);
-	m_nPingCount=(nPingCount<g_cnRaftMaxPing)?(nPingCount+1): g_cnRaftMaxPing;
-	return m_nPingCount;
-}
-
-
-void RaftNode2::SetUnableToVote()
+void RaftNode2::setUnableToVote()
 {
 	m_isAbleToVote=0;
 }
@@ -78,18 +81,6 @@ void RaftNode2::SetUnableToVote()
 uint64_t RaftNode2::isAbleToVote()const
 {
 	return m_isAbleToVote;
-}
-
-
-uint64_t RaftNode2::isProblematic()const
-{
-	return m_isProblematic;
-}
-
-
-void RaftNode2::setProblematic()
-{
-	m_isProblematic = 1;
 }
 
 
@@ -108,13 +99,13 @@ void RaftNode2::set_next_idx(int nextIdx)
     this->next_idx = nextIdx;
 }
 
-void RaftNode2::SetVotesForMe(int a_vote)
+void RaftNode2::setVotesForMe(int a_vote)
 {
 	m_votes_for_me = a_vote;
 }
 
 
-int RaftNode2::GetVotesForMe()const
+int RaftNode2::getVotesForMe()const
 {
 	return m_votes_for_me;
 }
