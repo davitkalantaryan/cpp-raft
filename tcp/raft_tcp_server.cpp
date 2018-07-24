@@ -151,11 +151,6 @@ void raft::tcp::Server::SignalHandler(int )
 }
 
 
-void raft::tcp::Server::NewNodeApplyAdderInfo(const std::string&)
-{
-}
-
-
 void raft::tcp::Server::AddAdditionalDataToNode(RaftNode2* a_pNode, std::string* a_pDataFromAdder, bool a_bIsAdder)
 {
 	NodeTools* pTools = new NodeTools;
@@ -254,7 +249,7 @@ void raft::tcp::Server::StopServer()
 	}
 	m_serverTcp.StopServer();
 
-	m_semaForSolvingDublicates.post();
+	m_semaForSolvingDublicates2.post();
 
 	nThreadsCount = m_vectThreadsOtherPeriodic.size();
 	for (i = 0; i<nThreadsCount; ++i) {
@@ -265,7 +260,7 @@ void raft::tcp::Server::StopServer()
 
 	nThreadsCount = m_vectThreadsWorkers.size();
 	for(i=0;i<nThreadsCount;++i){
-		m_semaWorker.post();
+		m_semaWorker2.post();
 	}
 	for(i=0;i<nThreadsCount;++i){
 		m_vectThreadsWorkers[i]->join();
@@ -299,8 +294,8 @@ void raft::tcp::Server::AddClient(common::SocketTCP& a_clientSock, const sockadd
 	aWorkerData.pear.con.sockDescriptor = a_clientSock;
 	memcpy(&aWorkerData.pear.con.remAddress, a_remoteAddr,sizeof(sockaddr_in));
 	a_clientSock.ResetSocketWithoutClose();  // let us assume, that worker will close in the case of necessirty
-	m_fifoWorker.AddElement1(aWorkerData);
-	m_semaWorker.post();
+	m_fifoWorker2.AddElement2(std::move(aWorkerData));
+	m_semaWorker2.post();
 
 }
 
@@ -493,7 +488,7 @@ void raft::tcp::Server::ThreadFunctionFindOtherChains()
 
 	while(m_nWork){
 
-		m_semaForSolvingDublicates.wait();
+		m_semaForSolvingDublicates2.wait();
 
 		nPossibleNodesCount = m_allPossibleNodes.size();
 		for (i = 0; i<nPossibleNodesCount; ++i) {
@@ -763,6 +758,7 @@ void raft::tcp::Server::HandleInternalPrivate(char a_cRequest, RaftNode2* a_pNod
 
 	aSharedGuard.SetAndLockMutex(&m_shrdMutexForNodes2);
 	if(!handleInternalBeforeLock(a_cRequest,a_pNode,a_pNodeKey,a_pBufferForReceive)){goto returnPoint;}
+	if (a_pNode) { a_pNode->decrementLock(); }
 	aSharedGuard.UnsetAndUnlockMutex();
 
 	aGuard.SetAndLockMutex(&m_shrdMutexForNodes2);
@@ -792,8 +788,8 @@ void raft::tcp::Server::ReceiveFromSocketAndInform(RaftNode2* a_pNode, int32_t a
 	aData.pear.rcv.pNode = a_pNode;
 	aData.pear.rcv.m_index = a_index;
 
-	m_fifoWorker.AddElement1(aData);
-	m_semaWorker.post();
+	m_fifoWorker2.AddElement1(aData);
+	m_semaWorker2.post();
 }
 
 
@@ -1015,7 +1011,7 @@ void raft::tcp::Server::handleInternalAfterLock(char a_cRequest, RaftNode2* a_pN
 		this->SendInformationToAllNodes(raft::tcp::socketTypes::raft,raft::receive::fromLeader2::removeNode,a_pBufferToSendToOthers,a_pNodeKey,NULL,false);
 		break;
 	case raft::internal2::newLeader::becomeLeader:
-		this->SendInformationToAllNodes(raft::tcp::socketTypes::raft,raft::receive::fromNewLeader2::oldLeaderDied,a_pBufferToSendToOthers,a_pNodeKey,NULL,false);
+		this->SendInformationToAllNodes(raft::tcp::socketTypes::raft,raft::receive::fromNewLeader2::oldLeaderDied,a_pBufferToSendToOthers,NULL,NULL,false);
 		break;
 	default:
 		ERROR_LOGGING2("Unhandled internal case");
@@ -1120,7 +1116,7 @@ bool raft::tcp::Server::handleNewConnectionBeforeLock(common::SocketTCP& a_socke
 	switch (a_cRequest)
 	{
 	case raft::connect::toAnyNode2::newNode:
-		if (raft_connect_toAnyNode_newNode(a_socket, &a_remoteAddr, a_pDataFromClient, a_newNodeKey)) {
+		if (!raft_connect_toAnyNode_newNode(a_socket, &a_remoteAddr, a_pDataFromClient, a_newNodeKey)) {
 			ERROR_LOGGING2("Unable to complete new node adding");
 			return false;
 		}
@@ -1172,6 +1168,9 @@ void raft::tcp::Server::handleNewConnectionAfterLock(common::SocketTCP& a_socket
 	{
 	case raft::connect::toAnyNode2::newNode:
 		this->SendInformationToAllNodes(raft::tcp::socketTypes::raft,raft::receive::fromAdder::newNode,a_pDataToOthers,a_newNodeKey,a_pNodeToSkip,true);
+		GET_NODE_TOOLS(a_pNodeToSkip)->setSocket(raft::tcp::socketTypes::raft,(int)a_socket);
+		this->SendInformationToNode(a_pNodeToSkip,raft::tcp::socketTypes::raft, raft::receive::fromAdder::toNewNodeAddPartitions, a_pDataToOthers, NULL);
+		a_socket.ResetSocketWithoutClose();
 		break;
 	default:
 		DEBUG_APPLICATION(1, "Wrong case provided");
@@ -1182,6 +1181,16 @@ void raft::tcp::Server::handleNewConnectionAfterLock(common::SocketTCP& a_socket
 /*///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 /*///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
+void raft::tcp::Server::AddInternalJob(char a_cRequest, RaftNode2* a_pNode)
+{
+	SWorkerData aJobData;
+	aJobData.reqType = raft::tcp::workRequest::handleInternal;
+	aJobData.pear.intr.cRequest = a_cRequest;
+	aJobData.pear.intr.pNode = a_pNode;
+	if(a_pNode){a_pNode->incrementLock();}
+	m_fifoWorker2.AddElement2(std::move(aJobData));
+	m_semaWorker2.post();
+}
 
 
 void raft::tcp::Server::ThreadFunctionWorker()
@@ -1193,9 +1202,9 @@ void raft::tcp::Server::ThreadFunctionWorker()
 enterLoopPoint:
 	try {
 		while (m_nWork) {
-			m_semaWorker.wait();
+			m_semaWorker2.wait();
 
-			while (m_fifoWorker.Extract(&dataFromProducer) && m_nWork) {
+			while (m_fifoWorker2.Extract(&dataFromProducer) && m_nWork) {
 
 				switch (dataFromProducer.reqType) 
 				{
@@ -1282,7 +1291,7 @@ void raft::tcp::Server::CheckAllPossibleSeeds(const std::vector<NodeIdentifierKe
 			else { d_state.set(RAFT_STATE_CANDIDATE); }
 		}
 		else{
-			AddOwnNode2();
+			AddOwnNode(true,NULL);
 			this->d_state.set(RAFT_STATE_LEADER);
 		}
 
@@ -1342,9 +1351,7 @@ enterLoopPoint:
 #endif
 		
 		while (m_nWork) {
-			if(is_leader() && (nIteration++ % 100)==0){
-				DEBUG_APPLICATION(4,"Leader node (leaderIteration=%d)", nIteration);
-			}
+			
 			aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes2);
 			this->periodic(m_nPeriodForPeriodic);
 			
@@ -1367,6 +1374,12 @@ enterLoopPoint:
 #endif
 
 			aShrdLockGuard.UnsetAndUnlockMutex();
+
+			if ((nIteration++ % 500) == 0) {
+				m_semaForSolvingDublicates2.post();
+				if (is_leader()) { DEBUG_APPLICATION(4, "Leader node (leaderIteration=%d)", nIteration); }
+			}
+
 			SleepMs(m_nPeriodForPeriodic);
 		}
 	}
@@ -1378,13 +1391,17 @@ enterLoopPoint:
 }
 
 
-void raft::tcp::Server::AddOwnNode2()
+void raft::tcp::Server::AddOwnNode(bool a_bIsLeader, std::string* a_pAdderInfo)
 {
 	if(!m_thisNode){
 		NodeIdentifierKey aOwnHost;
 		common::socketN::GetOwnIp4Address(aOwnHost.ip4Address, MAX_IP4_LEN);
 		aOwnHost.port = m_nPortOwn;
-		m_thisNode = this->AddNode(&aOwnHost, sizeof(NodeIdentifierKey), NULL, false);
+		m_thisNode = this->AddNode(&aOwnHost, sizeof(NodeIdentifierKey), a_pAdderInfo, false);
+		if(a_bIsLeader && m_thisNode){
+			m_pLeaderNode = m_thisNode;
+			m_pLeaderNode->makeLeader();
+		}
 	}
 }
 
@@ -1401,6 +1418,7 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindClusterThredSafe(const N
 	int32_t nExtraDataLenOut((int32_t)a_extraDataForAndFromAdder->size());
 	uint16_t snEndian;
 	bool bOk(false);
+	char cRequest;
 
 	if(!ConnectAndGetEndian(&aSocket,a_nodeInfo,raft::connect::toAnyNode2::newNode,&isEndianDiffer)){goto returnPoint;}	// 1. connect, getEndian and sendRequest
 
@@ -1476,8 +1494,6 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindClusterThredSafe(const N
 		}
 	}
 
-	AddOwnNode2();
-
 	// 6. sending extra data length to the adder node
 	//    this is also trigger that adding all ndes info here is done
 	nSndRcv = aSocket.writeC(&nExtraDataLenOut, 4);
@@ -1488,8 +1504,8 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindClusterThredSafe(const N
 
 	// 7. sending extra data itself to adder node
 	//    this is also trigger that adding all ndes info here is done
-	nSndRcv = aSocket.writeC(a_extraDataForAndFromAdder->data(),nExtraDataLenOut);
-	if (nSndRcv != 4) {
+	nSndRcv = aSocket.writeC(a_extraDataForAndFromAdder->data(),nExtraDataLenOut);// todo
+	if (nSndRcv != nExtraDataLenOut) {
 		DEBUG_APPLICATION(3, "Unable to send extra data length to the node (%s:%d)", a_nodeInfo.ip4Address, (int)a_nodeInfo.port);
 		goto returnPoint;
 	}
@@ -1497,12 +1513,21 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindClusterThredSafe(const N
 	// 8. Wait confirmation that all nodes know about this node
 	//    this is also trigger that adding all ndes info here is done
 	//    meanwhile the size of extra data len
+	nSndRcv = aSocket.readC(&cRequest,1);
+	if ((nSndRcv != 1)||(cRequest!= raft::receive::fromAdder::toNewNodeAddPartitions)) {
+		DEBUG_APPLICATION(3, "Unable to send extra data length to the node (%s:%d)", a_nodeInfo.ip4Address, (int)a_nodeInfo.port);
+		goto returnPoint;
+	}
+
+	// 9. Wait confirmation that all nodes know about this node
+	//    this is also trigger that adding all ndes info here is done
+	//    meanwhile the size of extra data len
 	if(!ReceiveExtraData(aSocket,isEndianDiffer, a_extraDataForAndFromAdder)){
 		ERROR_LOGGING2("Unable to get extra data from the node (%s:%d)",a_nodeInfo.ip4Address,(int)a_nodeInfo.port);
 		goto returnPoint;
 	}
 
-	NewNodeApplyAdderInfo(*a_extraDataForAndFromAdder);
+	AddOwnNode(false, a_extraDataForAndFromAdder);
 
 	if ( !m_pLeaderNode ) {	
 		//become_candidate();
@@ -1555,13 +1580,11 @@ void raft::tcp::Server::InterruptReceivercThread(int32_t a_index)
 void raft::tcp::Server::become_leader()
 {
 	if(m_pLeaderNode){
-		SWorkerData workerData;
-		workerData.reqType = raft::tcp::workRequest::handleInternal;
-		workerData.pear.intr.cRequest = raft::internal2::newLeader::becomeLeader;
-		m_fifoWorker.AddElement2(std::move(workerData));
-		m_semaWorker.post();
+		AddInternalJob(raft::internal2::newLeader::becomeLeader,NULL);
 	}
-	//RaftServer::become_leader();
+	else {
+		RaftServer::become_leader();
+	}
 }
 
 
@@ -1616,20 +1639,14 @@ int raft::tcp::Server::SendClbkFunction(void *a_cb_ctx, void *udata, RaftNode2* 
 	{
 	case RAFT_MSG_APPENDENTRIES:
 		if((nTimeoutOfLastSeen>MAX_UNSEEN_TIME_TO_CHANGE_STATE)&& pServer->is_leader()){
-			SWorkerData remData;
-			a_pNode->lock();
-			remData.reqType = raft::tcp::workRequest::handleInternal;
-			remData.pear.intr.cRequest = raft::internal2::leader::removeNode;
-			remData.pear.intr.pNode = a_pNode;
-			pServer->m_fifoWorker.AddElement2(std::move(remData));
-			pServer->m_semaWorker.post();
+			pServer->AddInternalJob(raft::internal2::leader::removeNode,a_pNode);
 			return 0;
 		}
 		break;
 	case RAFT_MSG_REQUESTVOTE:
 		if((nTimeoutOfLastSeen>MAX_UNSEEN_TIME_TO_CHANGE_STATE) && pServer->is_candidate()){
 			a_pNode->setUnableToVote();
-			pServer->become_candidate();
+			pServer->become_candidate();  // todo: change state in locked part
 		}
 		break;
 	default:

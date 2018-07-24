@@ -32,9 +32,9 @@ public:
 	uint64_t		isAbleToVote()const;
 	int64_t			okCount()const {return m_okCount;}
 	void			incrementOkCount() {++m_okCount;}
-	void			lock();
-	void			unlock();
-	uint64_t		isLocked()const;
+	void			incrementLock();
+	void			decrementLock();
+	uint64_t		lockCount()const;
 	const timeb&	lastSeen()const {return m_lastSeen;}
  
 public:
@@ -47,7 +47,7 @@ private:
 	int			m_votes_for_me;
 	uint64_t	m_isLeader : 1;
 	uint64_t	m_isAbleToVote : 1;
-	uint64_t	m_isLocked : 1;
+	uint64_t	m_lockCount : 5;
 	int64_t		m_okCount : BITS_OF_OK_COUNT;
 	timeb		m_lastSeen;
 

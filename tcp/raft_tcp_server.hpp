@@ -93,8 +93,6 @@ protected:
 	virtual void		become_leader() OVERRIDE;
 	virtual void		become_candidate()OVERRIDE;
 
-	virtual void		NewNodeApplyAdderInfo(const std::string& adderExtraInfo);
-	
 	virtual void		AddAdditionalDataToNode(RaftNode2* newNode, std::string* a_pDataFromAdder, bool a_bAdder)OVERRIDE;
 	virtual void		CleanNodeData(RaftNode2*, std::string* a_pDataFromLeader) OVERRIDE;
 		
@@ -122,13 +120,15 @@ protected:
 	template <typename Type>
 	void				StartOtherPriodic(void (Type::*a_fpClbk)(int), int a_nPeriod, Type* a_pObj);
 
+	void				AddInternalJob(char a_cRequest, RaftNode2* a_pNode);
+
 	bool				SendInformationToNode(RaftNode2* a_pNode, int32_t a_index, char a_cRequest, const std::string* a_extraData, const NodeIdentifierKey* a_pNodeKey);
 	void				SendInformationToAllNodes(int32_t a_index, char a_cRequest, const std::string* a_extraData, const NodeIdentifierKey* a_pNodeKey, RaftNode2* a_pNodeToSkip, bool a_bWait);
     void				FunctionForMultiRcv(void (Server::*a_fpRcvFnc)(RaftNode2*,int32_t),int32_t index);
 	void				AddClient(common::SocketTCP& clientSock, const sockaddr_in*remoteAddr);
 
 	NodeIdentifierKey*	TryFindClusterThredSafe(const NodeIdentifierKey& nodeInfo, std::string* a_extraDataForAndFromAdder);
-	void				AddOwnNode2();
+	void				AddOwnNode(bool a_bIsLeader, std::string* a_pAdderInfo);
 
 	// family of receive functions
 	bool				raft_receive_fromAdder_newNode(RaftNode2* a_pNode, std::string* a_bufferForAdderData, NodeIdentifierKey* a_pNewNodeKey);
@@ -174,10 +174,10 @@ protected:
 	std::vector<STDN::thread*>						m_vectThreadsOtherPeriodic;
 private:
     STDN::shared_mutex                              m_shrdMutexForNodes2;
+	common::UnnamedSemaphoreLite					m_semaWorker2;
+	common::UnnamedSemaphoreLite					m_semaForSolvingDublicates2;
+	common::FifoFast<SWorkerData>					m_fifoWorker2;
 protected:
-	common::UnnamedSemaphoreLite					m_semaWorker;
-	common::UnnamedSemaphoreLite					m_semaForSolvingDublicates;
-	common::FifoFast<SWorkerData>					m_fifoWorker;
 	volatile int									m_nWork;
 	int												m_nPeriodForPeriodic;
 	int												m_nPortOwn;

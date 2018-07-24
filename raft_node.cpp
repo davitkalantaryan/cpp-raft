@@ -33,7 +33,7 @@ RaftNode2::RaftNode2()
 	//
 	m_isTimeToPing =0;
 	m_hasData = 0;
-	m_isLocked = 0;
+	m_lockCount = 0;
 	ftime(&this->m_lastSeen);
 
 	this->key = NULL;
@@ -46,21 +46,21 @@ RaftNode2::~RaftNode2()
 }
 
 
-void RaftNode2::lock()
+void RaftNode2::incrementLock()
 {
-	m_isLocked = 1;
+	++m_lockCount;
 }
 
 
-void RaftNode2::unlock()
+void RaftNode2::decrementLock()
 {
-	m_isLocked = 0;
+	--m_lockCount;
 }
 
 
-uint64_t RaftNode2::isLocked()const
+uint64_t RaftNode2::lockCount()const
 {
-	return m_isLocked;
+	return m_lockCount;
 }
 
 

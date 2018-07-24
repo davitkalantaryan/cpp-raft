@@ -122,6 +122,7 @@ namespace fromLeader2 {enum Type {
 
 namespace fromAdder {enum Type { 
 	newNode = (int)fromLeader2::last,
+	toNewNodeAddPartitions,
 	last
 };}
 
