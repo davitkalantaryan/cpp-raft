@@ -100,9 +100,17 @@ protected:
 		
 	virtual void		SignalHandler(int sigNum);
 
-	virtual bool		handleNewConnectionBeforeLock(common::SocketTCP& a_socket, const sockaddr_in&remoteAddr, NodeIdentifierKey* a_newNodeKey,std::string* a_pDataFromClient);
-	virtual bool		handleReceiveFromNodeBeforeLock(RaftNode2* pNode, int32_t index, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
-	virtual void		handleInternalBeforeLock(char cRequest, RaftNode2* a_pNode);
+	virtual bool		handleNewConnectionBeforeLock(common::SocketTCP& a_socket, const sockaddr_in&a_remoteAddr, char a_cRequest, NodeIdentifierKey* a_newNodeKey,std::string* a_pDataFromClient);
+	virtual RaftNode2*	handleNewConnectionLocked(common::SocketTCP& a_socket, const sockaddr_in&a_remoteAddr, char a_cRequest, NodeIdentifierKey* a_newNodeKey, std::string* a_pDataFromClient);
+	virtual void		handleNewConnectionAfterLock(common::SocketTCP& a_socket, const sockaddr_in&a_remoteAddr, char a_cRequest, NodeIdentifierKey* a_newNodeKey, std::string* a_pDataFromClient, RaftNode2* a_pNodeToSkip);
+
+	virtual bool		handleReceiveFromNodeBeforeLock(char cRequest,RaftNode2* pNode, int32_t index, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
+	virtual bool		handleReceiveFromNodeLocked(char cRequest, RaftNode2* pNode, int32_t index, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
+	virtual void		handleReceiveFromNodeAfterLock(char cRequest, RaftNode2* pNode, int32_t index, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
+
+	virtual bool		handleInternalBeforeLock(char cRequest, RaftNode2* a_pNode, NodeIdentifierKey* a_pNodeKey, std::string* a_pBufferToSendToOthers);
+	virtual bool		handleInternalLocked(char cRequest, RaftNode2* a_pNode, NodeIdentifierKey* a_pNodeKey, std::string* a_pBufferToSendToOthers);
+	virtual void		handleInternalAfterLock(char cRequest, RaftNode2* a_pNode, NodeIdentifierKey* a_pNodeKey, std::string* a_pBufferToSendToOthers);
 
 	void				ThreadFunctionFindOtherChains();
 	void				ThreadFunctionListen();
@@ -115,7 +123,7 @@ protected:
 	void				StartOtherPriodic(void (Type::*a_fpClbk)(int), int a_nPeriod, Type* a_pObj);
 
 	bool				SendInformationToNode(RaftNode2* a_pNode, int32_t a_index, char a_cRequest, const std::string* a_extraData, const NodeIdentifierKey* a_pNodeKey);
-	void				SendInformationToAllNodes(int32_t a_index, char a_cRequest, const std::string* a_extraData, const NodeIdentifierKey* a_pNodeKey, RaftNode2* a_pNodeToSkip);
+	void				SendInformationToAllNodes(int32_t a_index, char a_cRequest, const std::string* a_extraData, const NodeIdentifierKey* a_pNodeKey, RaftNode2* a_pNodeToSkip, bool a_bWait);
     void				FunctionForMultiRcv(void (Server::*a_fpRcvFnc)(RaftNode2*,int32_t),int32_t index);
 	void				AddClient(common::SocketTCP& clientSock, const sockaddr_in*remoteAddr);
 
@@ -135,7 +143,6 @@ protected:
 	void				CheckAllPossibleSeeds(const std::vector<NodeIdentifierKey>& vectPossibleNodes, std::string* a_extraDataForAndFromAdder);
 
 	void				HandleSeedClbk(RaftNode2* anyNode);
-	void				ReceiveFromRaftSocketWorkerContex(RaftNode2*& pNode);
 
     void				InterruptPeriodicThread();
     void				InterruptReceivercThread(int32_t index);
@@ -149,7 +156,7 @@ private:
 	void				ReceiveFromSocketAndInform(RaftNode2* pNode, int32_t index);
 	void				HandleNewConnectionPrivate(int a_nSocketDescr, const sockaddr_in&remoteAddr, NodeIdentifierKey* a_newNodeKey, std::string* a_pDataFromClient);
 	void				HandleReceiveFromNodePrivate(RaftNode2* pNode, int32_t index, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
-	void				HandleInternalPrivate(char cRequest, RaftNode2* a_pNode);
+	void				HandleInternalPrivate(char cRequest, RaftNode2* a_pNode, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
 
 protected:
 	static int	SendClbkFunction(void *cb_ctx, void *udata, RaftNode2* node, int msg_type, const unsigned char *send_data, int d_len);
