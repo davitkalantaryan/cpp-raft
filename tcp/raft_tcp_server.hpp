@@ -97,27 +97,25 @@ protected:
 	
 	virtual void		AddAdditionalDataToNode(RaftNode2* newNode, std::string* a_pDataFromAdder, bool a_bAdder)OVERRIDE;
 	virtual void		CleanNodeData(RaftNode2*, std::string* a_pDataFromLeader) OVERRIDE;
-	
-	virtual bool		HandleDefaultConnection(char code,common::SocketTCP& clientSock, const sockaddr_in* remoteAddr, std::string* a_extraData, bool* a_pInformOthers);
-	virtual void		ReceiveFromNonRaftSocketWorkerContex(RaftNode2* anyNode, int32_t index);
-	virtual bool		DefaultLockedHandleConnectionWorkerContext(char code, common::SocketTCP& clientSock, const sockaddr_in* remoteAddr, std::string* a_extraData);
-	virtual bool		DefaultHandleInternalWorkerContextPre(char cRequest, RaftNode2* a_pNode, char* cRecuestOut, std::string* extraDataToSendToOtherNodes);
-	virtual bool		DefaultHandleInternalWorkerContextLocked(char cRequest, RaftNode2* a_pNode, char* cRecuestOut, std::string* extraDataToSendToOtherNodes);
-	virtual bool		DefaultHandleInternalWorkerContextPost(char cRequest, RaftNode2* a_pNode, char* cRecuestOut, std::string* extraDataToSendToOtherNodes);
-	
+		
 	virtual void		SignalHandler(int sigNum);
+
+	virtual bool		handleNewConnectionBeforeLock(int a_nSocketDescr, const sockaddr_in&remoteAddr, NodeIdentifierKey* a_newNodeKey,std::string* a_pDataFromClient);
+	virtual bool		handleReceiveFromNodeBeforeLock(RaftNode2* pNode, int32_t index, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
+	virtual void		handleInternalBeforeLock(char cRequest, RaftNode2* a_pNode);
 
 	void				ThreadFunctionFindOtherChains();
 	void				ThreadFunctionListen();
 	void				ThreadFunctionPeriodic();
 	void				ThreadFunctionRcvFromSocket(int32_t index);
-	void				ThreadFunctionLockedAction();
 	void				ThreadFunctionWorker();
 	template <typename Type>
 	void				ThreadFunctionOtherPeriodic(void (Type::*a_fpClbk)(int), int a_nPeriod, Type* a_pObj, int a_nIndex);
 	template <typename Type>
-	
 	void				StartOtherPriodic(void (Type::*a_fpClbk)(int), int a_nPeriod, Type* a_pObj);
+
+	bool				SendInformationToNode(RaftNode2* a_pNode, int32_t a_index, char a_cRequest, const std::string* a_extraData, const NodeIdentifierKey* a_pNodeKey);
+	void				SendInformationToAllNodes(int32_t a_index, char a_cRequest, const std::string* a_extraData, const NodeIdentifierKey* a_pNodeKey, RaftNode2* a_pNodeToSkip);
     void				FunctionForMultiRcv(void (Server::*a_fpRcvFnc)(RaftNode2*,int32_t),int32_t index);
 	void				AddClient(common::SocketTCP& clientSock, const sockaddr_in*remoteAddr);
 
@@ -138,7 +136,6 @@ protected:
 
 	void				HandleSeedClbk(RaftNode2* anyNode);
 	void				ReceiveFromRaftSocketWorkerContex(RaftNode2*& pNode);
-	void				ReceiveFromSocket(RaftNode2* pNode, int32_t index);
 
     void				InterruptPeriodicThread();
     void				InterruptReceivercThread(int32_t index);
@@ -147,12 +144,11 @@ protected:
 	NodeIdentifierKey*	CollectAllNodesDataNotThrSafe(int32_t* pnTotalSize, int32_t* a_pnLeaderIndex);
 	void				FindClusterAndInit(const std::vector<NodeIdentifierKey>& vectPossibleNodes, std::string* a_extraDataForAndFromAdder, int raftPort=-1);
 	void				RunAllThreadPrivate(int32_t workersCount);
-	void				ReceiveFromAnySocket(RaftNode2* anyNode, int32_t index);
-	
-	void				raft_tcp_workRequest_handleConnectionWorkerContext(int a_nSocketDescr, const sockaddr_in&remoteAddr);
-	void				raft_tcp_workRequest_handleReceiveWorkerContext(RaftNode2* anyNode, int32_t index);
-	void				raft_tcp_workRequest_handleInternalWorkerContext(char cRequest, RaftNode2* a_pNode);
 
+private:
+	void				ReceiveFromSocket(RaftNode2* pNode, int32_t index);
+
+protected:
 	static int	SendClbkFunction(void *cb_ctx, void *udata, RaftNode2* node, int msg_type, const unsigned char *send_data, int d_len);
 	static void LogClbkFunction(void *cb_ctx, void *src, const char *buf, ...);
 	static int	ApplyLogClbkFunction(void *cb_ctx, void *udata, const unsigned char *d_data, int d_len);
@@ -163,7 +159,6 @@ protected:
 	STDN::thread									m_threadFixDoubleCycles;
 	STDN::thread									m_threadTcpListen;
 	STDN::thread									m_threadPeriodic;
-	STDN::thread									m_threadLockedActions;
 	STDN::thread									m_threadsReceives[NUMBER_OF_TOOLS_SOCKETS];
 	std::vector<STDN::thread*>						m_vectThreadsWorkers;
 	std::vector<STDN::thread*>						m_vectThreadsOtherPeriodic;
