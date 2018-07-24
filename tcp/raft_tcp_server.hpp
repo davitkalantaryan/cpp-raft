@@ -100,7 +100,7 @@ protected:
 		
 	virtual void		SignalHandler(int sigNum);
 
-	virtual bool		handleNewConnectionBeforeLock(int a_nSocketDescr, const sockaddr_in&remoteAddr, NodeIdentifierKey* a_newNodeKey,std::string* a_pDataFromClient);
+	virtual bool		handleNewConnectionBeforeLock(common::SocketTCP& a_socket, const sockaddr_in&remoteAddr, NodeIdentifierKey* a_newNodeKey,std::string* a_pDataFromClient);
 	virtual bool		handleReceiveFromNodeBeforeLock(RaftNode2* pNode, int32_t index, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
 	virtual void		handleInternalBeforeLock(char cRequest, RaftNode2* a_pNode);
 
@@ -146,7 +146,10 @@ protected:
 	void				RunAllThreadPrivate(int32_t workersCount);
 
 private:
-	void				ReceiveFromSocket(RaftNode2* pNode, int32_t index);
+	void				ReceiveFromSocketAndInform(RaftNode2* pNode, int32_t index);
+	void				HandleNewConnectionPrivate(int a_nSocketDescr, const sockaddr_in&remoteAddr, NodeIdentifierKey* a_newNodeKey, std::string* a_pDataFromClient);
+	void				HandleReceiveFromNodePrivate(RaftNode2* pNode, int32_t index, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
+	void				HandleInternalPrivate(char cRequest, RaftNode2* a_pNode);
 
 protected:
 	static int	SendClbkFunction(void *cb_ctx, void *udata, RaftNode2* node, int msg_type, const unsigned char *send_data, int d_len);

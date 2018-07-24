@@ -677,8 +677,55 @@ bool raft::tcp::Server::raft_receive_fromAdder_newNode(RaftNode2* a_pNode, std::
 }
 
 
+void raft::tcp::Server::HandleNewConnectionPrivate(int a_nSocketDescr, const sockaddr_in& a_remoteAddr, NodeIdentifierKey* a_newNodeKey, std::string* a_pDataFromClient)
+{
+	common::SocketTCP aClientSock;
+	common::NewSharedLockGuard<STDN::shared_mutex> aSharedGuard;
+	common::NewLockGuard<STDN::shared_mutex> aGuard;
+	int nSndRcv;
+	uint16_t snEndian;
+	char vcHostName[MAX_HOSTNAME_LENGTH];
+	char cRequest;
 
-void raft::tcp::Server::ReceiveFromSocket(RaftNode2* a_pNode, int32_t a_index)
+	DEBUG_APPLICATION(1,
+		"conntion from %s(%s)",
+		common::socketN::GetHostName(&a_remoteAddr, vcHostName, MAX_HOSTNAME_LENGTH),
+		common::socketN::GetIPAddress(&a_remoteAddr));
+	aClientSock.SetNewSocketDescriptor(a_nSocketDescr);
+	aClientSock.setTimeout(SOCK_TIMEOUT_MS);
+
+	snEndian = 1;
+	nSndRcv = aClientSock.writeC(&snEndian, 2);																// 2. Send endian				
+	if (nSndRcv != 2) {
+		DEBUG_APPLICATION(1, "Could not send the endian of the connected pear nSndRcv=%d, socket=%d", nSndRcv, a_nSocketDescr);
+		aClientSock.closeC();
+		return;
+	}
+
+	nSndRcv = aClientSock.readC(&cRequest, 1);																// 4. rcv request
+	if (nSndRcv != 1) {
+		DEBUG_APPLICATION(1, "Unable to read request type");
+		aClientSock.closeC();
+		return;
+	}
+
+	//handleNewConnectionBeforeLock(aClientSock)
+
+}
+
+
+void raft::tcp::Server::HandleReceiveFromNodePrivate(RaftNode2* a_pNode, int32_t a_index, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive)
+{
+}
+
+
+void raft::tcp::Server::HandleInternalPrivate(char cRequest, RaftNode2* a_pNode)
+{
+}
+
+
+
+void raft::tcp::Server::ReceiveFromSocketAndInform(RaftNode2* a_pNode, int32_t a_index)
 {
 	SWorkerData aData;
 	if (!VALIDATE_INDEX_INVALID(GET_NODE_TOOLS(a_pNode), a_index)) {
@@ -930,7 +977,7 @@ void raft::tcp::Server::ThreadFunctionRcvFromSocket(int32_t a_index)
 #ifndef _WIN32
 	m_rcvThreadIds[a_index] = pthread_self();
 #endif
-	FunctionForMultiRcv(&raft::tcp::Server::ReceiveFromSocket, a_index);
+	FunctionForMultiRcv(&raft::tcp::Server::ReceiveFromSocketAndInform, a_index);
 }
 
 
@@ -1013,27 +1060,7 @@ bool raft::tcp::Server::handleNewConnectionBeforeLock(int a_nSocketDescr, const 
 	char vcHostName[MAX_HOSTNAME_LENGTH];
 	char cRequestIn, cRequestOut(0);
 
-	DEBUG_APPLICATION(1,
-		"conntion from %s(%s)",
-		common::socketN::GetHostName(&a_remoteAddr, vcHostName, MAX_HOSTNAME_LENGTH),
-		common::socketN::GetIPAddress(&a_remoteAddr));
-	aClientSock.SetNewSocketDescriptor(a_nSocketDescr);
-	aClientSock.setTimeout(SOCK_TIMEOUT_MS);
-
-	snEndian = 1;
-	nSndRcv = aClientSock.writeC(&snEndian, 2);																// 2. Send endian				
-	if (nSndRcv != 2) {
-		ERROR_LOGGING2("Could not send the endian of the connected pear nSndRcv=%d, socket=%d", nSndRcv, a_nSocketDescr);
-		aClientSock.closeC();
-		return false;
-	}
-
-	nSndRcv = aClientSock.readC(&cRequestIn, 1);																// 4. rcv request
-	if (nSndRcv != 1) {
-		DEBUG_APPLICATION(1,"Unable to read request type");
-		aClientSock.closeC();
-		return false;
-	}
+	
 
 	switch (cRequestIn)
 	{
@@ -1295,13 +1322,13 @@ enterLoopPoint:
 				switch (dataFromProducer.reqType) 
 				{
 				case raft::tcp::workRequest::handleConnection:
-					handleNewConnectionBeforeLock(dataFromProducer.pear.con.sockDescriptor, dataFromProducer.pear.con.remAddress,&nodeKey,&extraDataBuffer);
+					HandleNewConnectionPrivate(dataFromProducer.pear.con.sockDescriptor, dataFromProducer.pear.con.remAddress,&nodeKey,&extraDataBuffer);
 					break;
 				case raft::tcp::workRequest::handleReceive:
-					handleReceiveWorkerContext(dataFromProducer.pear.rcv.pNode, dataFromProducer.pear.rcv.m_index);
+					handleReceiveFromNodeBeforeLock(dataFromProducer.pear.rcv.pNode, dataFromProducer.pear.rcv.m_index,&nodeKey,&extraDataBuffer);
 					break;
 				case raft::tcp::workRequest::handleInternal:
-					raft_tcp_workRequest_handleInternalWorkerContext(dataFromProducer.pear.intr.cRequest, dataFromProducer.pear.intr.pNode);
+					handleInternalBeforeLock(dataFromProducer.pear.intr.cRequest, dataFromProducer.pear.intr.pNode);
 					break;
 				default:
 					break;
@@ -1313,13 +1340,6 @@ enterLoopPoint:
 	catch(...){
 		goto enterLoopPoint;
 	}
-}
-
-
-bool raft::tcp::Server::HandleDefaultConnection(char, common::SocketTCP&, const sockaddr_in*, std::string *, bool*)
-{
-	// this function should be overritten
-	return false;
 }
 
 
