@@ -465,8 +465,6 @@ void raft::tcp::Server::raft_connect_toAnyNode_permanentBridge(common::SocketTCP
 	}
 	if (isEndianDiffer) { SWAP4BYTES(nIndex); }
 	
-	
-	a_clientSock.writeC(&g_ccResponceOk, 1);
 	pNodeTools->setSocket(nIndex,(int)a_clientSock);
 	a_clientSock.ResetSocketWithoutClose();
 
@@ -1113,10 +1111,13 @@ void raft::tcp::Server::handleReceiveFromNodeAfterLock(char a_cRequest, RaftNode
 bool raft::tcp::Server::handleNewConnectionBeforeLock(common::SocketTCP& a_socket, const sockaddr_in& a_remoteAddr, char a_cRequest, NodeIdentifierKey* a_newNodeKey, std::string* a_pDataFromClient)
 {
 
+	bool bRet(false);
+
 	switch (a_cRequest)
 	{
 	case raft::connect::toAnyNode2::newNode:
-		if (!raft_connect_toAnyNode_newNode(a_socket, &a_remoteAddr, a_pDataFromClient, a_newNodeKey)) {
+		bRet = raft_connect_toAnyNode_newNode(a_socket, &a_remoteAddr, a_pDataFromClient, a_newNodeKey);
+		if (!bRet) {
 			ERROR_LOGGING2("Unable to complete new node adding");
 			return false;
 		}
@@ -1138,7 +1139,7 @@ bool raft::tcp::Server::handleNewConnectionBeforeLock(common::SocketTCP& a_socke
 		break;
 	}
 
-	return true;
+	return bRet;
 
 }
 
@@ -1410,6 +1411,7 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindClusterThredSafe(const N
 {
 	NodeIdentifierKey *pNodesInfo = NULL;
 	RaftNode2* pNode;
+	//NodeTools* pAddersTool = NULL;
 	common::SocketTCP aSocket;
     int nSndRcv;
 	uint32_t isEndianDiffer;
@@ -1567,7 +1569,7 @@ void raft::tcp::Server::InterruptReceivercThread(int32_t a_index)
 		return;
 	}
 
-	if (m_intrptSocketForRcv[a_index]>0) { closesocket(m_intrptSocketForRcv[a_index]); }
+	if (m_intrptSocketForRcv[a_index]>0) { closesocket(m_intrptSocketForRcv[a_index]);}
 
 #ifdef _WIN32
     // something with windows?
@@ -1769,15 +1771,18 @@ int raft::tcp::NodeTools::writeC(int32_t a_index, RaftNode2* a_pNode, int32_t a_
 	if(!m_sockets[a_index].isOpenC()){
 		int nSndRcv;
 		uint32_t  isEndianDiffer;
-		char cRequest;
-		int nRet = ConnectAndGetEndian(&m_sockets[a_index], *NODE_KEY(a_pNode),raft::connect::toAnyNode2::permanentBridge,&isEndianDiffer);
-		if (nRet) { m_sockets[a_index].closeC();return nRet; }
+		uint16_t  snEndian(1);
+		if(!ConnectAndGetEndian(&m_sockets[a_index], *NODE_KEY(a_pNode),raft::connect::toAnyNode2::permanentBridge,&isEndianDiffer)){
+			m_sockets[a_index].closeC(); 
+			return -1;
+		}
+		nSndRcv = m_sockets[a_index].writeC(&snEndian,2);
+		if (nSndRcv != 2) { m_sockets[a_index].closeC(); return -3; }
 		nSndRcv=m_sockets[a_index].writeC(&a_nPort, 4);
 		if(nSndRcv!=4){m_sockets[a_index].closeC();return -3;}
 		nSndRcv = m_sockets[a_index].writeC(&a_index, 4);
 		if (nSndRcv != 4) { m_sockets[a_index].closeC(); return -4; }
-		nSndRcv = m_sockets[a_index].readC(&cRequest, 1);
-		if((nSndRcv != 1)||(cRequest!=raft::response::ok)){return -5;}
+		this->isEndianDiffer = isEndianDiffer;
 	}
 
 	return m_sockets[a_index].writeC(a_data, a_dataLen);
@@ -1790,7 +1795,7 @@ int raft::tcp::NodeTools::readC(int32_t a_index, void* a_buffer, int a_bufferLen
 		ERROR_LOGGING2("Wrong index provided (index=%d)", (int)a_index);
 		return -1;
 	}
-	return m_sockets[a_index].writeC(a_buffer, a_bufferLen);
+	return m_sockets[a_index].readC(a_buffer, a_bufferLen);
 }
 
 

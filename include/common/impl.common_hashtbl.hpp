@@ -7,6 +7,7 @@
 
 #include <malloc.h>
 #include <memory.h>
+#include <utility>
 
 #ifndef __common_hashtbl_hpp__
 #error do not include this header directly
@@ -30,8 +31,144 @@
 namespace common { namespace hashFncs{
 
 static inline uint32_t hash1_(const void* key, uint32_t keySize);
+static void* CreateKey(const void* a_pKey, size_t a_nKeyLen);
 
 }}
+
+template <typename DataType>
+common::HashTblRaw<DataType>::HashTblRaw(uint32_t a_tInitSize)
+	:
+	m_fpHashFnc(&hashFncs::hash1_)
+{
+	uint32_t i(0);
+	uint32_t tRet(a_tInitSize);
+
+	if (!a_tInitSize) { tRet = DEFAULT_TABLE_SIZE; goto prepareHashTable; }
+	for (; tRet; tRet = (a_tInitSize >> ++i));
+	tRet = ((uint32_t)1) << (i - 1);
+	if (tRet != a_tInitSize){tRet <<= 1;}
+
+prepareHashTable:
+	m_unRoundedTableSizeMin1 = tRet-1;
+	//m_pTable = (DataType**)calloc(tRet,sizeof(DataType*));
+	m_pTable = new DataType;
+	if(!m_pTable){throw "Low memory!";}
+}
+
+
+template <typename DataType>
+common::HashTblRaw<DataType>::~HashTblRaw()
+{
+#if 0
+	DataType tData, tDataTmp;
+	uint32_t tRet(m_unRoundedTableSizeMin1+1);
+	for(uint32_t i(0); i<tRet;++i){
+		tData = m_pTable[i];
+		while(pItem){
+			tDataTmp = pItem->nextH;
+			delete pItem;
+			pItem = pItemTmp;
+		}
+	}
+#endif
+	delete m_pTable;
+}
+
+
+template <typename DataType>
+bool common::HashTblRaw<DataType>::AddEntry(const void* a_key, uint32_t a_nKeyLen, const DataType& a_data)
+{
+	try {
+		DataType aData(a_data);
+		return AddEntryMv(a_key, a_nKeyLen,std::move(aData));
+	}
+	catch (...)
+	{
+	}
+
+	return false;
+}
+
+#ifdef __CPP11_DEFINED__
+template <typename DataType>
+bool common::HashTblRaw<DataType>::AddEntryMv(const void* a_key, uint32_t a_nKeyLen, DataType&& a_data)
+{
+	try {
+		uint32_t unHash(((*m_fpHashFnc)(a_key, a_nKeyLen))&m_unRoundedTableSizeMin1);
+
+		a_data->key = common::hashFncs::CreateKey(a_key, a_nKeyLen);
+		if (!a_data->key) {return false;}
+		a_data->keyLength = a_nKeyLen;
+		a_data->prevH = (DataType)0;
+
+		a_data->nextH = m_pTable[unHash];
+		if(m_pTable[unHash]){m_pTable[unHash]->prevH=m_pTable[unHash]=std::move(a_data);}
+		else{m_pTable[unHash] = std::move(a_data);}
+		return true;
+	}
+	catch (...)
+	{
+	}
+
+	return false;
+}
+#endif
+
+
+template <typename DataType>
+bool common::HashTblRaw<DataType>::RemoveEntry(const void* a_key, uint32_t a_nKeyLen)
+{
+	DataType aData;
+	return RemoveAndGet(a_key, a_nKeyLen, &aData);
+}
+
+
+template <typename DataType>
+bool common::HashTblRaw<DataType>::RemoveAndGet(const void* a_key, uint32_t a_nKeyLen, DataType* a_pData)
+{
+	uint32_t unHash(((*m_fpHashFnc)(a_key, a_nKeyLen))&m_unRoundedTableSizeMin1);
+	DataType aData = m_pTable[unHash];
+
+	while(aData != ((DataType)0)){
+		if((a_nKeyLen== aData->keyLength)&&(memcmp(aData->key,a_key,a_nKeyLen)==0)){
+			if(aData ==m_pTable[unHash]){m_pTable[unHash]= aData->nextH;}
+			if(aData->prevH){ aData->prevH->nextH= aData->nextH;}
+			if(aData->nextH){ aData->nextH->prevH= aData->prevH;}
+			aData->prevH = aData->nextH = (DataType)0;
+			free(aData->key); aData->key = NULL;
+			aData->keyLength = 0;
+			*a_pData = aData;
+			return true;
+		}
+		aData = aData->nextH;
+	}
+
+	return false;
+}
+
+
+template <typename DataType>
+bool common::HashTblRaw<DataType>::FindEntry(const void* a_key, uint32_t a_nKeyLen, DataType* a_pData)const
+{
+	uint32_t unHash(((*m_fpHashFnc)(a_key, a_nKeyLen))&m_unRoundedTableSizeMin1);
+	DataType aData = m_pTable[unHash];
+
+	while (pItem) {
+		if ((a_nKeyLen == aData->keyLength) && (memcmp(aData->key, a_key, a_nKeyLen) == 0)) {
+			*a_pData = aData;
+			return true;
+		}
+		aData = aData->nextH;
+	}
+
+	return false;
+}
+
+
+
+/****************************************************************************************************************************/
+/****************************************************************************************************************************/
+/****************************************************************************************************************************/
 
 template <typename DataType>
 common::HashTbl<DataType>::HashTbl(uint32_t a_tInitSize)
@@ -79,8 +216,8 @@ int common::HashTbl<DataType>::AddEntry(const void* a_key, uint32_t a_nKeyLen, c
 		uint32_t unHash(((*m_fpHashFnc)(a_key, a_nKeyLen))&m_unRoundedTableSizeMin1);
 
 		if (!pItem) { return -1; }
-		if(m_pTable[unHash]){m_pTable[unHash]->prev=pItem;}
 		pItem->next = m_pTable[unHash];
+		if(m_pTable[unHash]){m_pTable[unHash]->prev=pItem;}
 		m_pTable[unHash] = pItem;
 		return 0;
 	}
@@ -100,8 +237,8 @@ void* common::HashTbl<DataType>::AddEntry2(const void* a_key, uint32_t a_nKeyLen
 		uint32_t unHash(((*m_fpHashFnc)(a_key, a_nKeyLen))&m_unRoundedTableSizeMin1);
 
 		if (!pItem) { return NULL; }
-		if(m_pTable[unHash]){m_pTable[unHash]->prev=pItem;}
 		pItem->next = m_pTable[unHash];
+		if(m_pTable[unHash]){m_pTable[unHash]->prev=pItem;}
 		m_pTable[unHash] = pItem;
 		return pItem->key;
 	}
@@ -131,9 +268,9 @@ bool common::HashTbl<DataType>::RemoveEntry2(const void* a_key, uint32_t a_nKeyL
 
 	while(pItem){
 		if((a_nKeyLen==pItem->dataSize)&&(memcmp(pItem->key,a_key,a_nKeyLen)==0)){
+			if (pItem == m_pTable[unHash]) { m_pTable[unHash] = pItem->next; }
 			if(pItem->prev){pItem->prev->next=pItem->next;}
 			if(pItem->next){pItem->next->prev=pItem->prev;}
-			if(pItem==m_pTable[unHash]){m_pTable[unHash]=pItem->next;}
 			*a_pData = pItem->data;
 			delete pItem;
 			return true;
@@ -257,6 +394,15 @@ static inline uint32_t hash1_( const void* a_pKey, uint32_t a_unKeySize )
 	/*-------------------------------------------- report the result */
 	
 	return c;
+}
+
+
+static void* CreateKey(const void* a_pKey, size_t a_nKeyLen)
+{
+	void* pKey = malloc(a_nKeyLen);
+	if (!pKey) { return NULL; }
+	memcpy(pKey, a_pKey, a_nKeyLen);
+	return pKey;
 }
 
 }}

@@ -17,6 +17,28 @@ typedef uint32_t (*TypeHashFnc)(const void* key, uint32_t keySize);
 }
 
 template <typename DataType>
+class HashTblRaw
+{
+public:
+	HashTblRaw(uint32_t tableSize= DEFAULT_TABLE_SIZE);
+	virtual ~HashTblRaw();
+
+	bool  AddEntry (const void* key, uint32_t keyLen, const DataType& data);
+#ifdef __CPP11_DEFINED__
+	bool  AddEntryMv(const void* key, uint32_t keyLen, DataType&& data);
+#endif
+	bool  RemoveEntry(const void* key, uint32_t keyLen);
+	bool  RemoveAndGet(const void* key, uint32_t keyLen, DataType* dataPtr);
+	bool  FindEntry(const void* key, uint32_t keyLen, DataType* dataPtr)const;
+
+protected:
+	hashFncs::TypeHashFnc		m_fpHashFnc;
+	DataType*					m_pTable;
+	uint32_t					m_unRoundedTableSizeMin1;
+};
+
+
+template <typename DataType>
 class HashTbl
 {
 public:

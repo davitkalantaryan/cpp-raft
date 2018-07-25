@@ -21,7 +21,13 @@ bool raft::tcp::NodeIdentifierKey::operator==(const NodeIdentifierKey& a_aM)cons
 
 bool raft::tcp::NodeIdentifierKey::isSame(const char* a_ip4Address, int32_t a_port)const
 {
-	return ((this->port == a_port) && (strncmp(this->ip4Address, a_ip4Address, MAX_IP4_LEN) == 0)   );
+	if(this->port != a_port){return false;}
+
+	NodeIdentifierKey aSecond;
+	aSecond.port = a_port;
+	aSecond.set_ip4Address1(a_ip4Address);
+
+	return aSecond == (*this);
 }
 
 
@@ -37,19 +43,29 @@ void raft::tcp::NodeIdentifierKey::generateKey(const char* a_ip4Address, int32_t
 
 void raft::tcp::NodeIdentifierKey::set_ip4Address1(const std::string& a_hostName)
 {
+	//memset(this->ip4Address, 0, MAX_IP4_LEN);
+	//strncpy(this->ip4Address, a_hostName.c_str(), MAX_IP4_LEN);
+	const char* ipAddress=common::socketN::GetIp4AddressFromHostName(a_hostName.c_str());
+	if(!ipAddress){ipAddress=a_hostName.c_str();}
+
 	memset(this->ip4Address, 0, MAX_IP4_LEN);
-	strncpy(this->ip4Address, a_hostName.c_str(), MAX_IP4_LEN);
+	if (strcmp(ipAddress, "127.0.0.1") == 0) {
+		common::socketN::GetOwnIp4Address(this->ip4Address, MAX_IP4_LEN);
+	}
+	else {
+		strncpy(this->ip4Address, ipAddress, MAX_IP4_LEN);
+	}
 }
 
 
 void raft::tcp::NodeIdentifierKey::set_ip4Address2(const sockaddr_in* a_remoteAddr)
 {
+	memset(this->ip4Address, 0, MAX_IP4_LEN);
 	if (strcmp(common::socketN::GetIPAddress(a_remoteAddr), "127.0.0.1") == 0) {
-		memset(this->ip4Address, 0, MAX_IP4_LEN);
 		common::socketN::GetOwnIp4Address(this->ip4Address, MAX_IP4_LEN);
 	}
 	else{
-		this->set_ip4Address1(common::socketN::GetIPAddress(a_remoteAddr));
+		strncpy(this->ip4Address,common::socketN::GetIPAddress(a_remoteAddr), MAX_IP4_LEN);
 	}
 
 }
@@ -59,13 +75,12 @@ void raft::tcp::NodeIdentifierKey::set_addressAndPort(char* a_addressAndPort, in
 {
 	char* pcPortStart = strchr(a_addressAndPort, ':');
 	
-	memset(this->ip4Address, 0, MAX_IP4_LEN);
 	if(pcPortStart){
 		*pcPortStart = 0;
 		this->port = atoi(pcPortStart + 1);
 	}
 	else {this->port=a_defaultPort;}
-	strncpy(this->ip4Address, a_addressAndPort, MAX_IP4_LEN);
+	this->set_ip4Address1(a_addressAndPort);
 }
 
 
