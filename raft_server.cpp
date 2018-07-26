@@ -83,7 +83,7 @@ void RaftServer::RemoveNode1(const void* a_pKey, size_t a_keySize, std::string* 
 		CleanNodeData(pNode, a_pDataFromLeader);
 		m_Nodes.RemoveData(pNode);
 
-		if (!pNode->lockCount()) { delete pNode; }
+		if (!pNode->lockCount2()) { delete pNode; }
 		else {
 			m_removedNodes.AddDataRaw(pNode);
 		}
@@ -92,7 +92,7 @@ void RaftServer::RemoveNode1(const void* a_pKey, size_t a_keySize, std::string* 
 	pNode = m_removedNodes.first();
 	while (pNode) {
 		pNodeNext = pNode->next;
-		if (!pNode->lockCount()) {
+		if (!pNode->lockCount2()) {
 			m_removedNodes.RemoveDataRaw(pNode);
 			delete pNode;
 		}

@@ -26,22 +26,21 @@ namespace raft { namespace tcp{
 namespace workRequest{enum Type{none,handleConnection,handleReceive,handleInternal};}
 struct SWorkerData { 
 	workRequest::Type reqType;
+	RaftNode2*	pNode;
 	union {
 		struct{
-			int			sockDescriptor;
 			sockaddr_in	remAddress;
+			int			sockDescriptor;
 		}con;
 		struct{
-			RaftNode2*	pNode;
 			int32_t		m_index;
 		}rcv;
 		struct{
-			RaftNode2*	pNode;
 			char		cRequest;
 		}intr;
 	}pear;
 	/*-------------------------------*/
-	SWorkerData() { this->reqType = workRequest::none; this->pear.rcv.pNode = NULL; this->pear.rcv.m_index = 0; }
+	SWorkerData(workRequest::Type a_reqType=workRequest::none) { this->reqType = a_reqType; this->pNode = NULL; this->pear.con.sockDescriptor = -1;memset(&this->pear.con.remAddress,0,sizeof(sockaddr_in)); }
 };
 
 
@@ -120,7 +119,9 @@ protected:
 	template <typename Type>
 	void				StartOtherPriodic(void (Type::*a_fpClbk)(int), int a_nPeriod, Type* a_pObj);
 
-	void				AddInternalJob(char a_cRequest, RaftNode2* a_pNode);
+	void				AddConnectForWorker(const sockaddr_in* a_pRemote, int socketDescr);
+	void				AddInternalForWorker(char a_cRequest, RaftNode2* a_pNode);
+	void				AddReceiveForWorker(RaftNode2* a_pNode, int32_t sockIndex);
 
 	bool				SendInformationToNode(RaftNode2* a_pNode, int32_t a_index, char a_cRequest, const std::string* a_extraData, const NodeIdentifierKey* a_pNodeKey);
 	void				SendInformationToAllNodes(int32_t a_index, char a_cRequest, const std::string* a_extraData, const NodeIdentifierKey* a_pNodeKey, RaftNode2* a_pNodeToSkip, bool a_bWait);
@@ -158,6 +159,8 @@ private:
 	void				HandleReceiveFromNodePrivate(RaftNode2* pNode, int32_t index, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
 	void				HandleInternalPrivate(char cRequest, RaftNode2* a_pNode, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
 
+	void				AddJobForWorkerPrivate(workRequest::Type a_type, char a_cRequest, RaftNode2* a_pNode, const sockaddr_in* a_pRemote, int32_t sockIndex);
+
 protected:
 	static int	SendClbkFunction(void *cb_ctx, void *udata, RaftNode2* node, int msg_type, const unsigned char *send_data, int d_len);
 	static void LogClbkFunction(void *cb_ctx, void *src, const char *buf, ...);
@@ -174,9 +177,9 @@ protected:
 	std::vector<STDN::thread*>						m_vectThreadsOtherPeriodic;
 private:
     STDN::shared_mutex                              m_shrdMutexForNodes2;
-	common::UnnamedSemaphoreLite					m_semaWorker2;
+	common::UnnamedSemaphoreLite					m_semaWorker;
 	common::UnnamedSemaphoreLite					m_semaForSolvingDublicates2;
-	common::FifoFast<SWorkerData>					m_fifoWorker2;
+	common::FifoFast<SWorkerData>					m_fifoWorker;
 protected:
 	volatile int									m_nWork;
 	int												m_nPeriodForPeriodic;

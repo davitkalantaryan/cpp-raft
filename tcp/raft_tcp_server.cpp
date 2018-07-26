@@ -260,7 +260,7 @@ void raft::tcp::Server::StopServer()
 
 	nThreadsCount = m_vectThreadsWorkers.size();
 	for(i=0;i<nThreadsCount;++i){
-		m_semaWorker2.post();
+		m_semaWorker.post();
 	}
 	for(i=0;i<nThreadsCount;++i){
 		m_vectThreadsWorkers[i]->join();
@@ -287,15 +287,13 @@ void raft::tcp::Server::StopServer()
 
 void raft::tcp::Server::AddClient(common::SocketTCP& a_clientSock, const sockaddr_in* a_remoteAddr)		// 1. connect
 {
-	SWorkerData aWorkerData;
+	int nSocketDescr;
 
 	DEBUG_APPLICATION(1,"connnection from host %s",common::socketN::GetIPAddress(a_remoteAddr));
-	aWorkerData.reqType = raft::tcp::workRequest::handleConnection;
-	aWorkerData.pear.con.sockDescriptor = a_clientSock;
-	memcpy(&aWorkerData.pear.con.remAddress, a_remoteAddr,sizeof(sockaddr_in));
+
+	nSocketDescr = (int)a_clientSock;
 	a_clientSock.ResetSocketWithoutClose();  // let us assume, that worker will close in the case of necessirty
-	m_fifoWorker2.AddElement2(std::move(aWorkerData));
-	m_semaWorker2.post();
+	AddConnectForWorker(a_remoteAddr,nSocketDescr);
 
 }
 
@@ -730,7 +728,8 @@ void raft::tcp::Server::HandleReceiveFromNodePrivate(RaftNode2* a_pNode, int32_t
 	if (nSndRcv != 1) { goto returnPoint; }
 
 	if(!handleReceiveFromNodeBeforeLock(cRequest,a_pNode, a_index,a_pNodeKey,a_bBufferForReceive)){goto returnPoint;}
-	
+	if (a_pNode) { a_pNode->decrementLock2(); }
+
 	aSockGuard.UnsetAndUnlockMutex();
 	aSharedGuard.UnsetAndUnlockMutex();
 
@@ -756,7 +755,7 @@ void raft::tcp::Server::HandleInternalPrivate(char a_cRequest, RaftNode2* a_pNod
 
 	aSharedGuard.SetAndLockMutex(&m_shrdMutexForNodes2);
 	if(!handleInternalBeforeLock(a_cRequest,a_pNode,a_pNodeKey,a_pBufferForReceive)){goto returnPoint;}
-	if (a_pNode) { a_pNode->decrementLock(); }
+	if (a_pNode) { a_pNode->decrementLock2(); }
 	aSharedGuard.UnsetAndUnlockMutex();
 
 	aGuard.SetAndLockMutex(&m_shrdMutexForNodes2);
@@ -776,18 +775,12 @@ returnPoint:
 
 void raft::tcp::Server::ReceiveFromSocketAndInform(RaftNode2* a_pNode, int32_t a_index)
 {
-	SWorkerData aData;
 	if (!VALIDATE_INDEX_INVALID(GET_NODE_TOOLS(a_pNode), a_index)) {
 		ERROR_LOGGING2("Wrong index provided");
 		return;
 	}
 
-	aData.reqType = workRequest::handleReceive;
-	aData.pear.rcv.pNode = a_pNode;
-	aData.pear.rcv.m_index = a_index;
-
-	m_fifoWorker2.AddElement1(aData);
-	m_semaWorker2.post();
+	AddReceiveForWorker(a_pNode,a_index);
 }
 
 
@@ -1170,6 +1163,7 @@ void raft::tcp::Server::handleNewConnectionAfterLock(common::SocketTCP& a_socket
 	case raft::connect::toAnyNode2::newNode:
 		this->SendInformationToAllNodes(raft::tcp::socketTypes::raft,raft::receive::fromAdder::newNode,a_pDataToOthers,a_newNodeKey,a_pNodeToSkip,true);
 		GET_NODE_TOOLS(a_pNodeToSkip)->setSocket(raft::tcp::socketTypes::raft,(int)a_socket);
+		this->InterruptReceivercThread(raft::tcp::socketTypes::raft);
 		this->SendInformationToNode(a_pNodeToSkip,raft::tcp::socketTypes::raft, raft::receive::fromAdder::toNewNodeAddPartitions, a_pDataToOthers, NULL);
 		a_socket.ResetSocketWithoutClose();
 		break;
@@ -1182,30 +1176,65 @@ void raft::tcp::Server::handleNewConnectionAfterLock(common::SocketTCP& a_socket
 /*///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 /*///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
 
-void raft::tcp::Server::AddInternalJob(char a_cRequest, RaftNode2* a_pNode)
+void raft::tcp::Server::AddConnectForWorker(const sockaddr_in* a_pRemote, int a_socketDescr)
 {
-	SWorkerData aJobData;
-	aJobData.reqType = raft::tcp::workRequest::handleInternal;
-	aJobData.pear.intr.cRequest = a_cRequest;
-	aJobData.pear.intr.pNode = a_pNode;
-	if(a_pNode){a_pNode->incrementLock();}
-	m_fifoWorker2.AddElement2(std::move(aJobData));
-	m_semaWorker2.post();
+	AddJobForWorkerPrivate(workRequest::handleConnection, 0, NULL, a_pRemote, a_socketDescr);
+}
+
+
+void raft::tcp::Server::AddInternalForWorker(char a_cRequest, RaftNode2* a_pNode)
+{
+	AddJobForWorkerPrivate(workRequest::handleInternal,a_cRequest,a_pNode, NULL,-1);
+}
+
+
+void raft::tcp::Server::AddReceiveForWorker(RaftNode2* a_pNode, int32_t a_sockIndex)
+{
+	AddJobForWorkerPrivate(workRequest::handleReceive, 0,a_pNode, NULL, a_sockIndex);
+}
+
+
+void raft::tcp::Server::AddJobForWorkerPrivate(workRequest::Type a_type, char a_cRequest, RaftNode2* a_pNode, const sockaddr_in* a_pRemote, int32_t a_sockIndexOrSocket)
+{
+	SWorkerData aJobData(a_type);
+
+	switch (a_type)
+	{
+	case workRequest::handleConnection:
+		aJobData.pNode = NULL;
+		aJobData.pear.con.remAddress = *a_pRemote;
+		aJobData.pear.con.sockDescriptor = a_sockIndexOrSocket;
+		break;
+	case workRequest::handleInternal:
+		aJobData.pNode = a_pNode;
+		aJobData.pear.intr.cRequest = a_cRequest;
+		break;
+	case workRequest::handleReceive:
+		aJobData.pNode = a_pNode;
+		aJobData.pear.rcv.m_index = a_sockIndexOrSocket;
+		break;
+	default:
+		break;
+	}
+
+	if(a_pNode){a_pNode->incrementLock2();}
+	m_fifoWorker.AddElement2(std::move(aJobData));
+	m_semaWorker.post();
 }
 
 
 void raft::tcp::Server::ThreadFunctionWorker()
 {
-	SWorkerData dataFromProducer;
+	SWorkerData dataFromProducer(workRequest::none);
 	NodeIdentifierKey nodeKey;
 	std::string extraDataBuffer;
 	
 enterLoopPoint:
 	try {
 		while (m_nWork) {
-			m_semaWorker2.wait();
+			m_semaWorker.wait();
 
-			while (m_fifoWorker2.Extract(&dataFromProducer) && m_nWork) {
+			while (m_fifoWorker.Extract(&dataFromProducer) && m_nWork) {
 
 				switch (dataFromProducer.reqType) 
 				{
@@ -1213,10 +1242,10 @@ enterLoopPoint:
 					HandleNewConnectionPrivate(dataFromProducer.pear.con.sockDescriptor, dataFromProducer.pear.con.remAddress,&nodeKey,&extraDataBuffer);
 					break;
 				case raft::tcp::workRequest::handleReceive:
-					HandleReceiveFromNodePrivate(dataFromProducer.pear.rcv.pNode, dataFromProducer.pear.rcv.m_index,&nodeKey,&extraDataBuffer);
+					HandleReceiveFromNodePrivate(dataFromProducer.pNode, dataFromProducer.pear.rcv.m_index,&nodeKey,&extraDataBuffer);
 					break;
 				case raft::tcp::workRequest::handleInternal:
-					HandleInternalPrivate(dataFromProducer.pear.intr.cRequest, dataFromProducer.pear.intr.pNode,&nodeKey,&extraDataBuffer);
+					HandleInternalPrivate(dataFromProducer.pear.intr.cRequest, dataFromProducer.pNode,&nodeKey,&extraDataBuffer);
 					break;
 				default:
 					break;
@@ -1350,6 +1379,10 @@ enterLoopPoint:
 		}
 		aShrdLockGuard.UnsetAndUnlockMutex();
 #endif
+
+		if(m_pLeaderNode && (m_pLeaderNode!=m_thisNode)){
+			GET_NODE_TOOLS(m_pLeaderNode)->writeC(raft::tcp::socketTypes::raft, m_pLeaderNode, m_nPortOwn, &g_ccResponceOk, 1);
+		}
 		
 		while (m_nWork) {
 			
@@ -1582,7 +1615,7 @@ void raft::tcp::Server::InterruptReceivercThread(int32_t a_index)
 void raft::tcp::Server::become_leader()
 {
 	if(m_pLeaderNode){
-		AddInternalJob(raft::internal2::newLeader::becomeLeader,NULL);
+		AddInternalForWorker(raft::internal2::newLeader::becomeLeader,NULL);
 	}
 	else {
 		RaftServer::become_leader();
@@ -1641,7 +1674,7 @@ int raft::tcp::Server::SendClbkFunction(void *a_cb_ctx, void *udata, RaftNode2* 
 	{
 	case RAFT_MSG_APPENDENTRIES:
 		if((nTimeoutOfLastSeen>MAX_UNSEEN_TIME_TO_CHANGE_STATE)&& pServer->is_leader()){
-			pServer->AddInternalJob(raft::internal2::leader::removeNode,a_pNode);
+			pServer->AddInternalForWorker(raft::internal2::leader::removeNode,a_pNode);
 			return 0;
 		}
 		break;

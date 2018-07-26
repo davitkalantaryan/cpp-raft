@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <sys/timeb.h>
+#include <atomic>
 
 #define BITS_OF_OK_COUNT	10
 
@@ -32,9 +33,9 @@ public:
 	uint64_t		isAbleToVote()const;
 	int64_t			okCount()const {return m_okCount;}
 	void			incrementOkCount() {++m_okCount;}
-	void			incrementLock();
-	void			decrementLock();
-	uint64_t		lockCount()const;
+	void			incrementLock2();
+	void			decrementLock2();
+	int				lockCount2()const;
 	const timeb&	lastSeen()const {return m_lastSeen;}
  
 public:
@@ -42,12 +43,12 @@ public:
 	void*		key;
 	size_t		keyLength;
 private:
+	std::atomic<int>	m_locksCount;
 	void*		m_d_udata;
 	int			next_idx;
 	int			m_votes_for_me;
 	uint64_t	m_isLeader : 1;
 	uint64_t	m_isAbleToVote : 1;
-	uint64_t	m_lockCount : 5;
 	int64_t		m_okCount : BITS_OF_OK_COUNT;
 	timeb		m_lastSeen;
 
