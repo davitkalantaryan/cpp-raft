@@ -52,10 +52,12 @@ class NodeTools
 {
 	common::SocketTCP	m_sockets[NUMBER_OF_TOOLS_SOCKETS];
 	STDN::mutex			m_socketSendMutexes[NUMBER_OF_TOOLS_SOCKETS];
+	STDN::mutex			m_socketRcvMutexes[NUMBER_OF_TOOLS_SOCKETS];
 public:
 	int writeC(int32_t index, RaftNode2* a_pNode, int32_t a_nPort, const void* data, int dataLen);
 	int readC(int32_t index, void* buffer, int bufferLen);
 	STDN::mutex* senderMutex(size_t index);
+	STDN::mutex* receiverMutex(size_t index);
 	void setSocket(int32_t index, int socketNum);
 	int getSocketNum(int32_t index);
 	common::SocketTCP* socketPtr(int32_t index);
@@ -70,9 +72,10 @@ public:
 #define GET_CLBK_DATA(_node)	(GET_NODE_TOOLS((_node))->childData)
 #define NODE_KEY(_node)			((raft::tcp::NodeIdentifierKey*)((_node)->key))
 
-#define PREPARE_SEND_SOCKET_GUARD()					common::NewLockGuard<std::mutex> aDataSendLockGuard
-#define LOCK_SEND_SOCKET_MUTEX(_node,_index)		aDataSendLockGuard.SetAndLockMutex(GET_NODE_TOOLS((_node))->senderMutex((_index)))
-#define UNLOCK_SEND_SOCKET_MUTEX()					aDataSendLockGuard.UnsetAndUnlockMutex()
+#define PREPARE_SOCKET_GUARD()						common::NewLockGuard<std::mutex> __aDataSendLockGuard
+#define LOCK_SEND_SOCKET_MUTEX(_node,_index)		__aDataSendLockGuard.SetAndLockMutex(GET_NODE_TOOLS((_node))->senderMutex((_index)))
+#define LOCK_RCV_SOCKET_MUTEX(_node,_index)			__aDataSendLockGuard.SetAndLockMutex(GET_NODE_TOOLS((_node))->receiverMutex((_index)))
+#define UNLOCK_SOCKET_MUTEX()						__aDataSendLockGuard.UnsetAndUnlockMutex()
 
 extern int g_nApplicationRun;
 
@@ -176,7 +179,7 @@ protected:
 	std::vector<STDN::thread*>						m_vectThreadsWorkers;
 	std::vector<STDN::thread*>						m_vectThreadsOtherPeriodic;
 private:
-    STDN::shared_mutex                              m_shrdMutexForNodes2;
+    STDN::shared_mutex                              m_shrdMutexForNodes;
 	common::UnnamedSemaphoreLite					m_semaWorker;
 	common::UnnamedSemaphoreLite					m_semaForSolvingDublicates2;
 	common::FifoFast<SWorkerData>					m_fifoWorker;

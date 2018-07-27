@@ -23,7 +23,7 @@ enterLoopPoint:
 	try {
 		while (m_nWork) {
 
-			aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes2);
+			aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes);
 			(a_pObj->*a_fpClbk)(a_nIndex);
 			aShrdLockGuard.UnsetAndUnlockMutex();
 			SleepMs(a_nPeriod);

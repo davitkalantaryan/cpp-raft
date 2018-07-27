@@ -20,6 +20,9 @@ public:
 
 protected:
 	TypeMutex* m_pMutex;
+#if defined(_WIN32) && defined(_DEBUG) && defined(DEBUG_LOCKS)
+	int			m_lockerId;
+#endif
 };
 
 /*//////////////////////////////////////////*/
