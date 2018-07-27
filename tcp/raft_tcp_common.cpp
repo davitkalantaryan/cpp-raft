@@ -89,7 +89,7 @@ namespace raft{namespace tcp{
 const char g_ccResponceOk= response::ok;
 int g_nLogLevel = 0;
 
-bool ConnectAndGetEndian(common::SocketTCP* a_pSock, const NodeIdentifierKey& a_nodeInfo,char a_cRequest, uint32_t* a_pIsEndianDiffer)
+bool ConnectAndGetEndian(common::SocketTCP* a_pSock, const NodeIdentifierKey& a_nodeInfo,char a_cRequest, uint32_t* a_pIsEndianDiffer, int a_nSockTimeout)
 {
 	int nSndRcv;
 	uint16_t unRemEndian;
@@ -99,7 +99,7 @@ bool ConnectAndGetEndian(common::SocketTCP* a_pSock, const NodeIdentifierKey& a_
 		DEBUG_APP_WITH_NODE(2,&a_nodeInfo,"Unable to connect");
 		return false;
 	}
-	a_pSock->setTimeout(SOCK_TIMEOUT_MS);
+	a_pSock->setTimeout(a_nSockTimeout);
 
 	nSndRcv = a_pSock->readC(&unRemEndian, 2);
 	if(nSndRcv!=2){
@@ -118,6 +118,7 @@ bool ConnectAndGetEndian(common::SocketTCP* a_pSock, const NodeIdentifierKey& a_
 		return false; 
 	}
 
+	a_pSock->setTimeout(SOCK_TIMEOUT_MS);
 	return true;
 }
 

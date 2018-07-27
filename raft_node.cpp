@@ -30,9 +30,10 @@ RaftNode2::RaftNode2()
 	m_isLeader = 0;
 	m_isAbleToVote = 1;
 	m_okCount = INITIAL_PING_COUNT;
+	m_isMarkedForDelete = 0;
 	//
-	m_isTimeToPing =0;
-	m_hasData = 0;
+	//m_isTimeToPing =0;
+	//m_hasData = 0;
 	m_locksCount =0;
 	ftime(&this->m_lastSeen);
 
@@ -61,6 +62,18 @@ void RaftNode2::decrementLock2()
 int RaftNode2::lockCount2()const
 {
 	return m_locksCount;
+}
+
+
+void RaftNode2::markWillBeDeleted()
+{
+	m_isMarkedForDelete = 1;
+}
+
+
+uint64_t RaftNode2::isMarkedForDeletion()const
+{
+	return m_isMarkedForDelete;
 }
 
 

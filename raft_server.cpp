@@ -78,26 +78,15 @@ void RaftServer::AddAdditionalDataToNode(RaftNode2*, std::string*, bool)
 
 void RaftServer::RemoveNode1(const void* a_pKey, size_t a_keySize, std::string* a_pDataFromLeader)
 {
-	RaftNode2 *pNode, *pNodeNext;
+	RaftNode2 *pNode;
 	if (m_Nodes.FindEntry(a_pKey, a_keySize, &pNode)) {
+		pNode->markWillBeDeleted();
+		while(pNode->lockCount2()){SleepMs(1);}
 		CleanNodeData(pNode, a_pDataFromLeader);
 		m_Nodes.RemoveData(pNode);
-
-		if (!pNode->lockCount2()) { delete pNode; }
-		else {
-			m_removedNodes.AddDataRaw(pNode);
-		}
+		delete pNode;
 	}
 
-	pNode = m_removedNodes.first();
-	while (pNode) {
-		pNodeNext = pNode->next;
-		if (!pNode->lockCount2()) {
-			m_removedNodes.RemoveDataRaw(pNode);
-			delete pNode;
-		}
-		pNode = pNodeNext;
-	}
 }
 
 

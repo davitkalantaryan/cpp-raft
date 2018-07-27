@@ -37,6 +37,8 @@ public:
 	void			decrementLock2();
 	int				lockCount2()const;
 	const timeb&	lastSeen()const {return m_lastSeen;}
+	void			markWillBeDeleted();
+	uint64_t		isMarkedForDeletion()const;
  
 public:
 	RaftNode2 * prev, *next;
@@ -50,12 +52,13 @@ private:
 	uint64_t	m_isLeader : 1;
 	uint64_t	m_isAbleToVote : 1;
 	int64_t		m_okCount : BITS_OF_OK_COUNT;
+	uint64_t	m_isMarkedForDelete : 1;
 	timeb		m_lastSeen;
 
 	// for future use
 public:
-	uint64_t	m_isTimeToPing : 1;
-	uint64_t	m_hasData : 1;
+	//uint64_t	m_isTimeToPing : 1;
+	//uint64_t	m_hasData : 1;
 };
 
 #endif  //INCLUDED_RAFT_NODE_H

@@ -10,6 +10,12 @@
  *   ...
  ****************************************************************************/
 
+#ifndef CINTERFACE
+#ifdef _WIN32
+#define CINTERFACE
+#endif
+#endif
+
 #include "cpp11+/shared_mutex_cpp14.hpp"
 
 #ifndef __CPP14_DEFINED__
@@ -57,9 +63,9 @@ int STDN::shared_mutex_base::createSharedMutex(const char* a_resName)
 		cpcStatName = NULL;
 	}
 
-	m_lockPermanent = CreateSemaphoreA(NULL, 0, 5, cpcPermName);
+	m_lockPermanent = CreateSemaphoreA(NULL, 1, 5, cpcPermName);
 	if(!m_lockPermanent){return -1;}
-	m_semaNewConcurse = CreateSemaphoreA(NULL, 0, 5, cpcStatName);
+	m_semaNewConcurse = CreateSemaphoreA(NULL, 1, 5, cpcStatName);
 	if (!m_semaNewConcurse) { clearAll();return -2; }
 	nReturn = 0;
 #else   // #ifdef _WIN32
@@ -100,6 +106,7 @@ void STDN::shared_mutex_base::lock_shared()
 {
 #ifdef _WIN32
 	LONG lReadersCountPrevious = InterlockedIncrement(m_plReadersCount);
+	printf("++++++  shared_locking (tid=%d)!\n", ::GetCurrentThreadId());
 
 	if(lReadersCountPrevious>1){
 		WaitForSingleObject(m_semaNewConcurse, INFINITE);
@@ -118,6 +125,7 @@ void STDN::shared_mutex_base::lock_shared()
 void STDN::shared_mutex_base::lock()
 {
 #ifdef _WIN32
+	printf("++++++  locking (tid=%d)!\n",::GetCurrentThreadId());
 	WaitForSingleObject(m_semaNewConcurse, INFINITE);
 	WaitForSingleObject(m_lockPermanent, INFINITE);
 	ReleaseSemaphore(m_semaNewConcurse, 1, NULL);
@@ -131,6 +139,7 @@ void STDN::shared_mutex_base::unlock()
 {
 #ifdef _WIN32
 	ReleaseSemaphore(m_lockPermanent, 1, NULL);
+	printf("------  unlocked!\n");
 #else   // #ifdef _WIN32
 	pthread_rwlock_unlock(&m_lockPermanent);
 #endif  // #ifdef _WIN32
@@ -142,6 +151,7 @@ void STDN::shared_mutex_base::unlock_shared()
 #ifdef _WIN32
 	LONG lReadersCountPrevious = InterlockedDecrement(m_plReadersCount);
 	if(lReadersCountPrevious==0){ReleaseSemaphore(m_lockPermanent, 1, NULL);}
+	printf("------  shared_unlocking (tid=%d)!\n", ::GetCurrentThreadId());
 #else   // #ifdef _WIN32
 	pthread_rwlock_unlock(&m_lockPermanent);
 #endif  // #ifdef _WIN32

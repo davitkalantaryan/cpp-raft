@@ -5,12 +5,25 @@
 #include "raft.h"
 #include "raft_msg.h"
 #include <cstddef>
-
 #include <functional>
 #include <vector>
 #include <memory>
 #include <common/listspecialandhashtbl.hpp>
 #include <string>
+
+#ifndef SleepMs
+#ifdef _WIN32
+#ifndef CINTERFACE
+#define CINTERFACE
+#endif
+#include <WinSock2.h>
+#include <WS2tcpip.h>
+#include <Windows.h>
+#define SleepMs(_x) SleepEx((_x),TRUE)
+#else
+#define SleepMs(_x) (  ((_x)>100000) ? sleep((_x)/1000) : usleep(1000*(_x))  )
+#endif
+#endif  // #ifndef SleepMs
 
 class RaftLogger;
 class RaftNode2;
@@ -51,7 +64,6 @@ protected: // in order to make usable variables by inherites
 	
 private:
 	common::ListspecialAndHashtbl<RaftNode2*>	m_Nodes;
-	common::ListSpecial<RaftNode2*>				m_removedNodes;
 protected:
 	
 	int							m_nLeaderCommit;

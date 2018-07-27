@@ -18,15 +18,6 @@
 #include <string>
 #include "raft_macroses_and_functions.h"
 
-#ifndef SleepMs
-#ifdef _WIN32
-#define SleepMs(_x) SleepEx((_x),TRUE)
-#else
-#define SleepMs(_x) (  ((_x)>100000) ? sleep((_x)/1000) : usleep(1000*(_x))  )
-#endif
-#endif  // #ifndef SleepMs
-
-
 #define MAX_IP4_LEN				24
 #define SOCK_TIMEOUT_MS			100000
 
@@ -46,7 +37,7 @@ typedef struct NodeIdentifierKey{
 }NodeIdentifierKey;
 
 
-bool ConnectAndGetEndian(common::SocketTCP* a_pSock,const NodeIdentifierKey& nodeInfo, char cRequest, uint32_t* pIsEndianDiffer);
+bool ConnectAndGetEndian(common::SocketTCP* a_pSock,const NodeIdentifierKey& nodeInfo, char cRequest, uint32_t* pIsEndianDiffer, int a_nSockTimeout= SOCK_TIMEOUT_MS);
 
 }}  // namespace raft {namespace tcp {
 

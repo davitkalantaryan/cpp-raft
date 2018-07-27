@@ -14,7 +14,7 @@
 template <typename Type>
 void raft::tcp::Server::ThreadFunctionOtherPeriodic(void (Type::*a_fpClbk)(int), int a_nPeriod, Type* a_pObj, int a_nIndex)
 {
-	common::NewSharedLockGuard<STDN::shared_mutex> aShrdLockGuard;
+	common::NewSharedLockGuard<NewSharedMutex> aShrdLockGuard;
 
 	if(a_nPeriod<m_nPeriodForPeriodic){ a_nPeriod =m_nPeriodForPeriodic;}
 
@@ -23,7 +23,7 @@ enterLoopPoint:
 	try {
 		while (m_nWork) {
 
-			aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes);
+			aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes2);
 			(a_pObj->*a_fpClbk)(a_nIndex);
 			aShrdLockGuard.UnsetAndUnlockMutex();
 			SleepMs(a_nPeriod);

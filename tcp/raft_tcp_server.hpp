@@ -33,14 +33,24 @@ struct SWorkerData {
 			int			sockDescriptor;
 		}con;
 		struct{
-			int32_t		m_index;
+			//char*				m_pcBuffer;
+			//int32_t				m_nBufferSize;
+			int32_t				m_index;
+			NodeIdentifierKey	m_nodeKey;
+			char				cRequest;
 		}rcv;
 		struct{
 			char		cRequest;
 		}intr;
 	}pear;
+	std::string   bufferForReceive;
 	/*-------------------------------*/
-	SWorkerData(workRequest::Type a_reqType=workRequest::none) { this->reqType = a_reqType; this->pNode = NULL; this->pear.con.sockDescriptor = -1;memset(&this->pear.con.remAddress,0,sizeof(sockaddr_in)); }
+	SWorkerData(workRequest::Type a_reqType = workRequest::none);
+	SWorkerData(SWorkerData&& a_moveData);
+	~SWorkerData();
+	SWorkerData& operator=(SWorkerData&& a_rightSide);
+private:
+	SWorkerData(const SWorkerData&) {}
 };
 
 
@@ -48,16 +58,43 @@ namespace socketTypes {
 	enum Type {raft,data1,last};
 }
 
+#if defined(_WIN32) && defined(_DEBUG) && defined(DEBUG_LOCKS)
+class NewSharedMutex : private ::STDN::shared_mutex
+{
+public:
+	void lock() {
+		::STDN::shared_mutex::lock();
+		m_lockerId = ::GetCurrentThreadId();
+		printf("++++++++++++++++++++ locking tid=%d\n",m_lockerId);
+	}
+
+	void unlock() {
+		printf("-------------------- unlocking tid=%d\n", m_lockerId);
+		m_lockerId = 0;
+		::STDN::shared_mutex::unlock();
+	}
+
+
+	void lock_shared() {::STDN::shared_mutex::lock_shared();}
+
+	void unlock_shared() {::STDN::shared_mutex::unlock_shared();}
+private:
+	int m_lockerId;
+};
+#else
+typedef ::STDN::shared_mutex NewSharedMutex;
+#endif
+
+class Server;
+
 class NodeTools 
 {
-	common::SocketTCP	m_sockets[NUMBER_OF_TOOLS_SOCKETS];
-	STDN::mutex			m_socketSendMutexes[NUMBER_OF_TOOLS_SOCKETS];
-	STDN::mutex			m_socketRcvMutexes[NUMBER_OF_TOOLS_SOCKETS];
+	::common::SocketTCP	m_sockets[NUMBER_OF_TOOLS_SOCKETS];
+	::STDN::mutex		m_socketSendMutexes[NUMBER_OF_TOOLS_SOCKETS];
 public:
-	int writeC(int32_t index, RaftNode2* a_pNode, int32_t a_nPort, const void* data, int dataLen);
+	int writeC(int32_t index, RaftNode2* a_pNode, Server* a_pServer, const void* data, int dataLen);
 	int readC(int32_t index, void* buffer, int bufferLen);
 	STDN::mutex* senderMutex(size_t index);
-	STDN::mutex* receiverMutex(size_t index);
 	void setSocket(int32_t index, int socketNum);
 	int getSocketNum(int32_t index);
 	common::SocketTCP* socketPtr(int32_t index);
@@ -81,6 +118,7 @@ extern int g_nApplicationRun;
 
 class Server : protected RaftServer
 {
+	friend NodeTools;
 public:
 	Server();
 	virtual ~Server();
@@ -104,7 +142,7 @@ protected:
 	virtual RaftNode2*	handleNewConnectionLocked(common::SocketTCP& a_socket, const sockaddr_in&a_remoteAddr, char a_cRequest, NodeIdentifierKey* a_newNodeKey, std::string* a_pDataFromClient);
 	virtual void		handleNewConnectionAfterLock(common::SocketTCP& a_socket, const sockaddr_in&a_remoteAddr, char a_cRequest, NodeIdentifierKey* a_newNodeKey, std::string* a_pDataFromClient, RaftNode2* a_pNodeToSkip);
 
-	virtual bool		handleReceiveFromNodeBeforeLock(char cRequest,RaftNode2* pNode, int32_t index, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
+	virtual bool		handleReceiveFromNodeBeforeLock2(char cRequest,RaftNode2* pNode, int32_t index, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
 	virtual bool		handleReceiveFromNodeLocked(char cRequest, RaftNode2* pNode, int32_t index, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
 	virtual void		handleReceiveFromNodeAfterLock(char cRequest, RaftNode2* pNode, int32_t index, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
 
@@ -124,7 +162,6 @@ protected:
 
 	void				AddConnectForWorker(const sockaddr_in* a_pRemote, int socketDescr);
 	void				AddInternalForWorker(char a_cRequest, RaftNode2* a_pNode);
-	void				AddReceiveForWorker(RaftNode2* a_pNode, int32_t sockIndex);
 
 	bool				SendInformationToNode(RaftNode2* a_pNode, int32_t a_index, char a_cRequest, const std::string* a_extraData, const NodeIdentifierKey* a_pNodeKey);
 	void				SendInformationToAllNodes(int32_t a_index, char a_cRequest, const std::string* a_extraData, const NodeIdentifierKey* a_pNodeKey, RaftNode2* a_pNodeToSkip, bool a_bWait);
@@ -158,11 +195,12 @@ protected:
 
 private:
 	void				ReceiveFromSocketAndInform(RaftNode2* pNode, int32_t index);
+	
 	void				HandleNewConnectionPrivate(int a_nSocketDescr, const sockaddr_in&remoteAddr, NodeIdentifierKey* a_newNodeKey, std::string* a_pDataFromClient);
-	void				HandleReceiveFromNodePrivate(RaftNode2* pNode, int32_t index, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
+	void				HandleReceiveFromNodePrivate(char a_cRequest,RaftNode2* pNode, int32_t index, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
 	void				HandleInternalPrivate(char cRequest, RaftNode2* a_pNode, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
 
-	void				AddJobForWorkerPrivate(workRequest::Type a_type, char a_cRequest, RaftNode2* a_pNode, const sockaddr_in* a_pRemote, int32_t sockIndex);
+	void				AddJobForWorkerPrivate(workRequest::Type a_type, char a_cRequest, RaftNode2* a_pNode, const sockaddr_in* a_pRemote, int socketDescriptor);
 
 protected:
 	static int	SendClbkFunction(void *cb_ctx, void *udata, RaftNode2* node, int msg_type, const unsigned char *send_data, int d_len);
@@ -179,10 +217,11 @@ protected:
 	std::vector<STDN::thread*>						m_vectThreadsWorkers;
 	std::vector<STDN::thread*>						m_vectThreadsOtherPeriodic;
 private:
-    STDN::shared_mutex                              m_shrdMutexForNodes;
+	NewSharedMutex		                            m_shrdMutexForNodes2;
 	common::UnnamedSemaphoreLite					m_semaWorker;
 	common::UnnamedSemaphoreLite					m_semaForSolvingDublicates2;
-	common::FifoFast<SWorkerData>					m_fifoWorker;
+	//common::FifoFast<SWorkerData>					m_fifoWorker;
+	common::listN::Fifo<SWorkerData>				m_fifoWorker;
 protected:
 	volatile int									m_nWork;
 	int												m_nPeriodForPeriodic;

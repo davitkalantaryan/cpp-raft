@@ -18,6 +18,11 @@
 #include <malloc.h>
 #endif
 
+#ifdef __CPP11_DEFINED__
+#include <utility>
+#endif
+#include "newlockguards.hpp"
+
 template <typename Type>
 common::ListSpecial<Type>::ListSpecial()
 	:
@@ -95,6 +100,18 @@ common::listN::ListItem<Type>* common::List<Type>::AddData(const Type& a_newData
 }
 
 
+#ifdef __CPP11_DEFINED__
+template <typename Type>
+common::listN::ListItem<Type>* common::List<Type>::AddDataMv(Type&& a_newData)
+{
+	common::listN::ListItem<Type>* pNewItem = new common::listN::ListItem<Type>(std::move(a_newData));
+	if (!pNewItem) { return NULL; }
+	ListSpecial<common::listN::ListItem<Type>* >::AddDataRaw(pNewItem);
+	return pNewItem;
+}
+#endif
+
+
 template <typename Type>
 common::listN::ListItem<Type>* common::List<Type>::RemoveData(common::listN::ListItem<Type>* a_itemToRemove)
 {
@@ -102,5 +119,47 @@ common::listN::ListItem<Type>* common::List<Type>::RemoveData(common::listN::Lis
 	delete a_itemToRemove;
 	return pReturn;
 }
+
+
+
+/*//////////////////////*/
+template <typename Type>
+common::listN::Fifo<Type>::Fifo()
+{
+}
+
+
+template <typename Type>
+common::listN::Fifo<Type>::~Fifo()
+{
+}
+
+
+#ifdef __CPP11_DEFINED__
+template <typename Type>
+void common::listN::Fifo<Type>::AddElement2(Type&& a_newData)
+{
+	::common::NewLockGuard<::STDN::mutex> aGuard;
+	aGuard.SetAndLockMutex(&m_mutex);
+	m_list.AddDataMv(std::move(a_newData));
+	aGuard.UnsetAndUnlockMutex();
+}
+
+
+template <typename Type>
+bool common::listN::Fifo<Type>::Extract(Type* a_pDataBuffer)
+{
+	bool bRet(false);
+	::common::NewLockGuard<::STDN::mutex> aGuard;
+	aGuard.SetAndLockMutex(&m_mutex);
+	if(m_list.count()){
+		*a_pDataBuffer = std::move(m_list.first()->data);
+		m_list.RemoveData(m_list.first());
+		bRet = true;
+	}
+	aGuard.UnsetAndUnlockMutex();
+	return bRet;
+}
+#endif
 
 #endif  // #ifndef __common_impl_lists_hpp__

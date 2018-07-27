@@ -8,6 +8,8 @@
 #define __common_lists_hpp__
 
 #include <stddef.h>
+#include "cpp11+/common_defination.h"
+#include "cpp11+/mutex_cpp11.hpp"
 
 namespace common {
 
@@ -44,6 +46,9 @@ protected:
 template <typename Type>
 class List;
 
+template <typename Type>
+class Fifo;
+
 namespace listN {
 
 template <typename ItemType>
@@ -52,8 +57,12 @@ struct ListItem {
 	ItemType data;
 	/*---------------------*/
 	friend class List<ItemType>;
+	friend class Fifo<ItemType>;
 private:
 	ListItem(const ItemType& a_data):data(a_data){}
+#ifdef __CPP11_DEFINED__
+	ListItem(ItemType&& a_data) :data(std::move(a_data)) {}
+#endif
 	~ListItem() {}
 };
 
@@ -67,9 +76,32 @@ public:
 	virtual ~List();
 
 	common::listN::ListItem<Type>* AddData(const Type& newData);
+#ifdef __CPP11_DEFINED__
+	common::listN::ListItem<Type>* AddDataMv(Type&& newData);
+#endif
 	common::listN::ListItem<Type>* RemoveData(common::listN::ListItem<Type>* itemToRemove);
 
 };
+
+
+namespace listN {
+	template <typename Type>
+	class Fifo
+	{
+	public:
+		Fifo();
+		virtual ~Fifo();
+
+#ifdef __CPP11_DEFINED__
+		void AddElement2(Type&& a_newData);
+		bool Extract(Type* a_pDataBuffer);
+#endif
+
+	protected:
+		List<Type>		m_list;
+		::STDN::mutex	m_mutex;
+	};
+}
 
 
 } // namespace common {

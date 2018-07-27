@@ -33,9 +33,6 @@ void common::NewLockGuard<TypeMutex>::SetAndLockMutex(TypeMutex* a_pMutex)
 {
 	if(a_pMutex){
 		a_pMutex->lock();
-#if defined(_WIN32) && defined(_DEBUG) && defined(DEBUG_LOCKS)
-		m_lockerId = GetCurrentThreadId();
-#endif
 	}
 	m_pMutex = a_pMutex;
 }
