@@ -31,6 +31,7 @@ RaftNode2::RaftNode2()
 	m_isAbleToVote = 1;
 	m_okCount = INITIAL_PING_COUNT;
 	m_isMarkedForDelete = 0;
+	m_pingCount = 0;
 	//
 	//m_isTimeToPing =0;
 	//m_hasData = 0;
@@ -81,6 +82,7 @@ void RaftNode2::pingReceived()
 {
 	if(m_okCount<0){m_okCount=0;}
 	m_isAbleToVote = 1;
+	m_pingCount = 0;
 	ftime(&this->m_lastSeen);
 }
 

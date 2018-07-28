@@ -166,6 +166,9 @@ namespace follower {enum Type {
 
 #define FILE_FROM_PATH(_path)	( strrchr((_path),FILE_DELIMER) ? (strrchr((_path),FILE_DELIMER)+1) : (_path)  )
 
+void lock_fprintfLocked(void);
+void unlock_fprintfLocked(void);
+
 #ifdef printfWithTime_defined
 int fprintfWithTime(FILE* fpFile, const char* a_cpcFormat, ...);
 #define printfWithTime(_format,...)	fprintfWithTime(stdout,(_format),__VA_ARGS__)
@@ -175,28 +178,49 @@ int fprintfWithTime(FILE* fpFile, const char* a_cpcFormat, ...);
 #endif
 
 #define DEBUG_APPLICATION_NO_NEW_LINE(_logLevel,...)	\
-	do{ if((_logLevel)<=raft::tcp::g_nLogLevel){printfWithTime("fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);printf(__VA_ARGS__);}}while(0)
+	do{ if((_logLevel)<=raft::tcp::g_nLogLevel){ \
+			lock_fprintfLocked();\
+			printfWithTime("fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);printf(__VA_ARGS__); \
+			unlock_fprintfLocked(); \
+		} \
+	}while(0)
 
 #define DEBUG_APPLICATION_NO_ADD_INFO(_logLevel,...)	\
-	do{ if((_logLevel)<=raft::tcp::g_nLogLevel){printf(__VA_ARGS__);}}while(0)
+	do{ if((_logLevel)<=raft::tcp::g_nLogLevel){lock_fprintfLocked();printf(__VA_ARGS__);unlock_fprintfLocked();}}while(0)
 
-#define DEBUG_APPLICATION_NEW_LINE(_logLevel)	\
-	do{ if((_logLevel)<=raft::tcp::g_nLogLevel){printf("\n");}}while(0)
+#define DEBUG_APPLICATION_NEW_LINE(_logLevel)	do{ if((_logLevel)<=raft::tcp::g_nLogLevel){printf("\n");}}while(0)
 
-#define DEBUG_APPLICATION(_logLevel,...) do{DEBUG_APPLICATION_NO_NEW_LINE(_logLevel,__VA_ARGS__);DEBUG_APPLICATION_NEW_LINE(_logLevel);}while(0)
+#define DEBUG_APPLICATION(_logLevel,...)	\
+	do{ if((_logLevel)<=raft::tcp::g_nLogLevel){ \
+			lock_fprintfLocked();\
+			printfWithTime("fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);printf(__VA_ARGS__);printf("\n"); \
+			unlock_fprintfLocked(); \
+		} \
+	}while(0)
 
 #define ERROR_LOGGING2(...)	\
-	do{ fprintfWithTime(stderr,"ERROR: fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);fprintf(stderr,__VA_ARGS__);fprintf(stderr,"\n");}while(0)
+	do{ \
+		lock_fprintfLocked();\
+		fprintfWithTime(stderr,"ERROR: fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);fprintf(stderr,__VA_ARGS__);fprintf(stderr,"\n"); \
+		unlock_fprintfLocked(); \
+	}while(0)
 
 
 #define POSSIBLE_BUG(...)	\
-	do{ fprintfWithTime(stderr,"ERROR: possible bug fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);fprintf(stderr,__VA_ARGS__);fprintf(stderr,"\n");}while(0)
+	do{ \
+		lock_fprintfLocked();\
+		fprintfWithTime(stderr,"ERROR: possible bug fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);fprintf(stderr,__VA_ARGS__);fprintf(stderr,"\n"); \
+		unlock_fprintfLocked();\
+	}while(0)
 
 #define HANDLE_MEM_DEF2(_pointer,...)				\
 	do{ \
 		if(!(_pointer)){ \
+			lock_fprintfLocked();\
 			fprintf(stderr,"fl:%s,ln:%d-> low memory",FILE_FROM_PATH(__FILE__),__LINE__); \
-			fprintf(stderr,__VA_ARGS__);fprintf(stderr,"\n");exit(1); \
+			fprintf(stderr,__VA_ARGS__);fprintf(stderr,"\n"); \
+			unlock_fprintfLocked();\
+			exit(1); \
 		} \
 	}while(0)
 

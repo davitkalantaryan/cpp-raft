@@ -39,6 +39,8 @@ public:
 	const timeb&	lastSeen()const {return m_lastSeen;}
 	void			markWillBeDeleted();
 	uint64_t		isMarkedForDeletion()const;
+	void			ping() {if(m_pingCount<8){m_pingCount++;}}
+	uint64_t		pingCount()const {return m_pingCount;}
  
 public:
 	RaftNode2 * prev, *next;
@@ -53,6 +55,7 @@ private:
 	uint64_t	m_isAbleToVote : 1;
 	int64_t		m_okCount : BITS_OF_OK_COUNT;
 	uint64_t	m_isMarkedForDelete : 1;
+	uint64_t	m_pingCount : 4;
 	timeb		m_lastSeen;
 
 	// for future use

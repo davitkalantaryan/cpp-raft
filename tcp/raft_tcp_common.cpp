@@ -7,6 +7,7 @@
 #include <memory.h>
 #include "raft_macroses_and_functions.h"
 #include <cpp11+/mutex_cpp11.hpp>
+#include <common/newlockguards.hpp>
 
 #ifdef _MSC_VER
 #pragma warning(disable:4996)
@@ -127,22 +128,35 @@ bool ConnectAndGetEndian(common::SocketTCP* a_pSock, const NodeIdentifierKey& a_
 
 #include <sys/timeb.h>
 
+static STDN::mutex    s_mutexForCtime;
+
+void lock_fprintfLocked(void)
+{
+	s_mutexForCtime.lock();
+}
+
+
+void unlock_fprintfLocked(void)
+{
+	s_mutexForCtime.unlock();
+}
+
 
 int fprintfWithTime(FILE* a_fpFile, const char* a_cpcFormat, ...)
 {
-	static STDN::mutex    smutexForCtime;
+	//common::NewLockGuard<STDN::mutex> aGuard;
 	timeb	aCurrentTime;
 	char* pcTimeline;
 	int nRet;
 	va_list aList;
 
 	va_start(aList, a_cpcFormat);
-	smutexForCtime.lock();   //
+	//aGuard.SetAndLockMutex(&s_mutexForCtime);   //
 	ftime(&aCurrentTime);
 	pcTimeline = ctime(&(aCurrentTime.time));
 	nRet = fprintf(a_fpFile, "[%.19s.%.3hu %.4s] ", pcTimeline, aCurrentTime.millitm, &pcTimeline[20]);
 	nRet += vfprintf(a_fpFile, a_cpcFormat, aList);
-	smutexForCtime.unlock(); //
+	//aGuard.UnsetAndUnlockMutex(); //
 	va_end(aList);
 	return nRet;
 }

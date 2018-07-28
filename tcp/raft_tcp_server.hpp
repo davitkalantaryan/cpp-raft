@@ -25,8 +25,9 @@ namespace raft { namespace tcp{
 
 namespace workRequest{enum Type{none,handleConnection,handleReceive,handleInternal};}
 struct SWorkerData { 
-	workRequest::Type reqType;
-	RaftNode2*	pNode;
+	workRequest::Type	reqType;
+	RaftNode2*			pNode;
+	NodeIdentifierKey	nodeKey;
 	union {
 		struct{
 			sockaddr_in	remAddress;
@@ -35,22 +36,33 @@ struct SWorkerData {
 		struct{
 			//char*				m_pcBuffer;
 			//int32_t				m_nBufferSize;
-			int32_t				m_index;
-			NodeIdentifierKey	m_nodeKey;
+			int32_t				index;
 			char				cRequest;
 		}rcv;
 		struct{
-			char		cRequest;
+			char				cRequest;
 		}intr;
 	}pear;
-	std::string   bufferForReceive;
 	/*-------------------------------*/
 	SWorkerData(workRequest::Type a_reqType = workRequest::none);
 	SWorkerData(SWorkerData&& a_moveData);
 	~SWorkerData();
 	SWorkerData& operator=(SWorkerData&& a_rightSide);
+	char* buffer();
+	void resize(uint32_t newSize);
+#ifndef RAW_BUF_IMPLEMENTATION
+	std::string& extraStr() {return m_extraDataBuffer;}
+#endif
 private:
 	SWorkerData(const SWorkerData&) {}
+
+#ifdef RAW_BUF_IMPLEMENTATION
+	char*				m_pcBuffer;
+	uint32_t			m_bufLength;
+	uint32_t			m_allocatedSize;
+#else
+	std::string			m_extraDataBuffer;
+#endif
 };
 
 
@@ -138,11 +150,11 @@ protected:
 		
 	virtual void		SignalHandler(int sigNum);
 
-	virtual bool		handleNewConnectionBeforeLock(common::SocketTCP& a_socket, const sockaddr_in&a_remoteAddr, char a_cRequest, NodeIdentifierKey* a_newNodeKey,std::string* a_pDataFromClient);
+	virtual bool		handleNewConnectionBeforeLock(char a_cRequest,common::SocketTCP& a_socket, SWorkerData* a_pData);
 	virtual RaftNode2*	handleNewConnectionLocked(common::SocketTCP& a_socket, const sockaddr_in&a_remoteAddr, char a_cRequest, NodeIdentifierKey* a_newNodeKey, std::string* a_pDataFromClient);
 	virtual void		handleNewConnectionAfterLock(common::SocketTCP& a_socket, const sockaddr_in&a_remoteAddr, char a_cRequest, NodeIdentifierKey* a_newNodeKey, std::string* a_pDataFromClient, RaftNode2* a_pNodeToSkip);
 
-	virtual bool		handleReceiveFromNodeBeforeLock2(char cRequest,RaftNode2* pNode, int32_t index, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
+	virtual bool		handleReceiveFromNodeBeforeLockRcvContext(int32_t index, SWorkerData* a_pWorkerData);
 	virtual bool		handleReceiveFromNodeLocked(char cRequest, RaftNode2* pNode, int32_t index, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
 	virtual void		handleReceiveFromNodeAfterLock(char cRequest, RaftNode2* pNode, int32_t index, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
 
@@ -172,12 +184,12 @@ protected:
 	void				AddOwnNode(bool a_bIsLeader, std::string* a_pAdderInfo);
 
 	// family of receive functions
-	bool				raft_receive_fromAdder_newNode(RaftNode2* a_pNode, std::string* a_bufferForAdderData, NodeIdentifierKey* a_pNewNodeKey);
-	bool				raft_receive_fromLeader_removeNode(RaftNode2* a_pNode, std::string* a_extraDataFromLeader, NodeIdentifierKey* a_pNewNodeKey);
+	bool				raft_receive_fromAdder_newNode(SWorkerData* a_pData);
+	bool				raft_receive_fromLeader_removeNode(SWorkerData* a_pWorkerData);
 
 	// utils
 	void				raft_connect_toAnyNode_permanentBridge(common::SocketTCP& sock, const sockaddr_in* remoteAddr); // (index=0)->raft
-	bool				raft_connect_toAnyNode_newNode(common::SocketTCP& sock, const sockaddr_in*remoteAddr, std::string* extraDataFromNewNode, NodeIdentifierKey* a_newNodeKey);
+	bool				raft_connect_toAnyNode_newNode(common::SocketTCP& sock, SWorkerData* a_pData);
 	void				raft_connect_fromClient_allNodesInfo(common::SocketTCP& sock);
 	void				raft_connect_toAnyNode_otherLeaderFound(common::SocketTCP& sock);
 
@@ -187,7 +199,7 @@ protected:
 
     void				InterruptPeriodicThread();
     void				InterruptReceivercThread(int32_t index);
-	bool				ReceiveExtraData(common::SocketTCP& a_sockt, uint32_t a_isEndianDiffer, std::string* a_pBufForData);
+	bool				ReceiveExtraData(common::SocketTCP& a_sockt, uint32_t a_isEndianDiffer, std::string* a_pData);
 
 	NodeIdentifierKey*	CollectAllNodesDataNotThrSafe(int32_t* pnTotalSize, int32_t* a_pnLeaderIndex);
 	void				FindClusterAndInit(const std::vector<NodeIdentifierKey>& vectPossibleNodes, std::string* a_extraDataForAndFromAdder, int raftPort=-1);
@@ -196,7 +208,7 @@ protected:
 private:
 	void				ReceiveFromSocketAndInform(RaftNode2* pNode, int32_t index);
 	
-	void				HandleNewConnectionPrivate(int a_nSocketDescr, const sockaddr_in&remoteAddr, NodeIdentifierKey* a_newNodeKey, std::string* a_pDataFromClient);
+	void				HandleNewConnectionPrivate(SWorkerData* a_pWorkerData);
 	void				HandleReceiveFromNodePrivate(char a_cRequest,RaftNode2* pNode, int32_t index, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
 	void				HandleInternalPrivate(char cRequest, RaftNode2* a_pNode, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
 
