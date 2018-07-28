@@ -153,11 +153,11 @@ void raft::tcp::Server::SignalHandler(int )
 }
 
 
-void raft::tcp::Server::AddAdditionalDataToNode(RaftNode2* a_pNode, std::string* a_pDataFromAdder, bool a_bIsAdder)
+void raft::tcp::Server::AddAdditionalDataToNode(RaftNode2* a_pNode, std::string* a_pDataFromAdder, bool a_bIsAdder, bool a_bIsThis)
 {
 	NodeTools* pTools = new NodeTools;
 	HANDLE_MEM_DEF2(pTools," ");
-	RaftServer::AddAdditionalDataToNode(a_pNode, a_pDataFromAdder, a_bIsAdder);
+	RaftServer::AddAdditionalDataToNode(a_pNode, a_pDataFromAdder, a_bIsAdder, a_bIsThis);
 	a_pNode->set_udata(pTools);
 }
 
@@ -748,10 +748,10 @@ void raft::tcp::Server::HandleInternalPrivate(char a_cRequest, RaftNode2* a_pNod
 		if (a_pNode) { a_pNode->decrementLock2(); }
 		return;
 	}
-	if (a_pNode) { a_pNode->decrementLock2(); }
 	aSharedGuard.UnsetAndUnlockMutex();
 
 	aGuard.SetAndLockMutex(&m_shrdMutexForNodes2);
+	if (a_pNode) { a_pNode->decrementLock2(); }
 	if(!handleInternalLocked(a_cRequest,a_pNode,a_pNodeKey,a_pBufferForReceive)){return;}
 	aGuard.UnsetAndUnlockMutex();
 
@@ -777,7 +777,7 @@ void raft::tcp::Server::ReceiveFromSocketAndInform(RaftNode2* a_pNode, int32_t a
 
 	nSndRcv = GET_NODE_TOOLS(a_pNode)->readC(a_index, &aJobData.pear.rcv.cRequest, 1);
 	if (nSndRcv != 1) { 
-		ERROR_LOGGING2(" ");
+		ERROR_LOGGING2("Unable to receive");
 		return; 
 	}
 
@@ -973,6 +973,7 @@ bool raft::tcp::Server::handleInternalBeforeLock(char, RaftNode2*, NodeIdentifie
 
 bool raft::tcp::Server::handleInternalLocked(char a_cRequest, RaftNode2* a_pNode, NodeIdentifierKey* a_pNodeKey, std::string* a_pBufferToSendToOthers)
 {
+	RaftNode2* pNode(NULL);
 	switch (a_cRequest)
 	{
 	case raft::internal2::leader::removeNode:
@@ -983,16 +984,19 @@ bool raft::tcp::Server::handleInternalLocked(char a_cRequest, RaftNode2* a_pNode
 		a_pNodeKey->set_ip4Address1(NODE_KEY(a_pNode)->ip4Address);
 		a_pNodeKey->port = NODE_KEY(a_pNode)->port;
 		this->RemoveNode2(a_pNode, a_pBufferToSendToOthers);
+		DEBUG_APPLICATION(1,"Node (%s:%d) removed. NumberOfNodes=%d",a_pNodeKey->ip4Address,(int)a_pNodeKey->port,(int)nodesCount());
 		break;
 	case raft::internal2::newLeader::becomeLeader:
 		if (!is_candidate()) {
 			POSSIBLE_BUG("not a candidate but trying to act as candidate");
 			return false;
 		}
-		this->RemoveNode2(m_pLeaderNode, a_pBufferToSendToOthers);
+		pNode = m_pLeaderNode;
+		DEBUG_APPLICATION(1, "Node (%s:%d) (old leader) removed. NumberOfNodes=%d", NODE_KEY(pNode)->ip4Address, (int)NODE_KEY(pNode)->port, (int)(nodesCount()-1));
 		m_pLeaderNode = m_thisNode;
 		m_pLeaderNode->makeLeader();
 		RaftServer::become_leader();
+		this->RemoveNode2(pNode, a_pBufferToSendToOthers);
 		break;
 	default:
 		ERROR_LOGGING2("Unhandled internal case");
@@ -1072,14 +1076,17 @@ bool raft::tcp::Server::handleReceiveFromNodeLocked(char a_cRequest,RaftNode2* a
 	switch (a_cRequest)
 	{
 	case raft::receive::fromAdder::newNode:
-		pNode = this->AddNode(a_pNodeKey, sizeof(NodeIdentifierKey), a_receivedData, false);
-		DEBUG_APP_WITH_NODE(1, NODE_KEY(a_pNode), "Add node numberOfNodes=%d,  pNode=%p", this->nodesCount(), pNode);
-		if(!pNode){return false;}
+		pNode = this->AddNode(a_pNodeKey, sizeof(NodeIdentifierKey), a_receivedData, false,false);
+		if(!pNode){
+			ERROR_LOGGING2("Unable to add node (%s:%d)", a_pNodeKey->ip4Address, (int)a_pNodeKey->port);
+			return false;
+		}
+		DEBUG_APPLICATION(1, "Node (%s:%d) add. NumberOfNodes=%d", NODE_KEY(pNode)->ip4Address, (int)NODE_KEY(pNode)->port, (int)nodesCount());
 		break;
 	case raft::receive::fromLeader2::removeNode:
+		DEBUG_APPLICATION(1, "Node (%s:%d) remove. NumberOfNodes=%d", NODE_KEY(a_pNode)->ip4Address, (int)NODE_KEY(a_pNode)->port, (int)(nodesCount() - 1));
 		this->RemoveNode1(a_pNodeKey,sizeof(NodeIdentifierKey),a_receivedData);
 		a_pNode = NULL;
-		DEBUG_APP_WITH_NODE(1, NODE_KEY(a_pNode), "raft::receive::fromLeader::removeNode");
 		break;
 	default:
 		return false;
@@ -1151,9 +1158,12 @@ RaftNode2* raft::tcp::Server::handleNewConnectionLocked(common::SocketTCP& a_soc
 	switch (a_cRequest)
 	{
 	case raft::connect::toAnyNode2::newNode:
-		pNewNode = this->AddNode(a_newNodeKey, sizeof(NodeIdentifierKey), a_pDataFromClient, true);
-		DEBUG_APPLICATION(1, "raft::connect::toLeader::newNode (pNewNode=%p)", pNewNode);
-		if (!pNewNode) { return NULL; }
+		pNewNode = this->AddNode(a_newNodeKey, sizeof(NodeIdentifierKey), a_pDataFromClient, true,false);
+		if (!pNewNode) { 
+			ERROR_LOGGING2("Unable to add node (%s:%d)", a_newNodeKey->ip4Address, (int)a_newNodeKey->port);
+			return NULL; 
+		}
+		DEBUG_APPLICATION(1, "Node (%s:%d) added. NumberOfNodes=%d", a_newNodeKey->ip4Address, (int)a_newNodeKey->port,(int)nodesCount());
 		break;
 	default:
 		DEBUG_APPLICATION(1, "Wrong case provided");
@@ -1440,7 +1450,7 @@ void raft::tcp::Server::AddOwnNode(bool a_bIsLeader, std::string* a_pAdderInfo)
 		NodeIdentifierKey aOwnHost;
 		common::socketN::GetOwnIp4Address(aOwnHost.ip4Address, MAX_IP4_LEN);
 		aOwnHost.port = m_nPortOwn;
-		m_thisNode = this->AddNode(&aOwnHost, sizeof(NodeIdentifierKey), a_pAdderInfo, false);
+		m_thisNode = this->AddNode(&aOwnHost, sizeof(NodeIdentifierKey), a_pAdderInfo, false,true);
 		if(a_bIsLeader && m_thisNode){
 			m_pLeaderNode = m_thisNode;
 			m_pLeaderNode->makeLeader();
@@ -1522,7 +1532,7 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindClusterThredSafe(const N
 
 	m_pLeaderNode = NULL;
 	for (i = 0; i<nNumberOfNodes; ++i) {
-		pNode = this->AddNode(&pNodesInfo[i], sizeof(NodeIdentifierKey), NULL, false);
+		pNode = this->AddNode(&pNodesInfo[i], sizeof(NodeIdentifierKey), NULL, false,false);
 		if (!pNode) { 
 			ERROR_LOGGING2("!!!!!!!!!!!!!!!!!!! probable bug");
 			continue; 
@@ -1646,7 +1656,8 @@ void raft::tcp::Server::become_candidate()
 	DEBUG_APPLICATION(1,"NumberOfNodes=%d nodes will ellect is: %d",nodesCount(),nNodesWillVote);
 
 	if(nNodesWillVote<2){ // no node to take part on election, so become leader
-		become_leader();
+		RaftServer::become_candidate();
+		AddInternalForWorker(raft::internal2::newLeader::becomeLeader, NULL);
 	}
 	else{
 		RaftServer::become_candidate();
@@ -1931,7 +1942,7 @@ raft::tcp::SWorkerData::~SWorkerData()
 raft::tcp::SWorkerData& raft::tcp::SWorkerData::operator=(SWorkerData&& a_moveData)
 {
 	this->reqType = a_moveData.reqType;
-	this->bufferForReceive = std::move(a_moveData.bufferForReceive);
+	this->pNode = a_moveData.pNode;
 	this->bufferForReceive = std::move(a_moveData.bufferForReceive);
 
 	switch (this->reqType)

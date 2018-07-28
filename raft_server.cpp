@@ -71,7 +71,7 @@ void RaftServer::CleanNodeData(RaftNode2*, std::string* )
 }
 
 
-void RaftServer::AddAdditionalDataToNode(RaftNode2*, std::string*, bool)
+void RaftServer::AddAdditionalDataToNode(RaftNode2*, std::string*, bool,bool)
 {
 }
 
@@ -96,7 +96,7 @@ void RaftServer::RemoveNode2(RaftNode2* a_pNode, std::string* a_pDataFromLeader)
 }
 
 
-RaftNode2* RaftServer::AddNode(const void* a_pKey, size_t a_keySize, std::string* a_pDataFromAdder, bool a_bAdder)
+RaftNode2* RaftServer::AddNode(const void* a_pKey, size_t a_keySize, std::string* a_pDataFromAdder, bool a_bAdder, bool a_bIsThis)
 {
 	RaftNode2* pNewNode=NULL;
 
@@ -104,7 +104,7 @@ RaftNode2* RaftServer::AddNode(const void* a_pKey, size_t a_keySize, std::string
 		pNewNode = new RaftNode2;
 		HANDLE_MEM_DEF2(pNewNode, "Unable to create new node");
 		m_Nodes.AddData(pNewNode, a_pKey, a_keySize);
-		this->AddAdditionalDataToNode(pNewNode,a_pDataFromAdder, a_bAdder);
+		this->AddAdditionalDataToNode(pNewNode,a_pDataFromAdder, a_bAdder, a_bIsThis);
 		return pNewNode;
 	}
 

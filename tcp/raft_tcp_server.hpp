@@ -133,7 +133,7 @@ protected:
 	virtual void		become_leader() OVERRIDE;
 	virtual void		become_candidate()OVERRIDE;
 
-	virtual void		AddAdditionalDataToNode(RaftNode2* newNode, std::string* a_pDataFromAdder, bool a_bAdder)OVERRIDE;
+	virtual void		AddAdditionalDataToNode(RaftNode2* newNode, std::string* a_pDataFromAdder, bool a_bAdder, bool a_bThis)OVERRIDE;
 	virtual void		CleanNodeData(RaftNode2*, std::string* a_pDataFromLeader) OVERRIDE;
 		
 	virtual void		SignalHandler(int sigNum);

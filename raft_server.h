@@ -266,10 +266,10 @@ public:
 	void			ClearAllNodes(std::string* a_pDataFromLeader);  // this will be called during destructing
 	void			RemoveNode1(const void* a_pKey, size_t a_keySize, std::string* a_pDataFromLeader);
 	void			RemoveNode2(RaftNode2* node, std::string* a_pDataFromLeader);
-	RaftNode2*		AddNode(const void* a_pKey, size_t a_keySize, std::string* a_pDataFromAdder, bool isAdder);
+	RaftNode2*		AddNode(const void* a_pKey, size_t a_keySize, std::string* a_pDataFromAdder, bool isAdder, bool isThis);
 protected:
 	virtual void	CleanNodeData(RaftNode2* pNode, std::string* a_pDataFromLeader);
-	virtual void	AddAdditionalDataToNode(RaftNode2* newNode, std::string* a_dataFromAdderAndToOtherNodes, bool isAdder);
+	virtual void	AddAdditionalDataToNode(RaftNode2* newNode, std::string* a_dataFromAdderAndToOtherNodes, bool isAdder, bool a_bThis);
 
 };
 
