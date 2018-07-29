@@ -31,7 +31,9 @@
 namespace common { namespace hashFncs{
 
 static inline uint32_t hash1_(const void* key, uint32_t keySize);
+#ifdef __CPP11_DEFINED__
 static void* CreateKey(const void* a_pKey, size_t a_nKeyLen);
+#endif
 
 }}
 
@@ -153,7 +155,7 @@ bool common::HashTblRaw<DataType>::FindEntry(const void* a_key, uint32_t a_nKeyL
 	uint32_t unHash(((*m_fpHashFnc)(a_key, a_nKeyLen))&m_unRoundedTableSizeMin1);
 	DataType aData = m_pTable[unHash];
 
-	while (pItem) {
+    while (aData) {
 		if ((a_nKeyLen == aData->keyLength) && (memcmp(aData->key, a_key, a_nKeyLen) == 0)) {
 			*a_pData = aData;
 			return true;
@@ -396,7 +398,7 @@ static inline uint32_t hash1_( const void* a_pKey, uint32_t a_unKeySize )
 	return c;
 }
 
-
+#ifdef __CPP11_DEFINED__
 static void* CreateKey(const void* a_pKey, size_t a_nKeyLen)
 {
 	void* pKey = malloc(a_nKeyLen);
@@ -404,6 +406,7 @@ static void* CreateKey(const void* a_pKey, size_t a_nKeyLen)
 	memcpy(pKey, a_pKey, a_nKeyLen);
 	return pKey;
 }
+#endif
 
 }}
 

@@ -21,6 +21,7 @@
 #include <Windows.h>
 #define SleepMs(_x) SleepEx((_x),TRUE)
 #else
+#include <unistd.h>
 #define SleepMs(_x) (  ((_x)>100000) ? sleep((_x)/1000) : usleep(1000*(_x))  )
 #endif
 #endif  // #ifndef SleepMs

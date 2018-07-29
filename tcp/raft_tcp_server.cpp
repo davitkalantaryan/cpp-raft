@@ -1649,7 +1649,7 @@ void raft::tcp::Server::InterruptReceivercThread(int32_t a_index)
 #ifdef _WIN32
     // something with windows?
 #else
-    if(m_rcvDataThread){pthread_kill(m_rcvThreadIds[a_index],SIGPIPE);}
+    if(m_rcvThreadIds[a_index]){pthread_kill(m_rcvThreadIds[a_index],SIGPIPE);}
 #endif
 }
 
@@ -1701,7 +1701,6 @@ int raft::tcp::Server::SendClbkFunction(void *a_cb_ctx, void *udata, RaftNode2* 
 	int nSndRcv;
 	int64_t nTimeoutOfLastSeen;
 	char cRequest=raft::receive::fromAnyNode2::clbkCmd;
-	bool bProblematic(false);
 
 	if(a_pNode->okCount()<0){
 		a_pNode->incrementOkCount();
