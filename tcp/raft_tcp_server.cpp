@@ -3,6 +3,10 @@
 #define HEADER_SIZE_needed
 #endif
 
+#ifndef CINTERFACE
+#define CINTERFACE
+#endif
+
 #include "raft_tcp_server.hpp"
 #include <string>
 #include <stdint.h>
@@ -41,8 +45,9 @@
 
 #if !defined(_WIN32) || defined(_WLAC_USED)
 #else
+#include <WinSock2.h>
 static HANDLE	s_mainThreadHandle = (HANDLE)0;
-static VOID PAPCFUNC_static(_In_ ULONG_PTR){}
+static void PAPCFUNC_static(_In_ ULONG_PTR){}
 #endif
 
 #ifdef _WIN32
