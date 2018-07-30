@@ -296,8 +296,6 @@ void raft::tcp::Server::AddClient(common::SocketTCP& a_clientSock, const sockadd
 {
 	int nSocketDescr;
 
-	DEBUG_APPLICATION(1,"connnection from host %s",common::socketN::GetIPAddress(a_remoteAddr));
-
 	nSocketDescr = (int)a_clientSock;
 	a_clientSock.ResetSocketWithoutClose();  // let us assume, that worker will close in the case of necessirty
 	AddConnectForWorker(a_remoteAddr,nSocketDescr);

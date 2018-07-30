@@ -38,7 +38,7 @@ enterLoopPoint:
 
 
 template <typename Type>
-void raft::tcp::Server::StartOtherPriodic(void (Type::*a_fpClbk)(int), int a_nPeriod, Type* a_pObj)
+void raft::tcp::Server::StartOtherPeriodic(void (Type::*a_fpClbk)(int), int a_nPeriod, Type* a_pObj)
 {
 	int nIndex = (int)m_vectThreadsOtherPeriodic.size();
 	typename STDN::thread* pThread = new typename STDN::thread(&Server::ThreadFunctionOtherPeriodic<Type>, this, a_fpClbk, a_nPeriod, a_pObj, nIndex);

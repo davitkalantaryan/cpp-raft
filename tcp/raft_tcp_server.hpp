@@ -170,7 +170,7 @@ protected:
 	template <typename Type>
 	void				ThreadFunctionOtherPeriodic(void (Type::*a_fpClbk)(int), int a_nPeriod, Type* a_pObj, int a_nIndex);
 	template <typename Type>
-	void				StartOtherPriodic(void (Type::*a_fpClbk)(int), int a_nPeriod, Type* a_pObj);
+	void				StartOtherPeriodic(void (Type::*a_fpClbk)(int), int a_nPeriod, Type* a_pObj);
 
 	void				AddConnectForWorker(const sockaddr_in* a_pRemote, int socketDescr);
 	void				AddInternalForWorker(char a_cRequest, RaftNode2* a_pNode);
