@@ -97,7 +97,7 @@ bool ConnectAndGetEndian(common::SocketTCP* a_pSock, const NodeIdentifierKey& a_
 
 	if(a_pSock->connectC(a_nodeInfo.ip4Address, a_nodeInfo.port,500)){
 		a_pSock->closeC();
-		DEBUG_APP_WITH_NODE(2,&a_nodeInfo,"Unable to connect");
+		DEBUG_APP_WITH_NODE(4,&a_nodeInfo,"Unable to connect");
 		return false;
 	}
 	a_pSock->setTimeout(a_nSockTimeout);
@@ -105,7 +105,7 @@ bool ConnectAndGetEndian(common::SocketTCP* a_pSock, const NodeIdentifierKey& a_
 	nSndRcv = a_pSock->readC(&unRemEndian, 2);
 	if(nSndRcv!=2){
 		a_pSock->closeC();
-		DEBUG_APP_WITH_NODE(2,&a_nodeInfo, "Unable to get endian. retCode=%d", nSndRcv);
+		DEBUG_APP_WITH_NODE(3,&a_nodeInfo, "Unable to get endian. retCode=%d", nSndRcv);
 		return false;
 	}
 	if(unRemEndian==1){*a_pIsEndianDiffer=0;}
