@@ -27,19 +27,15 @@
 #define DEF_REP_RATE_MS					5000
 #define	TIMEOUTS_RATIO_MIN				5
 #define REPORT_ON_FAULT(_faultyNode)
-#define MAX_NUMBER_OF_PINGS				2
 #define MAX_UNANSWERED_PINGS			10
-#define MAX_ITER_OK_COUNT				6
 
 #else
 
 #define MIN_REP_RATE_MS						5		// les than this rep rate is not possible
 #define DEF_REP_RATE_MS						2000	// [ms] default rep rate is 2 seconds
 #define	TIMEOUTS_RATIO_MIN					11		// this is minimum ratio for follower between time of leader wait and rep. rate (to start election)
-#define MAX_NUMBER_OF_PINGS					3		// maximum number of pings that really will be done by leader
 #define MIN_UNSEEN_TIME_TO_DISPLAY			6000	// maximum number of pings that really will be done by leader
 #define MAX_UNSEEN_TIME_TO_CHANGE_STATE		20000	// number of virtual pings, after this leader will remove follower
-#define MAX_ITER_OK_COUNT					1000	// used for syncronization
 
 #endif
 
@@ -90,6 +86,8 @@ raft::tcp::Server::Server()
 		m_intrptSocketForRcv[i] = -1;
 	}
 	m_isInited = 0;
+
+	this->election_timeout = MAX_UNSEEN_TIME_TO_CHANGE_STATE;
 
 #ifdef _WIN32
 	m_periodicThreadId = (HANDLE)0;
@@ -1109,7 +1107,9 @@ bool raft::tcp::Server::handleReceiveFromNodeLocked(char a_cRequest,RaftNode2* a
 	case raft::receive::fromNewLeader2::oldLeaderDied:
 		if(!m_pLeaderNode){return false;}
 		DEBUG_APPLICATION(1, 
-			"Node (%s:%d) [old leader] remove. NumberOfNodes=%d. NewLeader is: (%s:%d)",
+			"\n"
+			"                                          Node (%s:%d) [old leader] remove. NumberOfNodes=%d.\n"
+			"                                          NewLeader is: (%s:%d)",
 			NODE_KEY(m_pLeaderNode)->ip4Address, (int)NODE_KEY(m_pLeaderNode)->port, (int)(nodesCount() - 1),
 			NODE_KEY(a_pNode)->ip4Address, (int)NODE_KEY(a_pNode)->port);
 		this->RemoveNode2(m_pLeaderNode, a_receivedData);
@@ -1734,8 +1734,9 @@ int raft::tcp::Server::SendClbkFunction(void *a_cb_ctx, void *udata, RaftNode2* 
 	}
 
 	if (nTimeoutOfLastSeen>MIN_UNSEEN_TIME_TO_DISPLAY) {
-		a_pNode->ping();
 		DEBUG_APP_WITH_NODE(1, pNodeKey, "node is not responding for %d ms", (int)nTimeoutOfLastSeen);
+		if(a_pNode->pingCount()<4){a_pNode->ping();}
+		else {return 0;}
 	}
 
 	LOCK_SEND_SOCKET_MUTEX(a_pNode,raft::tcp::socketTypes::raft);
