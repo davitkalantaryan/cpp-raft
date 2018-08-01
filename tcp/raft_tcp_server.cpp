@@ -1188,6 +1188,8 @@ RaftNode2* raft::tcp::Server::handleNewConnectionLocked(common::SocketTCP& a_soc
 	case raft::connect::toAnyNode2::newNode:
 		pNewNode = this->AddNode(a_newNodeKey, sizeof(NodeIdentifierKey), a_pDataFromClient, true,false);
 		if (!pNewNode) { 
+			const char cRequest = raft::receive::fromAdder::nodeWithKeyAlreadyExist;
+			a_socket.writeC(&cRequest, 1);
 			ERROR_LOGGING2("Unable to add node (%s:%d)", a_newNodeKey->ip4Address, (int)a_newNodeKey->port);
 			return NULL; 
 		}
@@ -1207,6 +1209,7 @@ void raft::tcp::Server::handleNewConnectionAfterLock(common::SocketTCP& a_socket
 	switch (a_cRequest)
 	{
 	case raft::connect::toAnyNode2::newNode:
+		if(!a_pNodeToSkip){return;}
 		this->SendInformationToAllNodes(raft::tcp::socketTypes::raft,raft::receive::fromAdder::newNode,a_pDataToOthers,a_newNodeKey,a_pNodeToSkip,true);
 		GET_NODE_TOOLS(a_pNodeToSkip)->setSocket(raft::tcp::socketTypes::raft,(int)a_socket);
 		this->InterruptReceivercThread(raft::tcp::socketTypes::raft);
@@ -1594,7 +1597,15 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::TryFindClusterThredSafe(const N
 	//    this is also trigger that adding all ndes info here is done
 	//    meanwhile the size of extra data len
 	nSndRcv = aSocket.readC(&cRequest,1);
-	if ((nSndRcv != 1)||(cRequest!= raft::receive::fromAdder::toNewNodeAddPartitions)) {
+	if (nSndRcv != 1) {
+		DEBUG_APPLICATION(3, "Unable to send extra data length to the node (%s:%d)", a_nodeInfo.ip4Address, (int)a_nodeInfo.port);
+		goto returnPoint;
+	}
+	if (cRequest == raft::receive::fromAdder::nodeWithKeyAlreadyExist) {
+		ERROR_LOGGING2("node with the key of this node key already exist in the cluster");
+		exit(0);
+	}
+	if (cRequest != raft::receive::fromAdder::toNewNodeAddPartitions) {
 		DEBUG_APPLICATION(3, "Unable to send extra data length to the node (%s:%d)", a_nodeInfo.ip4Address, (int)a_nodeInfo.port);
 		goto returnPoint;
 	}
