@@ -1735,9 +1735,9 @@ int raft::tcp::Server::SendClbkFunction(void *a_cb_ctx, void *udata, RaftNode2* 
 		}
 		break;
 	case RAFT_MSG_REQUESTVOTE:
-		if((nTimeoutOfLastSeen>MAX_UNSEEN_TIME_TO_CHANGE_STATE) && pServer->is_candidate() && (a_pNode->pingCount()>2)){
+		if((nTimeoutOfLastSeen>MAX_UNSEEN_TIME_TO_CHANGE_STATE) /*&& pServer->is_candidate()*/ && (a_pNode->pingCount()>2)){
 			a_pNode->setUnableToVote();
-			pServer->become_candidate();  // todo: change state in locked part
+			//pServer->become_candidate();  // todo: change state in locked part
 		}
 		break;
 	default:
