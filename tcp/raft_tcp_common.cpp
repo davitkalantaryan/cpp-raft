@@ -8,6 +8,7 @@
 #include "raft_macroses_and_functions.h"
 #include <cpp11+/mutex_cpp11.hpp>
 #include <common/newlockguards.hpp>
+#include <string.h>
 
 #ifdef _MSC_VER
 #pragma warning(disable:4996)
@@ -88,6 +89,7 @@ void raft::tcp::NodeIdentifierKey::set_addressAndPort(char* a_addressAndPort, in
 namespace raft{namespace tcp{
 
 const char g_ccResponceOk= response::ok;
+const int32_t g_cnResponceOk = response::ok;
 int g_nLogLevel = 0;
 
 bool ConnectAndGetEndian(common::SocketTCP* a_pSock, const NodeIdentifierKey& a_nodeInfo,char a_cRequest, uint32_t* a_pIsEndianDiffer, int a_nSockTimeout)
@@ -121,6 +123,16 @@ bool ConnectAndGetEndian(common::SocketTCP* a_pSock, const NodeIdentifierKey& a_
 
 	a_pSock->setTimeout(SOCK_TIMEOUT_MS);
 	return true;
+}
+
+
+void SendErrorWithString(::common::SocketTCP& a_clientSock, const char* a_cpcErrorString)
+{
+	int32_t nResponse = (int32_t)raft::response::error;
+	a_clientSock.writeC(&nResponse, 4);
+	nResponse = (int32_t)strlen(a_cpcErrorString);
+	a_clientSock.writeC(&nResponse, 4);
+	a_clientSock.writeC(a_cpcErrorString, nResponse);
 }
 
 

@@ -24,6 +24,7 @@
 namespace raft {namespace tcp {
 
 extern const char g_ccResponceOk;
+extern const int32_t g_cnResponceOk;
 
 typedef struct NodeIdentifierKey{ 
 	int32_t port;  char ip4Address[MAX_IP4_LEN];
@@ -38,6 +39,7 @@ typedef struct NodeIdentifierKey{
 
 
 bool ConnectAndGetEndian(common::SocketTCP* a_pSock,const NodeIdentifierKey& nodeInfo, char cRequest, uint32_t* pIsEndianDiffer, int a_nSockTimeout= SOCK_TIMEOUT_MS);
+void SendErrorWithString(::common::SocketTCP& a_clientSock, const char* a_cpcErrorString);
 
 }}  // namespace raft {namespace tcp {
 

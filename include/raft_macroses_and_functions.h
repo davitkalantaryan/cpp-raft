@@ -64,11 +64,12 @@ extern int g_nLogLevel;
 namespace response {
 
 enum Type{
-	ok,
+	error=-1,
+	ok=0,
 	last
 };
 	
-namespace error{ enum Type {
+namespace errorType{ enum Type {
 	nodeExist = -1
 };}
 
