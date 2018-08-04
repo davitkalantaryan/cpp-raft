@@ -1303,6 +1303,7 @@ enterLoopPoint:
 		}  // while (m_nWork) {
 	}
 	catch(...){
+		ERROR_LOGGING2("Unknown exception thrown");
 		goto enterLoopPoint;
 	}
 }
