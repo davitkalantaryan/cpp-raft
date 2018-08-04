@@ -251,7 +251,7 @@ protected:
 public:
     void*                                           m_pReserved1;
 #if defined(HANDLE_SIG_ACTIONS) || defined(WLAC_USED)
-    pthread_t                                       m_starterThread;
+    //pthread_t                                       m_starterThread;
 #endif
 
 	timeb											m_lastPingByLeader;

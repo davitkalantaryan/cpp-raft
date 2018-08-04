@@ -40,9 +40,10 @@
 #endif
 
 #if !defined(_WIN32) || defined(_WLAC_USED)
+static pthread_t	s_mainThreadHandle = (pthread_t)0;
 #else
 #include <WinSock2.h>
-static HANDLE	s_mainThreadHandle = (HANDLE)0;
+static HANDLE		s_mainThreadHandle = (HANDLE)0;
 static void PAPCFUNC_static(_In_ ULONG_PTR){}
 #endif
 
@@ -127,15 +128,16 @@ void raft::tcp::Server::Initialize()
 	newAction.sa_restorer = NULL;
 
 	sigaction(SIGPIPE, &newAction, NULL);
+	s_mainThreadHandle = pthread_self();
 #else
 	s_mainThreadHandle = GetCurrentThread();
 #endif
 
+	//sigaction(SIGSEGV, &newAction, NULL_ACTION);
 	sigaction(SIGABRT, &newAction, NULL_ACTION);
 	sigaction(SIGFPE, &newAction, NULL_ACTION);
 	sigaction(SIGILL, &newAction, NULL_ACTION);
 	sigaction(SIGINT, &newAction, NULL_ACTION);
-    //sigaction(SIGSEGV, &newAction, NULL_ACTION);
 	sigaction(SIGTERM, &newAction, NULL_ACTION);
 
 	common::socketN::Initialize();
@@ -179,10 +181,6 @@ void raft::tcp::Server::CleanNodeData(RaftNode2* a_pNode, std::string* a_pDataFr
 
 void raft::tcp::Server::FindClusterAndInit(const std::vector<NodeIdentifierKey>& a_vectPossibleNodes, std::string* a_extraDataForAndFromAdder,int a_nRaftPort)
 {
-#ifndef _WIN32
-	m_starterThread = pthread_self();
-#endif  // #ifdef HANDLE_SIG_ACTIONS
-
 	if(a_nRaftPort>0){m_nPortOwn = a_nRaftPort;} // otherwise child class inited m_nPortOwn
 	if(m_nPeriodForPeriodic<MIN_REP_RATE_MS){ m_nPeriodForPeriodic = DEF_REP_RATE_MS;}
 	if(this->request_timeout < m_nPeriodForPeriodic) { this->request_timeout = m_nPeriodForPeriodic;}
@@ -1777,6 +1775,7 @@ int raft::tcp::Server::ApplyLogClbkFunction(void *cb_ctx, void *udata, const uns
 
 void raft::tcp::Server::SigHandlerStatic(int a_nSigNum)
 {
+	::common::NewSharedLockGuard< ::STDN::shared_mutex > aSharedGuard;
     ServersList* pServer;
 
 #ifndef _WIN32
@@ -1785,7 +1784,7 @@ void raft::tcp::Server::SigHandlerStatic(int a_nSigNum)
 
     DEBUG_APPLICATION(1,"Interrupt (No:%d)",a_nSigNum);
 
-	s_pRWlockForServers.lock_shared();
+	aSharedGuard.SetAndLockMutex(&s_pRWlockForServers);
     DEBUG_APPLICATION(4,"rd_lock");
 
     pServer = s_pFirst;
@@ -1802,34 +1801,35 @@ void raft::tcp::Server::SigHandlerStatic(int a_nSigNum)
 		case SIGILL:
 			DEBUG_APPLICATION(0,"SIGILL");
 			break;
-		case SIGINT:
+		case SIGINT: case SIGTERM:
 		{
-			raft::tcp::g_nApplicationRun = 0;
-#ifdef _WIN32
-			if (s_mainThreadHandle) { QueueUserAPC(PAPCFUNC_static,s_mainThreadHandle,NULL ); }
-			//pServer->server->StopServer();
-#else
-			if (interruptThread != pServer->server->m_starterThread) {
-				pthread_kill(pServer->server->m_starterThread, SIGINT);
-			}
-			else {
-				static int snSigIntCount = 0;
+			static int snSigIntCount = 0;
 
-				if (snSigIntCount++ > 0) {
-					DEBUG_APPLICATION(0, "Process will be terminated");
-					exit(1);
-				}
-				DEBUG_APPLICATION(0, "Global flag set to 0, next SIGINT will stop server");
-				pServer->server->StopServer();
+			raft::tcp::g_nApplicationRun = 0;
+
+#ifdef _WIN32
+			if (s_mainThreadHandle) { 
+				QueueUserAPC(PAPCFUNC_static,s_mainThreadHandle,NULL ); 
+				s_mainThreadHandle = (HANDLE)0;
+				break;
 			}
-			break;
+#else
+			if (interruptThread != s_mainThreadHandle) {
+				pthread_kill(s_mainThreadHandle, SIGINT);
+				break;
+			}
+			
 #endif
+			if (snSigIntCount++>0) {
+				ERROR_LOGGING2("Normal shutdown was not sucessfull. Program will be killed");
+				exit(1);
+			}
+
+			DEBUG_APPLICATION(0, "Global flag set to 0, next SIGINT will kill server");
+			break;
 		}
-		break;
 		case SIGSEGV:
 			DEBUG_APPLICATION(0,"SIGSEGV");
-			break;
-		case SIGTERM:
 			break;
 #if !defined(_WIN32) || defined(_WLAC_USED)
 		case SIGPIPE:
@@ -1845,7 +1845,6 @@ void raft::tcp::Server::SigHandlerStatic(int a_nSigNum)
         pServer = pServer->next;
     }
 
-	s_pRWlockForServers.unlock_shared();
     DEBUG_APPLICATION(4,"unlock");
 }
 
