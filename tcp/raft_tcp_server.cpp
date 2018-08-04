@@ -1820,7 +1820,7 @@ void raft::tcp::Server::SigHandlerStatic(int a_nSigNum)
 			}
 			
 #endif
-			if (snSigIntCount++>0) {
+			if (snSigIntCount++>1) {
 				ERROR_LOGGING2("Normal shutdown was not sucessfull. Program will be killed");
 				exit(1);
 			}
