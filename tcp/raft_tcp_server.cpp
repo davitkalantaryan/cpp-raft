@@ -1804,18 +1804,8 @@ void raft::tcp::Server::SigHandlerStatic(int a_nSigNum)
 			break;
 		case SIGINT:
 		{
-			static int snSigIntCount = 0;
-			DEBUG_APPLICATION(0, "Global flag set to 0, next SIGINT will stop server");
-
-			if(snSigIntCount++==0){
-				raft::tcp::g_nApplicationRun = 0;
-				break;
-			}
-
-			DEBUG_APPLICATION(0, "Process will be terminated");
-
-#ifdef _WIN32
 			raft::tcp::g_nApplicationRun = 0;
+#ifdef _WIN32
 			if (s_mainThreadHandle) { QueueUserAPC(PAPCFUNC_static,s_mainThreadHandle,NULL ); }
 			//pServer->server->StopServer();
 #else
@@ -1823,8 +1813,16 @@ void raft::tcp::Server::SigHandlerStatic(int a_nSigNum)
 				pthread_kill(pServer->server->m_starterThread, SIGINT);
 			}
 			else {
+				static int snSigIntCount = 0;
+
+				if (snSigIntCount++ > 0) {
+					DEBUG_APPLICATION(0, "Process will be terminated");
+					exit(1);
+				}
+				DEBUG_APPLICATION(0, "Global flag set to 0, next SIGINT will stop server");
 				pServer->server->StopServer();
 			}
+			break;
 #endif
 		}
 		break;
