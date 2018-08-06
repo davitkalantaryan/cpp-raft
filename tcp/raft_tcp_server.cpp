@@ -1174,7 +1174,7 @@ bool raft::tcp::Server::handleNewConnectionBeforeLock(char a_cRequest,common::So
 		break;
 	case raft::connect::fromClient2::ping:
 		raft_connectfromClient_ping(a_socket, &a_pWorkerData->pear.con.remAddress);
-		DEBUG_APPLICATION(1, "raft::connect::fromClient::allNodesInfo");
+		DEBUG_APPLICATION(3, "raft::connect::fromClient::ping");
 		break;
 	case raft::connect::toAnyNode2::otherLeaderFound:
 		raft_connect_toAnyNode_otherLeaderFound(a_socket);
