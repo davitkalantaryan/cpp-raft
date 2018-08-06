@@ -18,6 +18,31 @@ raft::tcp::Client::~Client()
 }
 
 
+int raft::tcp::Client::pingToNode(const char* a_nodeIp, int a_port, std::string* a_pPingResult)
+{
+	::common::SocketTCP aSocket;
+	NodeIdentifierKey aNodeKey;
+	uint32_t isEndianDiffer;
+	int nReturn(-1);
+
+	aNodeKey.set_ip4Address1(a_nodeIp);
+	aNodeKey.port = a_port;
+
+	try {  // we put into try block because std::vector::resize can throw exception
+		if (!ConnectAndGetEndian(&aSocket, aNodeKey, raft::connect::fromClient2::allNodesInfo, &isEndianDiffer)) { goto returnPoint; }
+		*a_pPingResult = std::string("ping is ok! remEndian is ") + (isEndianDiffer ? "differ " : "same ");
+
+	}
+	catch(...){
+	}
+
+
+returnPoint:
+	aSocket.closeC();
+	return nReturn;
+}
+
+
 int raft::tcp::Client::ReceiveAllNodes(const char* a_nodeIp, int a_port, std::vector<NodeIdentifierKey>* a_pNodes)
 {
 	struct {int nodesCount,leaderIndex;}nl;

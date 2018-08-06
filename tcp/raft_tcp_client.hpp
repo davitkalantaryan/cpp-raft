@@ -11,6 +11,7 @@
 #include <common/common_sockettcp.hpp>
 #include <vector>
 #include "raft_tcp_common.hpp"
+#include <string>
 
 namespace raft { namespace tcp{
 
@@ -21,6 +22,7 @@ public:
 	virtual ~Client();
 
 	static int ReceiveAllNodes(const char* nodeIp, int port, std::vector<NodeIdentifierKey>* pNodes);
+	static int pingToNode(const char* nodeIp, int port, std::string* a_pPingResult);
 
 protected:
 	//common::SocketTCP	m_socket;

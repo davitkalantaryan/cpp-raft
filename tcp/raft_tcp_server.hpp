@@ -190,8 +190,9 @@ protected:
 	// utils
 	void				raft_connect_toAnyNode_permanentBridge(common::SocketTCP& sock, const sockaddr_in* remoteAddr); // (index=0)->raft
 	bool				raft_connect_toAnyNode_newNode(common::SocketTCP& sock, SWorkerData* a_pData);
-	void				raft_connect_fromClient_allNodesInfo(common::SocketTCP& sock);
 	void				raft_connect_toAnyNode_otherLeaderFound(common::SocketTCP& sock);
+	void				raft_connect_fromClient_allNodesInfo(common::SocketTCP& sock);
+	void				raft_connectfromClient_ping(common::SocketTCP& sock, const sockaddr_in* remoteAddr);
 
 	void				CheckAllPossibleSeeds(const std::vector<NodeIdentifierKey>& vectPossibleNodes, std::string* a_extraDataForAndFromAdder);
 

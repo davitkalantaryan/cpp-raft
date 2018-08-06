@@ -11,14 +11,14 @@
 
 #include <errno.h>
 
-#define E_FATAL			-1	/* fatal error */
-#define E_NO_BIND		-7	/* can not bind address to port */
-#define E_NO_CONNECT	-8	/* can not connect to server */
-#define E_NO_LISTEN		-14	/* can not listen */
-#define E_NO_SOCKET		-18	/* no socket generated */
-#define E_RECEIVE		-25	/* error by receive */
-#define E_SELECT		-28	/* error by select */
-#define E_SEND			-29	/* error by send */
+#define E_FATAL				-1	/* fatal error */
+#define E_NO_BIND			-7	/* can not bind address to port */
+#define E_NO_CONNECT		-8	/* can not connect to server */
+#define E_NO_LISTEN			-14	/* can not listen */
+#define E_NO_SOCKET			-18	/* no socket generated */
+#define E_RECEIVE			-25	/* error by receive */
+#define E_SELECT			-28	/* error by select */
+#define E_SEND				-29	/* error by send */
 #define E_UNKNOWN_HOST		-38	/* can not find host */
 #define E_WINSOCK_VERSION	-42	/* WINSOCK DLL version not requested */
 #define	E_CONN_CLOSED		-46	/* connection closed by peer */

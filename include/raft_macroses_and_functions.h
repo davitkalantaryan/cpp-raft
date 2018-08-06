@@ -95,6 +95,7 @@ namespace toFollower2 {enum Type {
 
 namespace fromClient2 {enum Type { 
 	allNodesInfo = (int)toFollower2::last, 
+	ping,
 	last
 };}
 

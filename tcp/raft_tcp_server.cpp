@@ -375,6 +375,13 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::CollectAllNodesDataNotThrSafe(i
 }
 
 
+void raft::tcp::Server::raft_connectfromClient_ping(common::SocketTCP& a_clientSock, const sockaddr_in* a_remoteAddr)
+{
+	char vcHostName[64];
+	DEBUG_APPLICATION(1, "ping from %s(%s)", ::common::socketN::GetHostName(a_remoteAddr, vcHostName, 63), ::common::socketN::GetIPAddress(a_remoteAddr));
+}
+
+
 void raft::tcp::Server::raft_connect_fromClient_allNodesInfo(common::SocketTCP& a_clientSock)
 {
 	struct { int nodesCount, leaderIndex; }nl;
@@ -1163,6 +1170,10 @@ bool raft::tcp::Server::handleNewConnectionBeforeLock(char a_cRequest,common::So
 		break;
 	case raft::connect::fromClient2::allNodesInfo:
 		raft_connect_fromClient_allNodesInfo(a_socket);
+		DEBUG_APPLICATION(1, "raft::connect::fromClient::allNodesInfo");
+		break;
+	case raft::connect::fromClient2::ping:
+		raft_connectfromClient_ping(a_socket, &a_pWorkerData->pear.con.remAddress);
 		DEBUG_APPLICATION(1, "raft::connect::fromClient::allNodesInfo");
 		break;
 	case raft::connect::toAnyNode2::otherLeaderFound:
