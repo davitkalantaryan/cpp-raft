@@ -21,7 +21,7 @@
 #define E_SEND			-29	/* error by send */
 #define E_UNKNOWN_HOST		-38	/* can not find host */
 #define E_WINSOCK_VERSION	-42	/* WINSOCK DLL version not requested */
-#define	E_CONN_CLOSED		-46	/* connecttion closed by peer */
+#define	E_CONN_CLOSED		-46	/* connection closed by peer */
 
 #ifdef	_WIN32
 #include <WinSock2.h>
