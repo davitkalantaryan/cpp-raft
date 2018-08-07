@@ -208,6 +208,10 @@ void raft::tcp::Server::RunAllThreadPrivate(int32_t a_nWorkersCount)
 	if (m_nWork) {return;}
 	m_nWork = 1;
 
+	for (i = 0; i<NUMBER_OF_TOOLS_SOCKETS; ++i) {
+		m_intrptSocketForRcv[i] = CreateEmptySocket();
+	}
+
 #if !defined(_WIN32) || defined(_WLAC_USED)
 	// make a such that only main thread is interrupted 
 	// during SIGINT
@@ -247,8 +251,14 @@ void raft::tcp::Server::StopServer()
 	m_nWork = 0;
 
 	InterruptPeriodicThread();
-    for(i=0;i<NUMBER_OF_TOOLS_SOCKETS;++i){
-		InterruptReceivercThread(i);
+	for (i=0; i<NUMBER_OF_TOOLS_SOCKETS; ++i) {
+		closesocket(m_intrptSocketForRcv[i]);
+		m_intrptSocketForRcv[i] = -1;
+#ifdef _WIN32
+		// something with windows?
+#else
+		if (m_rcvThreadIds[i]) { pthread_kill(m_rcvThreadIds[i], SIGPIPE); }
+#endif
 	}
 	m_serverTcp.StopServer();
 
@@ -711,7 +721,7 @@ void raft::tcp::Server::HandleNewConnectionPrivate(SWorkerData* a_pWorkerData)
 	snEndian = 1;
 	nSndRcv = aClientSock.writeC(&snEndian, 2);																// 2. Send endian				
 	if (nSndRcv != 2) {
-		DEBUG_APPLICATION(1, "Could not send the endian of the connected pear nSndRcv=%d, socket=%d", nSndRcv, a_pWorkerData->pear.con.sockDescriptor);
+		DEBUG_APPLICATION(1, "Could not send the endian of the connected pear (%s) nSndRcv=%d, socket=%d",::common::socketN::GetIPAddress(&a_pWorkerData->pear.con.remAddress), nSndRcv, a_pWorkerData->pear.con.sockDescriptor);
 		aClientSock.closeC();
 		return;
 	}
@@ -891,8 +901,8 @@ void raft::tcp::Server::FunctionForMultiRcv(void (Server::*a_fpRcvFnc)(RaftNode2
 	RaftNode2* pNode;
 	common::NewSharedLockGuard<NewSharedMutex> aShrdLockGuard;
 	fd_set rFds, eFds;
-	int nMax, nCurrentSocket, nSelectReturn, nSocketsFound, nSocketToIgnore=-1, nLastSocket;
-    volatile int& nSocketForInfo = m_intrptSocketForRcv[a_index];
+	int nCountInFd,nMax, nCurrentSocket, nSelectReturn, nSocketsFound, nSocketToIgnore=-1, nLastSocket;
+    volatile int& nSocketForInfo2 = m_intrptSocketForRcv[a_index];
 
 enterLoopPoint:
 	try{
@@ -900,13 +910,16 @@ enterLoopPoint:
 		while (m_nWork) {
 			FD_ZERO(&rFds); FD_ZERO(&eFds);
 			aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes2);  // --> locking
-			if (nSocketForInfo <= 0) { nSocketForInfo = CreateEmptySocket(); }
-			nMax = nSocketForInfo;
+			nCountInFd = 0;
+			if (nSocketForInfo2 > 0) {
+				nMax = nSocketForInfo2;
 #ifdef _WIN32
-			FD_SET(nSocketForInfo, &rFds);
+				FD_SET(nSocketForInfo2, &rFds);
 #else
-			FD_SET(nSocketForInfo, &eFds);
+				FD_SET(nSocketForInfo2, &eFds);
 #endif
+				++nCountInFd;
+			}
 			pNode = firstNode();
 			nLastSocket = -1;
 			while (pNode) {
@@ -916,12 +929,18 @@ enterLoopPoint:
 					if ((nCurrentSocket>0) && (nCurrentSocket != nSocketToIgnore)) {
 						FD_SET(nCurrentSocket, &rFds);
 						FD_SET(nCurrentSocket, &eFds);
+						++nCountInFd;
 						if (nCurrentSocket>nMax) { nMax = nCurrentSocket; }
 					}  // if(pNodeTools->socket>0){
 				}  // if(pNode!=m_thisNode){
 				pNode = pNode->next;
 			}// while(pNode){
 			aShrdLockGuard.UnsetAndUnlockMutex();  // --> unlocking
+
+			if(nCountInFd<1){
+				SleepMs(100);
+				goto enterLoopPoint;
+			}
 
 			nSelectReturn = ::select(++nMax, &rFds, NULL, &eFds, NULL);
 			if (!m_nWork) { break; }
@@ -933,11 +952,6 @@ enterLoopPoint:
 			else { nSocketToIgnore = -1; }
 			nSocketsFound = 0;
 			aShrdLockGuard.SetAndLockMutex(&m_shrdMutexForNodes2);  // --> locking
-			if (FD_ISSET(nSocketForInfo, &rFds) || FD_ISSET(nSocketForInfo, &eFds)) {
-				++nSocketsFound;
-				closesocket(nSocketForInfo);  //  is it necessary?
-				nSocketForInfo = -1;
-			}
 
 			pNode = firstNode();
 			while (pNode && (nSocketsFound<nSelectReturn)) {
@@ -966,7 +980,6 @@ enterLoopPoint:
 		goto enterLoopPoint;
 	}
 
-	if(nSocketForInfo>0){closesocket(nSocketForInfo);nSocketForInfo=-1;}
 }
 
 
@@ -1668,7 +1681,12 @@ void raft::tcp::Server::InterruptReceivercThread(int32_t a_index)
 		return;
 	}
 
-	if (m_intrptSocketForRcv[a_index]>0) { closesocket(m_intrptSocketForRcv[a_index]);}
+	if (m_intrptSocketForRcv[a_index]>0) { 
+		int nSocketForInfoOld = m_intrptSocketForRcv[a_index];
+		int nSocketForInfoNew = CreateEmptySocket();
+		m_intrptSocketForRcv[a_index] = nSocketForInfoNew;
+		closesocket(nSocketForInfoOld);
+	}
 
 #ifdef _WIN32
     // something with windows?
