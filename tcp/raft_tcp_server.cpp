@@ -239,6 +239,7 @@ void raft::tcp::Server::RunAllThreadPrivate(int32_t a_nWorkersCount)
 	sigaction(SIGINT, &oldAction, NULL_ACTION);
 #endif
 
+	time(&m_serverStartTime);
 }
 
 
@@ -385,10 +386,20 @@ raft::tcp::NodeIdentifierKey* raft::tcp::Server::CollectAllNodesDataNotThrSafe(i
 }
 
 
-void raft::tcp::Server::raft_connectfromClient_ping(common::SocketTCP& a_clientSock, const sockaddr_in* a_remoteAddr)
+void raft::tcp::Server::raft_connect_fromClient_ping(common::SocketTCP& a_clientSock, const sockaddr_in* a_remoteAddr)
 {
 	char vcHostName[64];
 	DEBUG_APPLICATION(1, "ping from %s(%s)", ::common::socketN::GetHostName(a_remoteAddr, vcHostName, 63), ::common::socketN::GetIPAddress(a_remoteAddr));
+}
+
+
+void raft::tcp::Server::raft_connect_fromClient_startTime(common::SocketTCP& a_clientSock, const sockaddr_in* a_remoteAddr)
+{
+	uint32_t unStartTime = (uint32_t)this->m_serverStartTime;
+	char vcHostName[64];
+
+	a_clientSock.writeC(&unStartTime, 4);
+	DEBUG_APPLICATION(1, "startTime request from %s(%s)", ::common::socketN::GetHostName(a_remoteAddr, vcHostName, 63), ::common::socketN::GetIPAddress(a_remoteAddr));
 }
 
 
@@ -1186,7 +1197,11 @@ bool raft::tcp::Server::handleNewConnectionBeforeLock(char a_cRequest,common::So
 		DEBUG_APPLICATION(1, "raft::connect::fromClient::allNodesInfo");
 		break;
 	case raft::connect::fromClient2::ping:
-		raft_connectfromClient_ping(a_socket, &a_pWorkerData->pear.con.remAddress);
+		raft_connect_fromClient_ping(a_socket, &a_pWorkerData->pear.con.remAddress);
+		DEBUG_APPLICATION(3, "raft::connect::fromClient::ping");
+		break;
+	case raft::connect::fromClient2::startTime:
+		raft_connect_fromClient_startTime(a_socket, &a_pWorkerData->pear.con.remAddress);
 		DEBUG_APPLICATION(3, "raft::connect::fromClient::ping");
 		break;
 	case raft::connect::toAnyNode2::otherLeaderFound:

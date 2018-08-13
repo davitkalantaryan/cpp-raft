@@ -44,6 +44,38 @@ returnPoint:
 }
 
 
+int raft::tcp::Client::getStartTime(const char* a_nodeIp, int a_port, uint32_t* a_pStartTime)
+{
+	::common::SocketTCP aSocket;
+	NodeIdentifierKey aNodeKey;
+	uint32_t isEndianDiffer;
+	int nReturn(-1);
+
+	aNodeKey.set_ip4Address1(a_nodeIp);
+	aNodeKey.port = a_port;
+
+	try {  // we put into try block because std::vector::resize can throw exception
+		int nSndRcv;
+		if (!ConnectAndGetEndian(&aSocket, aNodeKey, raft::connect::fromClient2::startTime, &isEndianDiffer)) { goto returnPoint; }
+		nSndRcv = aSocket.readC(a_pStartTime,4);
+		if(nSndRcv!=4){
+			ERROR_LOGGING2("Unable to receive server start time");
+			goto returnPoint;
+		}
+		if (isEndianDiffer) { SWAP4BYTES(*a_pStartTime); }
+		nReturn = 0;
+
+	}
+	catch(...){
+	}
+
+
+returnPoint:
+	aSocket.closeC();
+	return nReturn;
+}
+
+
 int raft::tcp::Client::ReceiveAllNodes(const char* a_nodeIp, int a_port, std::vector<NodeIdentifierKey>* a_pNodes)
 {
 	struct {int nodesCount,leaderIndex;}nl;

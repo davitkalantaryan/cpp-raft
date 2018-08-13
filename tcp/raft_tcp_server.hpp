@@ -18,6 +18,7 @@
 #include <pthread.h>
 #endif
 #include <cpp11+/thread_cpp11.hpp>
+#include <time.h>
 
 #define  NUMBER_OF_TOOLS_SOCKETS	2
 
@@ -192,7 +193,8 @@ protected:
 	bool				raft_connect_toAnyNode_newNode(common::SocketTCP& sock, SWorkerData* a_pData);
 	void				raft_connect_toAnyNode_otherLeaderFound(common::SocketTCP& sock);
 	void				raft_connect_fromClient_allNodesInfo(common::SocketTCP& sock);
-	void				raft_connectfromClient_ping(common::SocketTCP& sock, const sockaddr_in* remoteAddr);
+	void				raft_connect_fromClient_ping(common::SocketTCP& sock, const sockaddr_in* remoteAddr);
+	void				raft_connect_fromClient_startTime(common::SocketTCP& sock, const sockaddr_in* remoteAddr);
 
 	void				CheckAllPossibleSeeds(const std::vector<NodeIdentifierKey>& vectPossibleNodes, std::string* a_extraDataForAndFromAdder);
 
@@ -258,6 +260,7 @@ public:
 	timeb											m_lastPingByLeader;
 	uint64_t										m_isInited : 1;
 	std::vector<NodeIdentifierKey>					m_allPossibleNodes;
+	time_t											m_serverStartTime;
 };
 
 }} // namespace raft { namespace tcp{
