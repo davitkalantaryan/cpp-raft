@@ -24,7 +24,7 @@ public:
 
 	static int ReceiveAllNodes(const char* nodeIp, int port, std::vector<NodeIdentifierKey>* pNodes);
 	static int pingToNode(const char* nodeIp, int port, std::string* a_pPingResult);
-	static int getStartTime(const char* nodeIp, int port, uint32_t* a_pStartTime);
+    static int getStartTime(const char* nodeIp, int port, int32_t* a_pStartTime);
 
 protected:
 	//common::SocketTCP	m_socket;

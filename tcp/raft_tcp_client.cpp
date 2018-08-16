@@ -44,7 +44,7 @@ returnPoint:
 }
 
 
-int raft::tcp::Client::getStartTime(const char* a_nodeIp, int a_port, uint32_t* a_pStartTime)
+int raft::tcp::Client::getStartTime(const char* a_nodeIp, int a_port, int32_t* a_pStartTime)
 {
 	::common::SocketTCP aSocket;
 	NodeIdentifierKey aNodeKey;
