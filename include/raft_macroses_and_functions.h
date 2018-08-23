@@ -172,6 +172,7 @@ namespace follower {enum Type {
 
 void lock_fprintfLocked(void);
 void unlock_fprintfLocked(void);
+int fprintfOnBothFilesIfNeeded(FILE* a_fpFile, const char* a_cpcFormat, ...);
 
 #ifdef printfWithTime_defined
 int fprintfWithTime(FILE* fpFile, const char* a_cpcFormat, ...);
@@ -181,23 +182,36 @@ int fprintfWithTime(FILE* fpFile, const char* a_cpcFormat, ...);
 #define fprintfWithTime  fprintf
 #endif
 
+
+#ifdef _USE_LOG_FILES
+
+FILE*  OpenRaftLogFile(const char* a_cpcFileName);
+FILE*  OpenRaftErrorLogFile(const char* a_cpcFileName);
+void SetRaftLogFile(FILE* a_newLogFile);
+void SetRaftErrorLogFile(FILE* a_newLogFile);
+void FlushLogFilesIfNonNull(void);
+
+#endif  // #ifdef _USE_LOG_FILES
+
+
 #define DEBUG_APPLICATION_NO_NEW_LINE(_logLevel,...)	\
 	do{ if((_logLevel)<=raft::tcp::g_nLogLevel){ \
 			lock_fprintfLocked();\
-			printfWithTime("fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);printf(__VA_ARGS__); \
+			printfWithTime("fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);fprintfOnBothFilesIfNeeded(stdout,__VA_ARGS__); \
 			unlock_fprintfLocked(); \
 		} \
 	}while(0)
 
 #define DEBUG_APPLICATION_NO_ADD_INFO(_logLevel,...)	\
-	do{ if((_logLevel)<=raft::tcp::g_nLogLevel){lock_fprintfLocked();printf(__VA_ARGS__);unlock_fprintfLocked();}}while(0)
+	do{ if((_logLevel)<=raft::tcp::g_nLogLevel){lock_fprintfLocked();fprintfOnBothFilesIfNeeded(stdout,__VA_ARGS__);unlock_fprintfLocked();}}while(0)
 
-#define DEBUG_APPLICATION_NEW_LINE(_logLevel)	do{ if((_logLevel)<=raft::tcp::g_nLogLevel){printf("\n");}}while(0)
+#define DEBUG_APPLICATION_NEW_LINE(_logLevel)	do{ if((_logLevel)<=raft::tcp::g_nLogLevel){fprintfOnBothFilesIfNeeded(stdout,"\n");}}while(0)
 
 #define DEBUG_APPLICATION(_logLevel,...)	\
 	do{ if((_logLevel)<=raft::tcp::g_nLogLevel){ \
 			lock_fprintfLocked();\
-			printfWithTime("fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);printf(__VA_ARGS__);printf("\n"); \
+			printfWithTime("fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__); \
+			fprintfOnBothFilesIfNeeded(stdout,__VA_ARGS__);fprintfOnBothFilesIfNeeded(stdout,"\n"); \
 			unlock_fprintfLocked(); \
 		} \
 	}while(0)
@@ -205,7 +219,9 @@ int fprintfWithTime(FILE* fpFile, const char* a_cpcFormat, ...);
 #define ERROR_LOGGING2(...)	\
 	do{ \
 		lock_fprintfLocked();\
-		fprintfWithTime(stderr,"ERROR: fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);fprintf(stderr,__VA_ARGS__);fprintf(stderr,"\n"); \
+		fprintfWithTime(stderr,"ERROR: fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__); \
+		fprintfOnBothFilesIfNeeded(stderr,__VA_ARGS__); \
+		fprintfOnBothFilesIfNeeded(stderr,"\n"); \
 		unlock_fprintfLocked(); \
 	}while(0)
 
@@ -213,7 +229,9 @@ int fprintfWithTime(FILE* fpFile, const char* a_cpcFormat, ...);
 #define POSSIBLE_BUG(...)	\
 	do{ \
 		lock_fprintfLocked();\
-		fprintfWithTime(stderr,"ERROR: possible bug fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__);fprintf(stderr,__VA_ARGS__);fprintf(stderr,"\n"); \
+		fprintfWithTime(stderr,"ERROR: possible bug fl:%s;ln:%d   ",FILE_FROM_PATH(__FILE__),__LINE__); \
+		fprintfOnBothFilesIfNeeded(stderr,__VA_ARGS__); \
+		fprintfOnBothFilesIfNeeded(stderr,"\n"); \
 		unlock_fprintfLocked();\
 	}while(0)
 
@@ -221,8 +239,8 @@ int fprintfWithTime(FILE* fpFile, const char* a_cpcFormat, ...);
 	do{ \
 		if(!(_pointer)){ \
 			lock_fprintfLocked();\
-			fprintf(stderr,"fl:%s,ln:%d-> low memory",FILE_FROM_PATH(__FILE__),__LINE__); \
-			fprintf(stderr,__VA_ARGS__);fprintf(stderr,"\n"); \
+			fprintfOnBothFilesIfNeeded(stderr,"fl:%s,ln:%d-> low memory",FILE_FROM_PATH(__FILE__),__LINE__); \
+			fprintfOnBothFilesIfNeeded(stderr,__VA_ARGS__);fprintfOnBothFilesIfNeeded(stderr,"\n"); \
 			unlock_fprintfLocked();\
 			exit(1); \
 		} \
@@ -230,14 +248,6 @@ int fprintfWithTime(FILE* fpFile, const char* a_cpcFormat, ...);
 
 #define HANDLE_MKDIR_BY_NODES(_result,...)	do{if((_result)){ERROR_LOGGING2(__VA_ARGS__);exit((_result));}}while(0)
 
-
-#if 0
-#define DEBUG_HANGING(...)  \
-    do{ \
-        std::string aStr="testString"; \
-        printf("!!!!!!!!!!!!!! fl:%s;ln:%d (%s)\n",FILE_FROM_PATH(__FILE__),__LINE__,aStr.c_str()); \
-    }while(0)
-#endif
 
 #define DEBUG_HANGING(...)
 

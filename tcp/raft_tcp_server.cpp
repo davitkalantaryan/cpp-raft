@@ -127,8 +127,12 @@ void raft::tcp::Server::Initialize()
 	sigemptyset(&newAction.sa_mask);
 	newAction.sa_restorer = NULL;
 
-	sigaction(SIGPIPE, &newAction, NULL);
 	s_mainThreadHandle = pthread_self();
+
+	sigaction(SIGPIPE, &newAction, NULL);
+#ifdef _USE_LOG_FILES
+    sigaction(SIGTSTP, &newAction, NULL);
+#endif
 #else
 	s_mainThreadHandle = GetCurrentThread();
 #endif
@@ -1837,7 +1841,15 @@ void raft::tcp::Server::SigHandlerStatic(int a_nSigNum)
 		switch (a_nSigNum)
 		{
 		case SIGABRT:
-			DEBUG_APPLICATION(0,"SIGABRT");
+			DEBUG_APPLICATION(2,"SIGABRT");
+#if !defined(_WIN32) || defined(_WLAC_USED)
+        case SIGTSTP:
+            DEBUG_APPLICATION(2, "SIGTSTP");
+#endif
+#ifdef _USE_LOG_FILES
+			FlushLogFilesIfNonNull();
+            return;
+#endif
 			break;
 		case SIGFPE:
 			DEBUG_APPLICATION(0,"SIGFPE");

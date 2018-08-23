@@ -9,6 +9,7 @@
 #include <cpp11+/mutex_cpp11.hpp>
 #include <common/newlockguards.hpp>
 #include <string.h>
+#include <sys/stat.h>
 
 #ifdef _MSC_VER
 #pragma warning(disable:4996)
@@ -153,22 +154,196 @@ void unlock_fprintfLocked(void)
 	s_mutexForCtime.unlock();
 }
 
+#ifdef _USE_LOG_FILES
+
+static FILE* s_fpLogFile = NULL;
+static FILE* s_fpErrorLogFile = NULL;
+static int s_nLogFileShouldBeClosed = 0;
+static int s_nErrorLogShouldBeClosed = 0;
+static int s_nCleanupInited = 0;
+static size_t s_unFileMaximumSize = 100000000; // 100 MB
+static std::string s_strLogFileName;
+static std::string s_strErrLogFileName;
+
+static void CleanLogFilesInTheEndStatic(void)
+{
+	// s_mutexForCtime.lock();
+	// because we are in the cleanup, let's skip locking
+
+	if (s_fpLogFile && s_nLogFileShouldBeClosed) {fclose(s_fpLogFile);}
+	s_fpLogFile = NULL;
+	s_nLogFileShouldBeClosed = 0;
+
+	if (s_fpErrorLogFile && s_nErrorLogShouldBeClosed) { fclose(s_fpErrorLogFile); }
+	s_fpErrorLogFile = NULL;
+	s_nErrorLogShouldBeClosed = 0;
+
+	// s_mutexForCtime.unlock();
+}
+
+
+static FILE* OpenLogFileStatic(const char* a_cpcFileName,FILE** a_fppLogFile, int* a_pnLogFileWillBeClosed)
+{
+	FILE*& fpLogFile = *a_fppLogFile;
+	int& nLogFileWillBeClosed = *a_pnLogFileWillBeClosed;
+
+	s_mutexForCtime.lock();
+
+	if (fpLogFile && nLogFileWillBeClosed) {
+		fclose(fpLogFile);
+	}
+	fpLogFile = fopen(a_cpcFileName, "a+");
+
+	if(fpLogFile){nLogFileWillBeClosed=1;}
+	else{nLogFileWillBeClosed=0;}
+
+	if(!s_nCleanupInited){
+		atexit(&CleanLogFilesInTheEndStatic);
+		s_nCleanupInited = 1;
+	}
+
+	s_mutexForCtime.unlock();
+
+	return fpLogFile;
+}
+
+
+FILE* OpenRaftLogFile(const char* a_cpcFileName)
+{
+	s_strLogFileName = a_cpcFileName;
+	return OpenLogFileStatic(a_cpcFileName,&s_fpLogFile,&s_nLogFileShouldBeClosed);
+}
+
+
+FILE* OpenRaftErrorLogFile(const char* a_cpcFileName)
+{
+	s_strErrLogFileName = a_cpcFileName;
+	return OpenLogFileStatic(a_cpcFileName, &s_fpErrorLogFile, &s_nErrorLogShouldBeClosed);
+}
+
+void SetRaftLogFile(FILE* a_newLogFile)
+{
+	s_mutexForCtime.lock();
+	s_fpLogFile = a_newLogFile;
+	s_nLogFileShouldBeClosed = 0;
+	s_mutexForCtime.unlock();
+}
+
+
+void SetRaftErrorLogFile(FILE* a_newLogFile)
+{
+	s_mutexForCtime.lock();
+	s_fpErrorLogFile = a_newLogFile;
+	s_nErrorLogShouldBeClosed = 0;
+	s_mutexForCtime.unlock();
+}
+
+
+static void MoveFileAndResetContent(FILE** a_fppFile, const std::string& a_fileName, int a_nFileCanBeClosed)
+{
+	if(a_nFileCanBeClosed){
+		FILE*& fpFile = *a_fppFile;
+		struct stat fStat;
+		if (!fstat(fileno(fpFile), &fStat)) {
+
+            size_t unCurSize = (size_t)fStat.st_size;
+
+            if (unCurSize>s_unFileMaximumSize) {
+				std::string strBackFileName = a_fileName + ".back";
+				remove(strBackFileName.c_str());
+				fclose(fpFile);
+				rename(a_fileName.c_str(), strBackFileName.c_str());
+				fpFile = fopen(a_fileName.c_str(), "w");
+			}
+
+		} // if (!fstat(fileno(m_pFile), &fStat)) {
+	}
+}
+
+
+void FlushLogFilesIfNonNull(void)
+{
+	if (s_fpLogFile) { /*printf("flushing!!!\n");*/ fflush(s_fpLogFile); }
+
+	if ((s_fpLogFile!=s_fpErrorLogFile) && s_fpErrorLogFile) { fflush(s_fpErrorLogFile); }
+	//if (s_fpErrorLogFile) { fflush(s_fpErrorLogFile); }
+}
+
+
+#endif  // #ifdef _USE_LOG_FILES
+
+static int fprintfOnBothFilesIfNeededStatic(FILE* a_fpFile, const char* a_cpcFormat, va_list a_list)
+{
+    int nRet;
+#ifdef _USE_LOG_FILES
+    va_list aListTmp;
+    va_copy(aListTmp, a_list);
+#endif
+    nRet = vfprintf(a_fpFile, a_cpcFormat, a_list);
+
+#ifdef _USE_LOG_FILES
+    if(s_fpLogFile && (a_fpFile==stdout)){
+		static int snTimeToReset = 0;
+
+        vfprintf(s_fpLogFile, a_cpcFormat, aListTmp);
+
+		if (((++snTimeToReset) % 1000) == 0) {
+			fflush(s_fpLogFile);
+			if ((snTimeToReset % 1000) == 0) {
+				MoveFileAndResetContent(&s_fpLogFile, s_strLogFileName, s_nLogFileShouldBeClosed);
+			} // if (((++snTimeToReset) % 1000) == 0) {
+		}
+	}
+
+    else if(s_fpLogFile && (a_fpFile==stderr)){
+		static int snTimeToReset = 0;
+
+        vfprintf(s_fpErrorLogFile, a_cpcFormat, aListTmp);
+
+		if (((++snTimeToReset) % 1000) == 0) {
+            fflush(s_fpErrorLogFile);
+			if ((snTimeToReset % 1000) == 0) {
+                MoveFileAndResetContent(&s_fpErrorLogFile, s_strErrLogFileName, s_nErrorLogShouldBeClosed);
+			} // if (((++snTimeToReset) % 1000) == 0) {
+		}
+
+	}
+
+    va_end(aListTmp);
+
+#endif  // #ifdef _USE_LOG_FILES
+
+	return nRet;
+}
+
+
+
+int fprintfOnBothFilesIfNeeded(FILE* a_fpFile, const char* a_cpcFormat, ...)
+{
+	int nRet;
+	va_list aList;
+
+	va_start(aList, a_cpcFormat);
+	nRet = fprintfOnBothFilesIfNeededStatic(a_fpFile, a_cpcFormat, aList);
+	va_end(aList);
+	return nRet;
+}
+
 
 int fprintfWithTime(FILE* a_fpFile, const char* a_cpcFormat, ...)
 {
-	//common::NewLockGuard<STDN::mutex> aGuard;
 	timeb	aCurrentTime;
 	char* pcTimeline;
 	int nRet;
 	va_list aList;
 
 	va_start(aList, a_cpcFormat);
-	//aGuard.SetAndLockMutex(&s_mutexForCtime);   //
 	ftime(&aCurrentTime);
 	pcTimeline = ctime(&(aCurrentTime.time));
-	nRet = fprintf(a_fpFile, "[%.19s.%.3hu %.4s] ", pcTimeline, aCurrentTime.millitm, &pcTimeline[20]);
-	nRet += vfprintf(a_fpFile, a_cpcFormat, aList);
-	//aGuard.UnsetAndUnlockMutex(); //
+	nRet = fprintfOnBothFilesIfNeeded(a_fpFile, "[%.19s.%.3hu %.4s] ", pcTimeline, aCurrentTime.millitm, &pcTimeline[20]);
+	nRet += fprintfOnBothFilesIfNeededStatic(a_fpFile, a_cpcFormat, aList);
+
 	va_end(aList);
 	return nRet;
 }
+
