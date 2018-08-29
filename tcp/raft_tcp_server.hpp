@@ -253,10 +253,8 @@ protected:
 
 public:
     void*                                           m_pReserved1;
-#if defined(HANDLE_SIG_ACTIONS) || defined(WLAC_USED)
-    //pthread_t                                       m_starterThread;
-#endif
-
+	
+protected:
 	timeb											m_lastPingByLeader;
 	uint64_t										m_isInited : 1;
 	std::vector<NodeIdentifierKey>					m_allPossibleNodes;
