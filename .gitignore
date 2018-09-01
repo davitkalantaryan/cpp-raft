@@ -23,6 +23,7 @@ prj/*/*/*/*/Debug
 prj/*/*/*/*/Release
 prj/*/*/*/*/DebugDbg
 prj/install/*/obj
+prj/*/*_qt/Makefile
 
 !prj/*/*_vs*/*.sln
 !prj/*/*_vs*/*.vcxproj

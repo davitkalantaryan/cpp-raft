@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string.h>
 #include <common/common_servertcp.hpp>
+#include "tcp_server_client_common.h"
 
 
 class ServerClass
@@ -17,9 +18,9 @@ int main()
     ServerClass aServCls;
 
     ::common::socketN::Initialize();
-    ::std::cout<<"test server version 1.0.0\n";
+    ::std::cout<<"test server version 1.0.1\n";
 
-    aServer.StartServer(&aServCls,&ServerClass::AddClient,9030);
+    aServer.StartServer(&aServCls,&ServerClass::AddClient,TCP_SERVER_CLIENT_TEST);
 
     ::common::socketN::Cleanup();
 

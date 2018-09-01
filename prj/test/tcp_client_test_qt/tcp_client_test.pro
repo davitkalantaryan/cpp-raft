@@ -49,7 +49,8 @@ SOURCES += \
 
 HEADERS += \
     ../../../include/common/common_sockettcp.hpp \
-    ../../../include/common/common_socketbase.impl.hpp \
+    ../../../include/common/impl.common_socketbase.hpp \
     ../../../include/common/common_socketbase.hpp \
     ../../../include/common/common_iodevice.hpp \
-    ../../../include/cpp11+/common_defination.h
+    ../../../include/cpp11+/common_defination.h \
+    ../../../src/test/tcp_server_client_common.h
