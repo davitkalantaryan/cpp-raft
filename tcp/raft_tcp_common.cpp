@@ -93,10 +93,15 @@ const char g_ccResponceOk= response::ok;
 const int32_t g_cnResponceOk = response::ok;
 int g_nLogLevel = 0;
 
-bool ConnectAndGetEndian(common::SocketTCP* a_pSock, const NodeIdentifierKey& a_nodeInfo,char a_cRequest, uint32_t* a_pIsEndianDiffer, int a_nSockTimeout)
+bool ConnectAndGetEndian2(common::SocketTCP* a_pSock, const NodeIdentifierKey& a_nodeInfo,uint32_t a_unRequest, uint32_t* a_pIsEndianDiffer, int a_nSockTimeout)
 {
+	//uint32_t requestPlusEndianHint = (uint32_t)a_unRequest;
+	// request contains also endian hint for server
+	uint32_t requestPlusEndianHint = REQ_NUMBER_TO_SEND(a_unRequest);
 	int nSndRcv;
 	uint16_t unRemEndian;
+
+	//if (!IS_REQUEST_VALID(a_unRequest)) { return false; }
 
 	if(a_pSock->connectC(a_nodeInfo.ip4Address, a_nodeInfo.port,500)){
 		a_pSock->closeC();
@@ -115,8 +120,8 @@ bool ConnectAndGetEndian(common::SocketTCP* a_pSock, const NodeIdentifierKey& a_
 	else {*a_pIsEndianDiffer = 1;}
 
 	//cRequest = a_connectionCode;
-	nSndRcv = a_pSock->writeC(&a_cRequest,1);
-	if (nSndRcv != 1) { 
+	nSndRcv = a_pSock->writeC(&requestPlusEndianHint,4);
+	if (nSndRcv != 4) { 
 		a_pSock->closeC(); 
 		DEBUG_APP_WITH_NODE(1,&a_nodeInfo, "Unable to send request");
 		return false; 

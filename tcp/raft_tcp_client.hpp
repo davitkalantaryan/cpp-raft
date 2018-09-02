@@ -22,12 +22,14 @@ public:
 	Client();
 	virtual ~Client();
 
-	static int ReceiveAllNodes(const char* nodeIp, int port, std::vector<NodeIdentifierKey>* pNodes);
-	static int pingToNode(const char* nodeIp, int port, std::string* a_pPingResult);
-    static int getStartTime(const char* nodeIp, int port, int32_t* a_pStartTime);
+	void SetNodeDetails(const char* hostNameOrIp4Address, int port);
+	int ReceiveAllNodes( ::std::vector<NodeIdentifierKey>* pNodes );
+	int pingToNode( ::std::string* a_pPingResult );
+    int GetStartTime(int32_t* a_pStartTime);
 
 protected:
 	//common::SocketTCP	m_socket;
+	NodeIdentifierKey	m_nodeId;
 };
 
 }} // namespace raft { namespace tcp{

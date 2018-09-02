@@ -151,9 +151,9 @@ protected:
 		
 	virtual void		SignalHandler(int sigNum);
 
-	virtual bool		handleNewConnectionBeforeLock(char a_cRequest,common::SocketTCP& a_socket, SWorkerData* a_pData);
-	virtual RaftNode2*	handleNewConnectionLocked(common::SocketTCP& a_socket, const sockaddr_in&a_remoteAddr, char a_cRequest, NodeIdentifierKey* a_newNodeKey, std::string* a_pDataFromClient);
-	virtual void		handleNewConnectionAfterLock(common::SocketTCP& a_socket, const sockaddr_in&a_remoteAddr, char a_cRequest, NodeIdentifierKey* a_newNodeKey, std::string* a_pDataFromClient, RaftNode2* a_pNodeToSkip);
+	virtual bool		handleNewConnectionBeforeLock(uint32_t a_unRequest,common::SocketTCP& a_socket, SWorkerData* a_pData, uint32_t a_isEndianDiffer);
+	virtual RaftNode2*	handleNewConnectionLocked(common::SocketTCP& a_socket, const sockaddr_in&a_remoteAddr, uint32_t a_unRequest, NodeIdentifierKey* a_newNodeKey, std::string* a_pDataFromClient, uint32_t a_isEndianDiffer);
+	virtual void		handleNewConnectionAfterLock(common::SocketTCP& a_socket, const sockaddr_in&a_remoteAddr, uint32_t a_unRequest, NodeIdentifierKey* a_newNodeKey, std::string* a_pDataFromClient, RaftNode2* a_pNodeToSkip, uint32_t a_isEndianDiffer);
 
 	virtual bool		handleReceiveFromNodeBeforeLockRcvContext(int32_t index, SWorkerData* a_pWorkerData);
 	virtual bool		handleReceiveFromNodeLocked(char cRequest, RaftNode2* pNode, int32_t index, NodeIdentifierKey* a_pNodeKey, std::string* a_bBufferForReceive);
@@ -189,9 +189,9 @@ protected:
 	bool				raft_receive_fromLeader_removeNode(SWorkerData* a_pWorkerData);
 
 	// utils
-	void				raft_connect_toAnyNode_permanentBridge(common::SocketTCP& sock, const sockaddr_in* remoteAddr); // (index=0)->raft
-	bool				raft_connect_toAnyNode_newNode(common::SocketTCP& sock, SWorkerData* a_pData);
-	void				raft_connect_toAnyNode_otherLeaderFound(common::SocketTCP& sock);
+	void				raft_connect_toAnyNode_permanentBridge(common::SocketTCP& sock, const sockaddr_in* remoteAddr, uint32_t isEndianDiffer); // (index=0)->raft
+	bool				raft_connect_toAnyNode_newNode(common::SocketTCP& sock, SWorkerData* a_pData, uint32_t isEndianDiffer);
+	void				raft_connect_toAnyNode_otherLeaderFound(common::SocketTCP& sock, uint32_t isEndianDiffer);
 	void				raft_connect_fromClient_allNodesInfo(common::SocketTCP& sock);
 	void				raft_connect_fromClient_ping(common::SocketTCP& sock, const sockaddr_in* remoteAddr);
 	void				raft_connect_fromClient_startTime(common::SocketTCP& sock, const sockaddr_in* remoteAddr);

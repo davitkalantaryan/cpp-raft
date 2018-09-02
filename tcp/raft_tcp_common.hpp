@@ -18,8 +18,13 @@
 #include <string>
 #include "raft_macroses_and_functions.h"
 
-#define MAX_IP4_LEN				24
-#define SOCK_TIMEOUT_MS			100000
+#define MAX_IP4_LEN										24
+#define SOCK_TIMEOUT_MS									100000
+
+#define MAX_REQUEST_NUMBER_PRVT							0xffff
+#define REQ_NUMBER_TO_SEND(_request)					(_request)
+#define IS_REQUEST_VALID(_request)						(  (_request)<MAX_REQUEST_NUMBER_PRVT  )
+#define	IS_ENDIAN_DIFFER_AND_REQUEST(_requestRemote)	(  (_requestRemote)<MAX_REQUEST_NUMBER_PRVT ? (0) : (SWAP4BYTES(_requestRemote),1)  )
 
 namespace raft {namespace tcp {
 
@@ -38,7 +43,7 @@ typedef struct NodeIdentifierKey{
 }NodeIdentifierKey;
 
 
-bool ConnectAndGetEndian(common::SocketTCP* a_pSock,const NodeIdentifierKey& nodeInfo, char cRequest, uint32_t* pIsEndianDiffer, int a_nSockTimeout= SOCK_TIMEOUT_MS);
+bool ConnectAndGetEndian2(common::SocketTCP* a_pSock,const NodeIdentifierKey& nodeInfo, uint32_t unRequest, uint32_t* pIsEndianDiffer, int a_nSockTimeout= SOCK_TIMEOUT_MS);
 void SendErrorWithString(::common::SocketTCP& a_clientSock, const char* a_cpcErrorString);
 
 }}  // namespace raft {namespace tcp {
