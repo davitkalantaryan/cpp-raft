@@ -44,6 +44,7 @@ struct sigaction { void(*sa_handler)(int); };
 #elif defined(__GNUC__)
 //#define SWAP4BYTES		__builtin_bswap32
 void raft_swap_4_bytes(int32_t& a_unValue);
+void raft_swap_4_bytes(uint32_t& a_unValue);
 #define SWAP4BYTES  raft_swap_4_bytes
 #else
 #endif
