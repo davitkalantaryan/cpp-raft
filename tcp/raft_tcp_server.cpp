@@ -1058,7 +1058,7 @@ bool raft::tcp::Server::handleReceiveFromNodeBeforeLockRcvContext(int32_t a_inde
 		break;
 	case raft::receive::fromAnyNode2::clbkCmd:
 		HandleSeedClbk(a_pWorkerData->pNode);
-		DEBUG_APP_WITH_NODE(2, NODE_KEY(a_pWorkerData->pNode), "raft::receive::anyNode::clbkCmd");
+		DEBUG_APP_WITH_NODE(3, NODE_KEY(a_pWorkerData->pNode), "raft::receive::anyNode::clbkCmd");
 		break;
 	case raft::receive::fromAdder::newNode:
 		DEBUG_APP_WITH_NODE(1, NODE_KEY(a_pWorkerData->pNode), "raft::receive::fromAdder::newNode");
