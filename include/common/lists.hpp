@@ -93,9 +93,10 @@ namespace listN {
 		virtual ~Fifo();
 
 #ifdef __CPP11_DEFINED__
-		void AddElement2(Type&& a_newData);
-		bool Extract(Type* a_pDataBuffer);
+        void AddElementMv(Type&& a_newData);
 #endif
+        void AddElement(const Type& a_newData);
+        bool Extract(Type* a_pDataBuffer);
 
 	protected:
 		List<Type>		m_list;

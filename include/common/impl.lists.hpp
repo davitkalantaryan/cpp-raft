@@ -137,7 +137,7 @@ common::listN::Fifo<Type>::~Fifo()
 
 #ifdef __CPP11_DEFINED__
 template <typename Type>
-void common::listN::Fifo<Type>::AddElement2(Type&& a_newData)
+void common::listN::Fifo<Type>::AddElementMv(Type&& a_newData)
 {
 	::common::NewLockGuard<::STDN::mutex> aGuard;
 	aGuard.SetAndLockMutex(&m_mutex);
@@ -145,21 +145,34 @@ void common::listN::Fifo<Type>::AddElement2(Type&& a_newData)
 	aGuard.UnsetAndUnlockMutex();
 }
 
+#endif
+
+template <typename Type>
+void common::listN::Fifo<Type>::AddElement(const Type& a_newData)
+{
+    ::common::NewLockGuard< ::STDN::mutex > aGuard;
+    aGuard.SetAndLockMutex(&m_mutex);
+    m_list.AddData(a_newData);
+    aGuard.UnsetAndUnlockMutex();
+}
 
 template <typename Type>
 bool common::listN::Fifo<Type>::Extract(Type* a_pDataBuffer)
 {
-	bool bRet(false);
-	::common::NewLockGuard<::STDN::mutex> aGuard;
-	aGuard.SetAndLockMutex(&m_mutex);
-	if(m_list.count()){
-		*a_pDataBuffer = std::move(m_list.first()->data);
-		m_list.RemoveData(m_list.first());
-		bRet = true;
-	}
-	aGuard.UnsetAndUnlockMutex();
-	return bRet;
-}
+    bool bRet(false);
+    ::common::NewLockGuard< ::STDN::mutex > aGuard;
+    aGuard.SetAndLockMutex(&m_mutex);
+    if(m_list.count()){
+#ifdef __CPP11_DEFINED__
+        *a_pDataBuffer = std::move(m_list.first()->data);
+#else
+        *a_pDataBuffer = m_list.first()->data;
 #endif
+        m_list.RemoveData(m_list.first());
+        bRet = true;
+    }
+    aGuard.UnsetAndUnlockMutex();
+    return bRet;
+}
 
 #endif  // #ifndef __common_impl_lists_hpp__

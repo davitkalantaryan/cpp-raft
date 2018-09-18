@@ -82,7 +82,7 @@ bool common::HashTblRaw<DataType>::AddEntry(const void* a_key, uint32_t a_nKeyLe
 {
 	try {
 		DataType aData(a_data);
-		return AddEntryMv(a_key, a_nKeyLen,std::move(aData));
+        return AddEntryMv(a_key, a_nKeyLen,aData);
 	}
 	catch (...)
 	{
