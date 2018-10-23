@@ -95,7 +95,7 @@ namespace listN {
 #ifdef __CPP11_DEFINED__
         void AddElementMv(Type&& a_newData);
 #endif
-        void AddElement(const Type& a_newData);
+        bool AddElement(const Type& a_newData);
         bool Extract(Type* a_pDataBuffer);
 
 	protected:

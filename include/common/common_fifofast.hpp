@@ -32,6 +32,7 @@ public:
     bool SetToStack(const Type& data);
     template <typename TypeOwner>
     void IterateOverStack(TypeOwner* owner, void (TypeOwner::*fpFnc)(Type*));
+    Type& operator [](size_t index){return m_vBufferForStack[index] ;}
 
 private:
     Type                m_vBufferForStack[CASH_SIZE_];

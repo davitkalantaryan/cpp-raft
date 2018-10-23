@@ -17,8 +17,11 @@
 #include <dispatch/dispatch.h>
 #else
 #include <semaphore.h>
+#include <sys/time.h>
 #define SHARING_TYPE	0/* 0 means semaphores is shared between threads in same process */
 #endif
+
+#include <time.h>
 
 namespace common{
 
@@ -69,14 +72,27 @@ public:
 #endif
     }
 
-    void wait()
+    int wait(int a_WaitMs)
     {
 #if defined(WIN32)
         WaitForSingleObject( m_Semaphore, INFINITE );
 #elif defined(__APPLE__)
         dispatch_semaphore_wait(m_Semaphore, DISPATCH_TIME_FOREVER);
 #else
-        sem_wait( &m_Semaphore );
+        if(a_WaitMs<0){
+            return sem_wait( &m_Semaphore );
+        }
+        else{
+            struct timespec finalAbsTime;
+            struct timeval currentTime;
+            long long int nExtraNanoSeconds;
+            gettimeofday(&currentTime,NULL);
+            nExtraNanoSeconds = (long long int)currentTime.tv_usec*1000 + (long long int)((a_WaitMs%1000)*1000000);
+            finalAbsTime.tv_sec = currentTime.tv_sec + a_WaitMs / 1000 + nExtraNanoSeconds/1000000000;
+            finalAbsTime.tv_nsec = nExtraNanoSeconds%1000000000;
+            return sem_timedwait(&m_Semaphore,&finalAbsTime);
+        }
+        return -1;
 #endif
     }
 

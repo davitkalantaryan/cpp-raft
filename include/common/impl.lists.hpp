@@ -148,12 +148,13 @@ void common::listN::Fifo<Type>::AddElementMv(Type&& a_newData)
 #endif
 
 template <typename Type>
-void common::listN::Fifo<Type>::AddElement(const Type& a_newData)
+bool common::listN::Fifo<Type>::AddElement(const Type& a_newData)
 {
     ::common::NewLockGuard< ::STDN::mutex > aGuard;
     aGuard.SetAndLockMutex(&m_mutex);
     m_list.AddData(a_newData);
     aGuard.UnsetAndUnlockMutex();
+    return true;
 }
 
 template <typename Type>
