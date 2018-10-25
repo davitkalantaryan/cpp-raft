@@ -60,8 +60,10 @@
 // This should be done after check
 #ifdef __CPP11_DEFINED__
 #define __OVERRIDE__	override
+#define __FINAL__	final
 #else
 #define __OVERRIDE__
+#define __FINAL__
 #endif
 
 #include <stdarg.h>
