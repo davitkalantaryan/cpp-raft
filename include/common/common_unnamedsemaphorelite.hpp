@@ -72,7 +72,7 @@ public:
 #endif
     }
 
-    int wait(int a_WaitMs)
+    int wait(int a_WaitMs=-1)
     {
 #if defined(WIN32)
         WaitForSingleObject( m_Semaphore, INFINITE );
