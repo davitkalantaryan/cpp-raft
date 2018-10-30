@@ -26,8 +26,8 @@ class ListspecialAndHashtbl
 public:
 	virtual ~ListspecialAndHashtbl();
 
-	bool  AddData(Type newData, const void* a_key, size_t a_keyLen);			// is added, or this is a dublication
-	Type  RemoveData(Type dataToRemove);
+    bool  AddData(const Type& newData, const void* a_key, size_t a_keyLen);			// is added, or this is a dublication
+    Type  RemoveData(const Type& dataToRemove);
 	Type  RemoveData(const void* key, size_t keyLength);
 	bool  FindEntry(const void* key, size_t keyLength, Type* a_ppData)const;
 

@@ -139,7 +139,7 @@ common::listN::Fifo<Type>::~Fifo()
 template <typename Type>
 void common::listN::Fifo<Type>::AddElementMv(Type&& a_newData)
 {
-	::common::NewLockGuard<::STDN::mutex> aGuard;
+    ::common::NewLockGuard< ::STDN::mutex > aGuard;
 	aGuard.SetAndLockMutex(&m_mutex);
 	m_list.AddDataMv(std::move(a_newData));
 	aGuard.UnsetAndUnlockMutex();

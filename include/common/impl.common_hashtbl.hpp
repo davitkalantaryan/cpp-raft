@@ -114,7 +114,7 @@ bool common::HashTblRaw<DataType>::AddEntryMv(const void* a_key, uint32_t a_nKey
 
 	return false;
 }
-#endif
+#endif  // #ifdef __CPP11_DEFINED__
 
 
 template <typename DataType>

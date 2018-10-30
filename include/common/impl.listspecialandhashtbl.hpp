@@ -21,7 +21,7 @@ common::ListspecialAndHashtbl<Type>::~ListspecialAndHashtbl()
 
 
 template <typename Type>
-bool common::ListspecialAndHashtbl<Type>::AddData(Type a_newData, const void* a_key, size_t a_keyLen)
+bool common::ListspecialAndHashtbl<Type>::AddData(const Type& a_newData, const void* a_key, size_t a_keyLen)
 {
 	Type dataTmp;
 
@@ -36,7 +36,7 @@ bool common::ListspecialAndHashtbl<Type>::AddData(Type a_newData, const void* a_
 
 
 template <typename Type>
-Type common::ListspecialAndHashtbl<Type>::RemoveData(Type a_dataToRemove)
+Type common::ListspecialAndHashtbl<Type>::RemoveData(const Type& a_dataToRemove)
 {
 	if(!m_hash.RemoveEntry(a_dataToRemove->key,(uint32_t)a_dataToRemove->keyLength)){
 		return (Type)0;

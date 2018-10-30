@@ -7,6 +7,7 @@
 #define __common_hashtbl_hpp__
 
 #include <stdint.h>
+#include <cpp11+/common_defination.h>
 
 #define DEFAULT_TABLE_SIZE	64
 
