@@ -11,7 +11,7 @@
 #ifndef COMMON_UNNAMEDSEMAPHORELITE_HPP
 #define COMMON_UNNAMEDSEMAPHORELITE_HPP
 
-#if defined(WIN32)
+#if defined(_WIN32)
 #include <windows.h>
 #elif defined(__APPLE__)
 #include <dispatch/dispatch.h>
