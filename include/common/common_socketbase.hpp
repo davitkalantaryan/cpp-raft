@@ -5,7 +5,11 @@
 #ifndef __common_socketbase_hpp__
 #define __common_socketbase_hpp__
 
-#include "common_iodevice.hpp"
+#if defined(_MSC_VER) & (_MSC_VER>=1913)
+#ifndef CINTERFACE
+#define CINTERFACE
+#endif
+#endif
 
 #if !defined(E_FATAL) & !defined(E_NO_BIND)
 
@@ -105,6 +109,9 @@
 #define SET_BIT(_variablePtr_,_bitNum_,_bitVal_) \
 	*(_variablePtr_)=(  ((~(1<<(_bitNum_)))&(*(_variablePtr_))) | ((_bitVal_)<<(_bitNum_))   )
 
+#if defined(__cplusplus) && !defined(only_socket_macroses_are_used)
+
+#include "common_iodevice.hpp"
 #include <vector>
 
 #define sockaddr_in_using_ok
@@ -164,5 +171,7 @@ namespace socketN {
 }
 
 #include "impl.common_socketbase.hpp"
+
+#endif // #if defined(__cplusplus) && !defined(only_socket_macroses_are_used)
 
 #endif  // #ifndef __common_socketbase_hpp__
