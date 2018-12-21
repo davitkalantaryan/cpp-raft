@@ -12,13 +12,21 @@
 #define COMMON_UNNAMEDSEMAPHORELITE_HPP
 
 #if defined(_WIN32)
+#include <WinSock2.h>
+#include <WS2tcpip.h>
 #include <windows.h>
 #elif defined(__APPLE__)
 #include <dispatch/dispatch.h>
+#ifndef INFINITE
+#define INFINITE	-1
+#endif
 #else
 #include <semaphore.h>
 #include <sys/time.h>
 #define SHARING_TYPE	0/* 0 means semaphores is shared between threads in same process */
+#ifndef INFINITE
+#define INFINITE	-1
+#endif
 #endif
 
 #include <time.h>
@@ -27,7 +35,7 @@ namespace common{
 
 #ifndef TYPE_SEMA_defined
 #define TYPE_SEMA_defined
-#if defined(WIN32)
+#if defined(_WIN32)
 typedef HANDLE TYPE_SEMA;
 #elif defined(__APPLE__)
 typedef dispatch_semaphore_t TYPE_SEMA;
@@ -72,10 +80,10 @@ public:
 #endif
     }
 
-    int wait(int a_WaitMs=-1)
+    int wait(int a_WaitMs= INFINITE)
     {
 #if defined(WIN32)
-        WaitForSingleObject( m_Semaphore, INFINITE );
+        return WaitForSingleObjectEx( m_Semaphore, a_WaitMs,TRUE )== WAIT_OBJECT_0 ? 0 : -1;
 #elif defined(__APPLE__)
         dispatch_semaphore_wait(m_Semaphore, DISPATCH_TIME_FOREVER);
 #else
