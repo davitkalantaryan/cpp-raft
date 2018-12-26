@@ -11,6 +11,7 @@
 #ifndef COMMON_UNNAMEDSEMAPHORELITE_HPP
 #define COMMON_UNNAMEDSEMAPHORELITE_HPP
 
+#include <stddef.h>
 #if defined(_WIN32)
 #include <WinSock2.h>
 #include <WS2tcpip.h>
@@ -72,11 +73,23 @@ public:
     void post()
     {
 #if defined(WIN32)
-        ReleaseSemaphore( m_Semaphore, 1, 0  );
+        ReleaseSemaphore( m_Semaphore, 1, NULL  );
 #elif defined(__APPLE__)
         dispatch_semaphore_signal(m_Semaphore);
 #else
         sem_post( &m_Semaphore );
+#endif
+    }
+
+
+	void post(int a_nCount)
+    {
+#if defined(WIN32)
+        ReleaseSemaphore( m_Semaphore, a_nCount, NULL  );
+#elif defined(__APPLE__)
+		for (int i(0); i < a_nCount;++i){dispatch_semaphore_signal(m_Semaphore);}
+#else
+        for (int i(0); i < a_nCount;++i){sem_post( &m_Semaphore );}
 #endif
     }
 
