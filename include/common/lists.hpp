@@ -96,6 +96,8 @@ namespace listN {
         void AddElementMv(Type&& a_newData);
 #endif
         bool AddElement(const Type& a_newData);
+		template <typename ContType>
+		bool AddElements(const ContType* a_pElements, size_t a_unCount);
         bool Extract(Type* a_pDataBuffer);
 
 	protected:
