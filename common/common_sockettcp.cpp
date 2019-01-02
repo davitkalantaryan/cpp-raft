@@ -6,7 +6,7 @@
 #define DO_NOT_CALL_SELECT	-2003
 
 #ifdef _WIN32
-#include <winsock2.h>
+#include <WinSock2.h>
 #include <WS2tcpip.h>
 typedef u_long  red_buf_len;
 #else
