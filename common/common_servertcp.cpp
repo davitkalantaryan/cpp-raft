@@ -22,7 +22,7 @@ static void SigActionFunction (int a_nSigNum, siginfo_t * , void *);
 #endif
 
 
-namespace WORK_STATUSES {enum{STOPPED=0,TRYING_TO_STOP,RUN};}
+namespace WORK_STATUSES {enum{STOPPED=0,TRYING_TO_STOP,RUN,INITED2};}
 
 
 common::ServerTCP::ServerTCP()
@@ -41,8 +41,7 @@ common::ServerTCP::~ServerTCP()
 
 int common::ServerTCP::StartServerS(
 	TypeAccept a_fpAddClient, void* a_owner,
-	int a_nPort, int* a_pnRetCode, long int a_lnTimeout,
-	bool a_bReuse, bool a_bLoopback)
+    int a_nPort, bool a_bReuse, bool a_bLoopback, int a_lnTimeout, int* a_pnRetCode)
 {
 	int nError;
 	int& nRetCode = a_pnRetCode ? *a_pnRetCode : nError;
@@ -78,6 +77,56 @@ int common::ServerTCP::StartServerS(
 }
 
 
+int common::ServerTCP::InitServer(int a_nPort, bool a_bReuse, bool a_bLoopback)
+{
+    int nRetCode;
+
+    if(m_nWorkStatus != WORK_STATUSES::STOPPED){return 0;}
+
+#ifndef _WIN32
+    struct sigaction newAction;
+
+    m_serverThread = pthread_self();
+
+    newAction.sa_flags = SA_SIGINFO;
+    sigemptyset(&newAction.sa_mask);
+    newAction.sa_restorer = NULL;
+    newAction.sa_sigaction = SigActionFunction;
+
+    sigaction(SIGPIPE,&newAction,NULL);
+#endif
+
+#ifdef _CD_VERSION__
+    nRetCode = CreateServer( a_nPort, a_bReuse,true );
+#else
+    nRetCode = CreateServer( a_nPort,a_bReuse, a_bLoopback) ;
+#endif
+
+    if(nRetCode != 0 ){
+        closeC();
+        return nRetCode;
+    }
+
+    m_nServerThreadId = static_cast<int>(gettidNew());
+    m_nWorkStatus = WORK_STATUSES::INITED2;
+
+    return 0;
+}
+
+
+int common::ServerTCP::WaitForConnection(int a_nTimeoutMs, sockaddr_in* a_pRemoteAddr)
+{
+    int nError, nClientSocket;
+
+    if ((nError=ServerAccept(nClientSocket,a_nTimeoutMs,a_pRemoteAddr)) == 1){
+        return nClientSocket;
+    }
+
+    if(nError<0){return nError;}
+    return 0;
+}
+
+
 
 void common::ServerTCP::RunServer(int a_lnTimeout, TypeAccept a_fpAddClient, void* a_owner)
 {
@@ -85,7 +134,7 @@ void common::ServerTCP::RunServer(int a_lnTimeout, TypeAccept a_fpAddClient, voi
 	SocketTCP aClientSocket;
 	int nError, nClientSocket;
 
-	m_nServerThreadId = gettidNew();
+    m_nServerThreadId = static_cast<int>(gettidNew());
 	m_nWorkStatus = WORK_STATUSES::RUN;
 
 	while(m_nWorkStatus== WORK_STATUSES::RUN){
@@ -110,8 +159,8 @@ void common::ServerTCP::RunServer(int a_lnTimeout, TypeAccept a_fpAddClient, voi
 
 void common::ServerTCP::StopServer(void)
 {
-	int nCurrentThreadId(gettidNew());
-	if(m_nWorkStatus != WORK_STATUSES::RUN){return;}
+    int nCurrentThreadId(static_cast<int>(gettidNew()));
+    if((m_nWorkStatus != WORK_STATUSES::RUN)||(m_nWorkStatus != WORK_STATUSES::INITED2)){return;}
 	
 	if(nCurrentThreadId!=m_nServerThreadId){
 		m_nWorkStatus = WORK_STATUSES::TRYING_TO_STOP;
@@ -119,7 +168,8 @@ void common::ServerTCP::StopServer(void)
 #ifndef _WIN32
         pthread_kill(m_serverThread,SIGPIPE);
 #endif
-        while(m_nWorkStatus== WORK_STATUSES::TRYING_TO_STOP){SWITCH_SCHEDULING(1);}
+        while((m_nWorkStatus != WORK_STATUSES::INITED2) && (m_nWorkStatus== WORK_STATUSES::TRYING_TO_STOP)){SWITCH_SCHEDULING(1);}
+        m_nWorkStatus = WORK_STATUSES::STOPPED;
 	}
 	else {
 		m_nWorkStatus = WORK_STATUSES::STOPPED;

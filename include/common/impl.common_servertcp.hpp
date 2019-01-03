@@ -15,14 +15,13 @@ template <typename Type>
 int common::ServerTCP::StartServer(
 	Type* a_owner,
 	void(Type::*a_fpAddClient)(common::SocketTCP& clientSock, const sockaddr_in*remoteAddr),
-	int a_nPort, int* a_pnRetCode, long int a_lnTimeout,
-	bool a_bReuse, bool a_bLoopback)
+        int a_nPort, bool a_bReuse, bool a_bLoopback, int a_lnTimeout, int* a_pnRetCode)
 {
 	return StartServerS(
 		//(TypeAccept)GetFuncPointer_common(1, a_fpAddClient), 
 		*(reinterpret_cast<TypeAccept*>(&a_fpAddClient)),
 		(void*)a_owner,
-		a_nPort, a_pnRetCode,a_lnTimeout, a_bReuse, a_bLoopback);
+                a_nPort, a_bReuse, a_bLoopback,a_lnTimeout,a_pnRetCode);
 }
 
 

@@ -33,6 +33,7 @@
 #include <Windows.h>
 #ifndef SOCKET_INPROGRESS
 #define	SOCKET_INPROGRESS(e)	(WSAGetLastError() == WSAEWOULDBLOCK)
+#define SleepIntr(_x)           SleepEx((_x),TRUE)
 #endif
 #else
 #include <netinet/in.h>
@@ -50,6 +51,7 @@
 #endif
 #endif
 #endif
+#define SleepIntr(_x)           usleep(1000*(_x))
 #endif
 
 #ifndef INADDR_NONE

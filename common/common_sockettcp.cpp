@@ -130,7 +130,7 @@ int common::SocketTCP::connectC(const char *a_svrName, int a_port, int a_connect
 		fcntl(m_socket, F_SETFL, status);
 	}
 #endif  /* #ifdef	_WIN32 */
-	this->setTimeout(a_connectionTimeoutMs);
+    //this->setTimeout(a_connectionTimeoutMs);
 
 	return 0;
 }
