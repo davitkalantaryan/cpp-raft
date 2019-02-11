@@ -9,7 +9,7 @@
 #include <signal.h>
 
 #ifdef _WIN32
-#include <winsock2.h>
+#include <WinSock2.h>
 #else
 #include <sys/socket.h>
 #include <unistd.h>

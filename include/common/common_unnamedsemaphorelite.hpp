@@ -11,14 +11,23 @@
 #ifndef COMMON_UNNAMEDSEMAPHORELITE_HPP
 #define COMMON_UNNAMEDSEMAPHORELITE_HPP
 
+#include <stddef.h>
 #if defined(_WIN32)
+#include <WinSock2.h>
+#include <WS2tcpip.h>
 #include <windows.h>
 #elif defined(__APPLE__)
 #include <dispatch/dispatch.h>
+#ifndef INFINITE
+#define INFINITE	-1
+#endif
 #else
 #include <semaphore.h>
 #include <sys/time.h>
 #define SHARING_TYPE	0/* 0 means semaphores is shared between threads in same process */
+#ifndef INFINITE
+#define INFINITE	-1
+#endif
 #endif
 
 #include <time.h>
@@ -27,7 +36,7 @@ namespace common{
 
 #ifndef TYPE_SEMA_defined
 #define TYPE_SEMA_defined
-#if defined(WIN32)
+#if defined(_WIN32)
 typedef HANDLE TYPE_SEMA;
 #elif defined(__APPLE__)
 typedef dispatch_semaphore_t TYPE_SEMA;
@@ -64,7 +73,7 @@ public:
     void post()
     {
 #if defined(WIN32)
-        ReleaseSemaphore( m_Semaphore, 1, 0  );
+        ReleaseSemaphore( m_Semaphore, 1, NULL  );
 #elif defined(__APPLE__)
         dispatch_semaphore_signal(m_Semaphore);
 #else
@@ -72,10 +81,22 @@ public:
 #endif
     }
 
-    int wait(int a_WaitMs=-1)
+
+	void post(int a_nCount)
     {
 #if defined(WIN32)
-        WaitForSingleObject( m_Semaphore, INFINITE );
+        ReleaseSemaphore( m_Semaphore, a_nCount, NULL  );
+#elif defined(__APPLE__)
+		for (int i(0); i < a_nCount;++i){dispatch_semaphore_signal(m_Semaphore);}
+#else
+        for (int i(0); i < a_nCount;++i){sem_post( &m_Semaphore );}
+#endif
+    }
+
+    int wait(int a_WaitMs= INFINITE)
+    {
+#if defined(WIN32)
+        return WaitForSingleObjectEx( m_Semaphore, a_WaitMs,TRUE )== WAIT_OBJECT_0 ? 0 : -1;
 #elif defined(__APPLE__)
         dispatch_semaphore_wait(m_Semaphore, DISPATCH_TIME_FOREVER);
 #else

@@ -26,15 +26,16 @@ public:
 	int	StartServer(
 		Type* owner, 
 		void(Type::*fpAddClient)(common::SocketTCP& clientSock,const sockaddr_in*remoteAddr),
-		int a_nPort, int* retCode=NULL, long int a_lnTimeout = 1000,
-        bool bReuse = true, bool a_bLoopback = false);
+                int a_nPort, bool bReuse = true, bool a_bLoopback = false, int a_lnTimeout = 1000,int* retCode=NULL);
 
 	int	StartServerS(
 		TypeAccept fpAddClient,void* owner, 
-		int a_nPort, int* retCode=NULL, long int a_lnTimeout = 1000,
-        bool bReuse = true, bool a_bLoopback = false);
+                int a_nPort, bool bReuse = true, bool a_bLoopback = false, int a_lnTimeout = 1000, int* retCode=NULL);
 	
 	void StopServer(void);
+
+        int  InitServer(int a_nPort, bool bReuse = true, bool a_bLoopback = false);
+        int  WaitForConnection(int timeoutMs, sockaddr_in* a_pRemoteAddr); // >0 is socket, 0 means timeout, -1 means othe error
 
 private:
 	//virtual void AddClient(common::SocketTCP& clientSocket, const sockaddr_in* remoteAddress)= 0;

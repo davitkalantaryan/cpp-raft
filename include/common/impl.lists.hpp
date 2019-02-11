@@ -167,6 +167,21 @@ bool common::listN::Fifo<Type>::AddElement(const Type& a_newData)
     return true;
 }
 
+
+template <typename Type>
+template <typename ContType>
+bool common::listN::Fifo<Type>::AddElements(const ContType* a_pElements, size_t a_unCount)
+{
+	size_t i;
+	::common::NewLockGuard< ::STDN::mutex > aGuard;
+	aGuard.SetAndLockMutex(&m_mutex);
+	for(i=0;i<a_unCount;++i){
+		m_list.AddData((Type)a_pElements[i]);
+	}
+	aGuard.UnsetAndUnlockMutex();
+	return true;
+}
+
 template <typename Type>
 bool common::listN::Fifo<Type>::Extract(Type* a_pDataBuffer)
 {
