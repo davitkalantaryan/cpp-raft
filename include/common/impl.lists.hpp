@@ -87,6 +87,16 @@ void common::ListSpecial<Type>::MoveItemToOtherList(ListSpecial<Type>* a_pOther,
 template <typename Type>
 common::List<Type>::~List()
 {
+    this->clear();
+}
+
+
+template <typename Type>
+void common::List<Type>::clear()
+{
+    while(ListSpecial<common::listN::ListItem<Type>* >::m_first){
+        this->RemoveData(ListSpecial<common::listN::ListItem<Type>* >::m_first);
+    }
 }
 
 

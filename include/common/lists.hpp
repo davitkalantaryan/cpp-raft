@@ -1,4 +1,4 @@
-// 
+//
 // file:		lists.hpp
 // created on:	2018 Jun 02
 // created by:	D. Kalantaryan (davit.kalantaryan@desy.de)
@@ -74,6 +74,8 @@ class List : public ListSpecial<common::listN::ListItem<Type>* >
 {
 public:
 	virtual ~List();
+
+    void clear();
 
 	common::listN::ListItem<Type>* AddData(const Type& newData);
 #ifdef __CPP11_DEFINED__
