@@ -9,15 +9,19 @@
  * Description
  *   ...
  ****************************************************************************/
-#ifndef __shared_mutex_cpp14_hpp__
-#define __shared_mutex_cpp14_hpp__
+#ifndef SHARED_MUTEX_CPP14_HPP
+#define SHARED_MUTEX_CPP14_HPP
 
 #include "common_defination.h"
 
 #ifdef __CPP14_DEFINED__
 #include <shared_mutex>
 namespace STDN {
-	typedef std::shared_mutex   shared_mutex;
+#ifdef __GNUC__
+        typedef ::std::__shared_mutex_pthread   shared_mutex;
+#else
+        typedef std::shared_mutex   shared_mutex;
+#endif
 }
 #else  // #ifdef __CPP14_DEFINED__
 
@@ -81,5 +85,5 @@ protected:
 
 #endif // #ifdef __CPP14_DEFINED__
 
-#endif // __shared_mutex_cpp14_hpp__
+#endif // SHARED_MUTEX_CPP14_HPP
 
