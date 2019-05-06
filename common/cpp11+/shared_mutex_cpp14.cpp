@@ -20,6 +20,12 @@
 
 #ifndef __CPP14_DEFINED__
 
+#ifdef DEBUG_SHARED_MUTEX
+#define PRINT_SHARED_MUTEX(...) printf(__VA_ARGS__)
+#else
+#define PRINT_SHARED_MUTEX(...)
+#endif
+
 #include <stdio.h>
 
 STDN::shared_mutex_base::shared_mutex_base(SHRD_BASE_TYPE_AND_ARG)
@@ -71,7 +77,7 @@ int STDN::shared_mutex_base::createSharedMutex(const char* a_resName)
 #else   // #ifdef _WIN32
 	if(m_bInited){return 1;}
 	if(a_resName){
-		printf("name=%s\n", a_resName);
+        PRINT_SHARED_MUTEX("name=%s\n", a_resName);
 	}
 	nReturn=pthread_rwlock_init(&m_lockPermanent,NULL);
 	m_bInited=true;
@@ -104,9 +110,10 @@ void STDN::shared_mutex_base::clearAll()
 
 void STDN::shared_mutex_base::lock_shared()
 {
+    PRINT_SHARED_MUTEX("+=+=+=+=+=+= lock_shared\n");
 #ifdef _WIN32
 	LONG lReadersCountPrevious = InterlockedIncrement(m_plReadersCount);
-	printf("++++++  shared_locking (tid=%d)!\n", ::GetCurrentThreadId());
+    PRINT_SHARED_MUTEX("++++++  shared_locking (tid=%d)!\n", ::GetCurrentThreadId());
 
 	if(lReadersCountPrevious>1){
 		WaitForSingleObject(m_semaNewConcurse, INFINITE);
@@ -124,8 +131,9 @@ void STDN::shared_mutex_base::lock_shared()
 
 void STDN::shared_mutex_base::lock()
 {
+    PRINT_SHARED_MUTEX("++++++++++++ lock\n");
 #ifdef _WIN32
-	printf("++++++  locking (tid=%d)!\n",::GetCurrentThreadId());
+    PRINT_SHARED_MUTEX("++++++  locking (tid=%d)!\n",::GetCurrentThreadId());
 	WaitForSingleObject(m_semaNewConcurse, INFINITE);
 	WaitForSingleObject(m_lockPermanent, INFINITE);
 	ReleaseSemaphore(m_semaNewConcurse, 1, NULL);
@@ -137,9 +145,10 @@ void STDN::shared_mutex_base::lock()
 
 void STDN::shared_mutex_base::unlock()
 {
+    PRINT_SHARED_MUTEX("------------- unlock\n");
 #ifdef _WIN32
 	ReleaseSemaphore(m_lockPermanent, 1, NULL);
-	printf("------  unlocked!\n");
+    PRINT_SHARED_MUTEX("------  unlocked!\n");
 #else   // #ifdef _WIN32
 	pthread_rwlock_unlock(&m_lockPermanent);
 #endif  // #ifdef _WIN32
@@ -148,10 +157,11 @@ void STDN::shared_mutex_base::unlock()
 
 void STDN::shared_mutex_base::unlock_shared()
 {
+    PRINT_SHARED_MUTEX("-=-=-=-=-=-= unlock_shared\n");
 #ifdef _WIN32
 	LONG lReadersCountPrevious = InterlockedDecrement(m_plReadersCount);
 	if(lReadersCountPrevious==0){ReleaseSemaphore(m_lockPermanent, 1, NULL);}
-	printf("------  shared_unlocking (tid=%d)!\n", ::GetCurrentThreadId());
+    PRINT_SHARED_MUTEX("------  shared_unlocking (tid=%d)!\n", ::GetCurrentThreadId());
 #else   // #ifdef _WIN32
 	pthread_rwlock_unlock(&m_lockPermanent);
 #endif  // #ifdef _WIN32
