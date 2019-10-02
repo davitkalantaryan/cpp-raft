@@ -12,7 +12,7 @@
 
 #include "cpp11+/thread_cpp11.hpp"
 
-#ifndef __CPP11_DEFINED__
+#if !defined(__CPP11_DEFINED__) || defined(CPP11_THREADS_IMPLEMENTED_HERE)
 
 #ifdef _WIN32
 #include <process.h>
