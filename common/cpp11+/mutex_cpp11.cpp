@@ -12,7 +12,7 @@
 
 #include "cpp11+/mutex_cpp11.hpp"
 
-#ifndef __CPP11_DEFINED__
+#ifndef CPP11_DEFINED2
 
 STDN::mutex::mutex()
 {
@@ -58,5 +58,5 @@ void STDN::mutex::unlock()
 }
 
 
-#endif  // #ifndef __CPP11_DEFINED__
+#endif  // #ifndef CPP11_DEFINED2
 

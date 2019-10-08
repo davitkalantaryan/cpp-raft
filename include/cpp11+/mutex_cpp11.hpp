@@ -14,12 +14,12 @@
 
 #include "common_defination.h"
 
-#ifdef __CPP11_DEFINED__
+#ifdef CPP11_DEFINED2
 #include <mutex>
 namespace STDN {
 typedef std::mutex  mutex;
 }
-#else  // #ifdef __CPP11_DEFINED__
+#else  // #ifdef CPP11_DEFINED2
 
 #include <stddef.h>
 #ifdef _WIN32
@@ -51,6 +51,6 @@ private:
 
 }
 
-#endif // #ifdef __CPP11_DEFINED__
+#endif // #ifdef CPP11_DEFINED2
 
 #endif // MUTEX_CPP11_HPP

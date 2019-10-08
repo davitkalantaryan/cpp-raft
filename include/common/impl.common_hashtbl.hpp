@@ -31,7 +31,7 @@
 namespace common { namespace hashFncs{
 
 static inline uint32_t hash1_(const void* key, uint32_t keySize);
-#ifdef __CPP11_DEFINED__
+#ifdef CPP11_DEFINED2
 static void* CreateKey(const void* a_pKey, size_t a_nKeyLen);
 #endif
 
@@ -91,7 +91,7 @@ bool common::HashTblRaw<DataType>::AddEntry(const void* a_key, uint32_t a_nKeyLe
 	return false;
 }
 
-#ifdef __CPP11_DEFINED__
+#ifdef CPP11_DEFINED2
 template <typename DataType>
 bool common::HashTblRaw<DataType>::AddEntryMv(const void* a_key, uint32_t a_nKeyLen, DataType&& a_data)
 {
@@ -114,7 +114,7 @@ bool common::HashTblRaw<DataType>::AddEntryMv(const void* a_key, uint32_t a_nKey
 
 	return false;
 }
-#endif  // #ifdef __CPP11_DEFINED__
+#endif  // #ifdef CPP11_DEFINED2
 
 
 template <typename DataType>
@@ -398,7 +398,7 @@ static inline uint32_t hash1_( const void* a_pKey, uint32_t a_unKeySize )
 	return c;
 }
 
-#ifdef __CPP11_DEFINED__
+#ifdef CPP11_DEFINED2
 static void* CreateKey(const void* a_pKey, size_t a_nKeyLen)
 {
 	void* pKey = malloc(a_nKeyLen);

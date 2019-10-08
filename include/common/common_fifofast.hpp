@@ -43,7 +43,7 @@ private:
 template <typename TypeS>struct SListStr{
 	SListStr* next;TypeS value;
 	SListStr():next(NULL){}
-#ifdef __CPP11_DEFINED__
+#ifdef CPP11_DEFINED2
 	SListStr(TypeS&& a_value):next(NULL),value(std::move(a_value)){}
 	//SListStr& operator=(SListStr&& a_right){this->next=a_right.next;}
 #endif
@@ -57,7 +57,7 @@ public:
 	virtual ~FifoFast_base();
 
 	bool	AddElement1(const Type& a_ptNew);
-#ifdef __CPP11_DEFINED__
+#ifdef CPP11_DEFINED2
 	bool	AddElement2(Type&& a_ptNew);
 	bool	ExtractMv(Type*const& a_ptBuf);
 #endif

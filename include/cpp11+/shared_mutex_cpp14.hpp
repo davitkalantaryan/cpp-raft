@@ -14,7 +14,7 @@
 
 #include "common_defination.h"
 
-#ifdef __CPP14_DEFINED__
+#ifdef CPP14_DEFINED2
 #include <shared_mutex>
 namespace STDN {
 #ifdef __GNUC__
@@ -23,7 +23,7 @@ namespace STDN {
         typedef std::shared_mutex   shared_mutex;
 #endif
 }
-#else  // #ifdef __CPP14_DEFINED__
+#else  // #ifdef CPP14_DEFINED2
 
 #define  thread_native_handle_type STDN::thread_native_handle
 
@@ -83,7 +83,7 @@ protected:
 
 } // namespace STDN{
 
-#endif // #ifdef __CPP14_DEFINED__
+#endif // #ifdef CPP14_DEFINED2
 
 #endif // SHARED_MUTEX_CPP14_HPP
 

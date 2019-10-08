@@ -12,7 +12,7 @@
 #endif
 
 struct sockaddr_in;
-typedef void(__THISCALL__*TypeAccept)(void* owner,common::SocketTCP& clientSock,const sockaddr_in* remoteAddr);
+typedef void(THISCALL2*TypeAccept)(void* owner,common::SocketTCP& clientSock,const sockaddr_in* remoteAddr);
 
 namespace common{
 

@@ -12,7 +12,7 @@
 
 #include "cpp11+/thread_cpp11.hpp"
 
-#if !defined(__CPP11_DEFINED__) || defined(CPP11_THREADS_IMPLEMENTED_HERE)
+#if !defined(CPP11_DEFINED2) || defined(CPP11_THREADS_IMPLEMENTED_HERE)
 
 #ifdef _WIN32
 #include <process.h>
@@ -159,4 +159,4 @@ static STDN::SYSTHRRETTYPE THREDAPI ThreadStartupRoutine2(STDN::THRINPUT a_thrAr
 }
 
 
-#endif  // #ifndef __CPP11_DEFINED__
+#endif  // #ifndef CPP11_DEFINED2

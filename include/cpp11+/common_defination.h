@@ -15,55 +15,58 @@
 #define	CURRENT_SERIALIZER_VERSION2		5
 #define	CURRENT_SERIALIZER_TYPE2		1
 
-#ifndef __THISCALL__
+#ifndef THISCALL2
 #ifdef _MSC_VER
-#define __THISCALL__ __thiscall
+#define THISCALL2 __thiscall
 #else
-#define __THISCALL__
+#define THISCALL2
 #endif
 #endif
 
 // Is C++11
-#ifndef __NOT_USE_CPP11__
-#ifndef __CPP11_DEFINED__
+#ifndef NOT_USE_CPP11_2
+#ifndef CPP11_DEFINED2
 #if defined(_MSC_VER)
-#if __cplusplus >= 199711L
-#define __CPP11_DEFINED__
+#if _MSVC_LANG >= 201100L
+#define CPP11_DEFINED2
 #endif // #if __cplusplus >= 199711L
 #elif defined(__GNUC__) // #if defined(_MSC_VER)
 #if __cplusplus > 199711L
-#define __CPP11_DEFINED__
+#define CPP11_DEFINED2
 #endif // #if __cplusplus > 199711L
 #else // #if defined(_MSC_VER)
 #error this compiler is not supported
 #endif // #if defined(_MSC_VER)
-#endif  // #ifndef __CPP11_DEFINED__
-#endif  // #ifndef __NOT_USE_CPP11__
+#endif  // #ifndef CPP11_DEFINED2
+#endif  // #ifndef NOT_USE_CPP11_2
 
 // Is C++14
-#ifndef __NOT_USE_CPP14__
-#ifndef __CPP14_DEFINED__
+#ifndef NOT_USE_CPP14_2
+#ifndef CPP14_DEFINED2
 #if defined(_MSC_VER)
-#if __cplusplus >= 199711L
-#define __CPP14_DEFINED__
+#if _MSVC_LANG >= 201400L
+#define CPP14_DEFINED2
 #endif // #if __cplusplus >= 199711L
 #elif defined(__GNUC__) // #if defined(_MSC_VER)
 #if __cplusplus > 201103L
-#define __CPP14_DEFINED__
+#define CPP14_DEFINED2
 #endif // #if __cplusplus > 199711L
 #else // #if defined(_MSC_VER)
 #error this compiler is not supported
 #endif // #if defined(_MSC_VER)
-#endif  // #ifndef __CPP14_DEFINED__
-#endif  // #ifndef __NOT_USE_CPP14__
+#endif  // #ifndef CPP14_DEFINED2
+#endif  // #ifndef NOT_USE_CPP14_2
 
 // This should be done after check
-#ifdef __CPP11_DEFINED__
-#define __OVERRIDE__	override
-#define __FINAL__	final
+#ifndef OVERRIDE_AND_FINAL
+#define OVERRIDE_AND_FINAL
+#ifdef CPP11_DEFINED2
+#define OVERRIDE2	override
+#define FINAL2  	final
 #else
-#define __OVERRIDE__
-#define __FINAL__
+#define OVERRIDE2
+#define FINAL2
+#endif
 #endif
 
 #include <stdarg.h>

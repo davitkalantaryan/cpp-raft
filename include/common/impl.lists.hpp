@@ -18,7 +18,7 @@
 #include <malloc.h>
 #endif
 
-#ifdef __CPP11_DEFINED__
+#ifdef CPP11_DEFINED2
 #include <utility>
 #endif
 #include "newlockguards.hpp"
@@ -110,7 +110,7 @@ common::listN::ListItem<Type>* common::List<Type>::AddData(const Type& a_newData
 }
 
 
-#ifdef __CPP11_DEFINED__
+#ifdef CPP11_DEFINED2
 template <typename Type>
 common::listN::ListItem<Type>* common::List<Type>::AddDataMv(Type&& a_newData)
 {
@@ -145,7 +145,7 @@ common::listN::Fifo<Type>::~Fifo()
 }
 
 
-#ifdef __CPP11_DEFINED__
+#ifdef CPP11_DEFINED2
 template <typename Type>
 void common::listN::Fifo<Type>::AddElementMv(Type&& a_newData)
 {
@@ -189,7 +189,7 @@ bool common::listN::Fifo<Type>::Extract(Type* a_pDataBuffer)
     ::common::NewLockGuard< ::STDN::mutex > aGuard;
     aGuard.SetAndLockMutex(&m_mutex);
     if(m_list.count()){
-#ifdef __CPP11_DEFINED__
+#ifdef CPP11_DEFINED2
         *a_pDataBuffer = std::move(m_list.first()->data);
 #else
         *a_pDataBuffer = m_list.first()->data;

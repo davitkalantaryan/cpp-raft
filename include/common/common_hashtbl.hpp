@@ -25,7 +25,7 @@ public:
 	virtual ~HashTblRaw();
 
 	bool  AddEntry (const void* key, uint32_t keyLen, const DataType& data);
-#ifdef __CPP11_DEFINED__
+#ifdef CPP11_DEFINED2
 	bool  AddEntryMv(const void* key, uint32_t keyLen, DataType&& data);
 #endif
 	bool  RemoveEntry(const void* key, uint32_t keyLen);

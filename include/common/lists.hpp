@@ -60,7 +60,7 @@ struct ListItem {
 	friend class Fifo<ItemType>;
 private:
 	ListItem(const ItemType& a_data):data(a_data){}
-#ifdef __CPP11_DEFINED__
+#ifdef CPP11_DEFINED2
 	ListItem(ItemType&& a_data) :data(std::move(a_data)) {}
 #endif
 	~ListItem() {}
@@ -78,7 +78,7 @@ public:
     void clear();
 
 	common::listN::ListItem<Type>* AddData(const Type& newData);
-#ifdef __CPP11_DEFINED__
+#ifdef CPP11_DEFINED2
 	common::listN::ListItem<Type>* AddDataMv(Type&& newData);
 #endif
 	common::listN::ListItem<Type>* RemoveData(common::listN::ListItem<Type>* itemToRemove);
@@ -94,7 +94,7 @@ namespace listN {
 		Fifo();
 		virtual ~Fifo();
 
-#ifdef __CPP11_DEFINED__
+#ifdef CPP11_DEFINED2
         void AddElementMv(Type&& a_newData);
 #endif
         bool AddElement(const Type& a_newData);

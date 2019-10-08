@@ -18,7 +18,7 @@
 
 #include "cpp11+/shared_mutex_cpp14.hpp"
 
-#ifndef __CPP14_DEFINED__
+#ifndef CPP14_DEFINED2
 
 #ifdef DEBUG_SHARED_MUTEX
 #define PRINT_SHARED_MUTEX(...) printf(__VA_ARGS__)
@@ -79,7 +79,7 @@ int STDN::shared_mutex_base::createSharedMutex(const char* a_resName)
 	if(a_resName){
         PRINT_SHARED_MUTEX("name=%s\n", a_resName);
 	}
-	nReturn=pthread_rwlock_init(&m_lockPermanent,NULL);
+    nReturn=pthread_rwlock_init(&m_lockPermanent,NULL);
 	m_bInited=true;
 #endif  // #ifdef _WIN32
 
@@ -183,4 +183,4 @@ STDN::shared_mutex::~shared_mutex()
 }
 
 
-#endif  // #ifndef __CPP11_DEFINED__
+#endif  // #ifndef CPP11_DEFINED2
