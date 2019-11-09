@@ -69,27 +69,16 @@
 #endif
 #endif
 
-#include <stdarg.h>
-
-#ifdef __cplusplus
-template <typename FncType>
-static inline void* FUNCTION_POINTER_TO_VOID_POINTER(FncType _a_fnc_)
-{
-    FncType aFnc = _a_fnc_;
-    void** ppFnc = (void**)&aFnc;
-    void* pRet = *ppFnc;
-    return pRet;
-}
-#endif // #ifdef __cplusplus
-
-#ifdef __cplusplus
-extern "C"{
+#ifdef CPP11_DEFINED2
+#ifdef nullptr
+#undef nullptr
+#endif
+#define NEWNULLPTRRAFT      nullptr
+#define REGISTERRAFT
+#else
+#define NEWNULLPTRRAFT      NULL
+#define REGISTERRAFT        register
 #endif
 
-//extern void* GetFuncPointer_common(int,...);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // COMMON_DEFINATION_H
